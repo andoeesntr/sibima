@@ -16,7 +16,7 @@ export const registerUser = async (userData: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabase.auth.session()?.access_token}`
+        'Authorization': `Bearer ${await supabase.auth.getSession().then(res => res.data.session?.access_token)}`
       },
       body: JSON.stringify(userData)
     });
