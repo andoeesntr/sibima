@@ -3,7 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // Auth Pages
 import Login from "./pages/Login";
@@ -36,54 +37,116 @@ import SupervisorDashboard from "./pages/supervisor/Dashboard";
 import SupervisorProfile from "./pages/supervisor/Profile";
 import DigitalSignatureUpload from "./pages/supervisor/DigitalSignatureUpload";
 import SupervisorFeedback from "./pages/supervisor/Feedback";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
+
+// Protected route component
+const ProtectedRoute = ({ 
+  children, 
+  requiredRole 
+}: { 
+  children: React.ReactNode, 
+  requiredRole?: string 
+}) => {
+  const { user, profile, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requiredRole && profile?.role !== requiredRole) {
+    return <Navigate to={`/${profile?.role || ''}`} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<Login />} />
+      
+      {/* Student Routes */}
+      <Route 
+        path="/student" 
+        element={
+          <ProtectedRoute requiredRole="student">
+            <DashboardLayout role="student" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<StudentDashboard />} />
+        <Route path="profile" element={<StudentProfile />} />
+        <Route path="proposal-submission" element={<ProposalSubmission />} />
+        <Route path="guide" element={<StudentGuide />} />
+        <Route path="digital-signature" element={<DigitalSignature />} />
+      </Route>
+      
+      {/* Coordinator Routes */}
+      <Route 
+        path="/coordinator" 
+        element={
+          <ProtectedRoute requiredRole="coordinator">
+            <DashboardLayout role="coordinator" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<CoordinatorDashboard />} />
+        <Route path="profile" element={<CoordinatorProfile />} />
+        <Route path="proposal-review" element={<ProposalReview />} />
+        <Route path="proposal-detail/:id" element={<ProposalDetail />} />
+      </Route>
+      
+      {/* SuperAdmin Routes */}
+      <Route 
+        path="/admin" 
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <DashboardLayout role="admin" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="profile" element={<AdminProfile />} />
+        <Route path="user-management" element={<UserManagement />} />
+        <Route path="guide-management" element={<GuideManagement />} />
+      </Route>
+      
+      {/* Supervisor Routes */}
+      <Route 
+        path="/supervisor" 
+        element={
+          <ProtectedRoute requiredRole="supervisor">
+            <DashboardLayout role="supervisor" />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<SupervisorDashboard />} />
+        <Route path="profile" element={<SupervisorProfile />} />
+        <Route path="digital-signature" element={<DigitalSignatureUpload />} />
+        <Route path="feedback" element={<SupervisorFeedback />} />
+      </Route>
+      
+      {/* Catch all for 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          
-          {/* Student Routes */}
-          <Route path="/student" element={<DashboardLayout role="student" />}>
-            <Route index element={<StudentDashboard />} />
-            <Route path="profile" element={<StudentProfile />} />
-            <Route path="proposal-submission" element={<ProposalSubmission />} />
-            <Route path="guide" element={<StudentGuide />} />
-            <Route path="digital-signature" element={<DigitalSignature />} />
-          </Route>
-          
-          {/* Coordinator Routes */}
-          <Route path="/coordinator" element={<DashboardLayout role="coordinator" />}>
-            <Route index element={<CoordinatorDashboard />} />
-            <Route path="profile" element={<CoordinatorProfile />} />
-            <Route path="proposal-review" element={<ProposalReview />} />
-            <Route path="proposal-detail/:id" element={<ProposalDetail />} />
-          </Route>
-          
-          {/* SuperAdmin Routes */}
-          <Route path="/admin" element={<DashboardLayout role="admin" />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="profile" element={<AdminProfile />} />
-            <Route path="user-management" element={<UserManagement />} />
-            <Route path="guide-management" element={<GuideManagement />} />
-          </Route>
-          
-          {/* Supervisor Routes */}
-          <Route path="/supervisor" element={<DashboardLayout role="supervisor" />}>
-            <Route index element={<SupervisorDashboard />} />
-            <Route path="profile" element={<SupervisorProfile />} />
-            <Route path="digital-signature" element={<DigitalSignatureUpload />} />
-            <Route path="feedback" element={<SupervisorFeedback />} />
-          </Route>
-          
-          {/* Catch all for 404 */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

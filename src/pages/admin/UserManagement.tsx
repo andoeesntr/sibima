@@ -107,7 +107,7 @@ const UserManagement = () => {
           <CardHeader>
             <CardTitle>Daftar Pengguna</CardTitle>
             <CardDescription>
-              {activeTab === 'all' ? 'Semua pengguna' : `Pengguna dengan role ${roleLabels[activeTab]}`}
+              {activeTab === 'all' ? 'Semua pengguna' : `Pengguna dengan role ${roleLabels[activeTab as UserRole]}`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -372,9 +372,12 @@ const AddUserForm = ({ onClose }: { onClose: () => void }) => {
 };
 
 // Avatar Component
-const Avatar = ({ children }: { children: React.ReactNode }) => {
+const Avatar = ({ children, className, ...props }: { children: React.ReactNode, className?: string, onClick?: () => void }) => {
   return (
-    <div className="relative w-10 h-10 rounded-full flex items-center justify-center bg-gray-200 text-gray-600">
+    <div 
+      className={cn("relative w-10 h-10 rounded-full flex items-center justify-center bg-gray-200 text-gray-600", className)} 
+      {...props}
+    >
       {children}
     </div>
   );

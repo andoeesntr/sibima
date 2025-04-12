@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 type NavItem = {
   title: string;
@@ -52,10 +53,10 @@ type DashboardLayoutProps = {
 const DashboardLayout = ({ role }: DashboardLayoutProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const navigate = useNavigate();
+  const { signOut, profile } = useAuth();
   
   const handleLogout = () => {
-    // In a real app, you would clear auth tokens here
-    navigate('/');
+    signOut();
   };
 
   return (
@@ -153,7 +154,9 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
             <div className="flex items-center space-x-4">
               <Avatar className="cursor-pointer" onClick={() => navigate(`/${role}/profile`)}>
                 <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback>{role[0].toUpperCase()}</AvatarFallback>
+                <AvatarFallback>
+                  {profile?.full_name ? profile.full_name[0].toUpperCase() : role[0].toUpperCase()}
+                </AvatarFallback>
               </Avatar>
             </div>
           </div>

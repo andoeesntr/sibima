@@ -6,29 +6,32 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulating authentication API call
-    setTimeout(() => {
-      setIsLoading(false);
-      if (username && password && role) {
-        toast.success(`Berhasil login sebagai ${role}`);
-        navigate(`/${role}`);
-      } else {
+    try {
+      if (!email || !password) {
         toast.error('Silahkan isi semua field');
+        setIsLoading(false);
+        return;
       }
-    }, 1000);
+      
+      await signIn(email, password);
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,13 +53,13 @@ const Login = () => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input 
-                id="username" 
-                type="text" 
-                placeholder="Masukkan username" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email" 
+                type="email" 
+                placeholder="Masukkan email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required 
               />
             </div>
@@ -71,25 +74,6 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required 
               />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="role">Masuk Sebagai</Label>
-              <Select 
-                value={role} 
-                onValueChange={setRole}
-                required
-              >
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Pilih Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">Mahasiswa</SelectItem>
-                  <SelectItem value="coordinator">Koordinator KP</SelectItem>
-                  <SelectItem value="admin">Super Admin</SelectItem>
-                  <SelectItem value="supervisor">Dosen Pembimbing</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
           
