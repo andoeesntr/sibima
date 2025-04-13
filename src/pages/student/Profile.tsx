@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 const StudentProfile = () => {
-  const { profile, user } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   
   const [name, setName] = useState(profile?.full_name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -51,6 +51,9 @@ const StudentProfile = () => {
         throw error;
       }
       
+      // Refresh the profile data
+      await refreshProfile();
+      
       toast.success('Profil berhasil diperbarui');
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -74,6 +77,19 @@ const StudentProfile = () => {
     setIsLoading(true);
     
     try {
+      // First verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: currentPassword,
+      });
+      
+      if (signInError) {
+        toast.error('Password saat ini tidak valid');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Then update password
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });

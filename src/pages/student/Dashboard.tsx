@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ const statusLabels = {
   rejected: "Ditolak",
 };
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleDateString('id-ID', {
@@ -34,11 +35,41 @@ const formatDate = (dateString) => {
   });
 };
 
+interface ProposalType {
+  id: string;
+  title: string;
+  status: string;
+  submissionDate?: string;
+  created_at: string;
+  reviewDate?: string;
+  rejectionReason?: string;
+  supervisor?: {
+    id: string;
+    full_name: string;
+  };
+}
+
+interface TeamMember {
+  id: string;
+  full_name: string;
+  nim?: string;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  members: TeamMember[];
+  supervisors: {
+    id: string;
+    name: string;
+  }[];
+}
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const [proposal, setProposal] = useState(null);
-  const [team, setTeam] = useState(null);
+  const [proposal, setProposal] = useState<ProposalType | null>(null);
+  const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
@@ -47,35 +78,66 @@ const StudentDashboard = () => {
       
       setLoading(true);
       try {
-        const simulatedTeam = {
-          id: 'team-1',
-          name: `Team ${profile?.full_name || 'KP'}`,
-          members: [
-            {
+        // Fetch the student's proposal
+        const { data: proposalData, error: proposalError } = await supabase
+          .from('proposals')
+          .select(`
+            id,
+            title,
+            status,
+            created_at,
+            supervisor:supervisor_id (
+              id,
+              full_name
+            )
+          `)
+          .eq('student_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (proposalError && proposalError.code !== 'PGRST116') {
+          // PGRST116 is "no rows returned" which is fine, just means no proposals yet
+          console.error('Error fetching proposal:', proposalError);
+          toast.error('Gagal memuat data proposal');
+        }
+        
+        if (proposalData) {
+          setProposal({
+            id: proposalData.id,
+            title: proposalData.title,
+            status: proposalData.status,
+            submissionDate: proposalData.created_at,
+            created_at: proposalData.created_at,
+            supervisor: proposalData.supervisor
+          });
+        }
+        
+        // For now, use the current user's information as the team
+        // In a more complete implementation, this would fetch team members from a teams table
+        if (profile) {
+          const teamData: Team = {
+            id: 'team-' + user.id,
+            name: `Tim ${profile.full_name || 'KP'}`,
+            members: [{
               id: user.id,
-              name: profile?.full_name || 'Student',
-              nim: profile?.nim || 'Unknown NIM'
-            }
-          ],
-          supervisors: [
-            {
-              id: 'supervisor-1',
-              name: 'Dr. Supervisor'
-            }
-          ]
-        };
+              full_name: profile.full_name || 'Student',
+              nim: profile.nim
+            }],
+            supervisors: []
+          };
+          
+          // Add supervisor if proposal has one
+          if (proposalData?.supervisor) {
+            teamData.supervisors = [{
+              id: proposalData.supervisor.id,
+              name: proposalData.supervisor.full_name
+            }];
+          }
+          
+          setTeam(teamData);
+        }
         
-        setTeam(simulatedTeam);
-        
-        const simulatedProposal = {
-          id: 'proposal-1',
-          title: 'Pengembangan Aplikasi KP',
-          status: 'submitted',
-          submissionDate: new Date().toISOString(),
-          teamId: 'team-1',
-        };
-        
-        setProposal(simulatedProposal);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Gagal memuat data');
@@ -110,8 +172,8 @@ const StudentDashboard = () => {
                 
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Status:</span>
-                  <Badge className={statusColors[proposal.status]}>
-                    {statusLabels[proposal.status]}
+                  <Badge className={statusColors[proposal.status as keyof typeof statusColors] || "bg-gray-500"}>
+                    {statusLabels[proposal.status as keyof typeof statusLabels] || "Unknown"}
                   </Badge>
                 </div>
                 
@@ -119,7 +181,7 @@ const StudentDashboard = () => {
                   <span className="font-medium text-gray-700">Tanggal Pengajuan:</span>
                   <span className="flex items-center">
                     <Calendar size={16} className="mr-1" />
-                    {formatDate(proposal.submissionDate)}
+                    {formatDate(proposal.created_at)}
                   </span>
                 </div>
                 
@@ -188,23 +250,25 @@ const StudentDashboard = () => {
                     {team.members.map(member => (
                       <div key={member.id} className="flex items-center p-2 bg-gray-50 rounded">
                         <User size={16} className="mr-2" />
-                        <span>{member.name} ({member.nim})</span>
+                        <span>{member.full_name} {member.nim ? `(${member.nim})` : ''}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 
-                <div>
-                  <span className="font-medium text-gray-700 block mb-2">Pembimbing:</span>
-                  <div className="space-y-2">
-                    {team.supervisors.map(supervisor => (
-                      <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
-                        <User size={16} className="mr-2" />
-                        <span>{supervisor.name}</span>
-                      </div>
-                    ))}
+                {team.supervisors.length > 0 && (
+                  <div>
+                    <span className="font-medium text-gray-700 block mb-2">Pembimbing:</span>
+                    <div className="space-y-2">
+                      {team.supervisors.map(supervisor => (
+                        <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
+                          <User size={16} className="mr-2" />
+                          <span>{supervisor.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </>
             ) : (
               <div className="text-center py-6">

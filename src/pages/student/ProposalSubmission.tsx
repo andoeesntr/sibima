@@ -11,20 +11,85 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, FileUp, Plus, Trash, User, UserPlus, X } from 'lucide-react';
-import { supervisors, students } from '@/services/mockData';
-import { Student } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Student {
+  id: string;
+  full_name: string;
+  nim?: string;
+}
+
+interface Supervisor {
+  id: string;
+  full_name: string;
+}
 
 const ProposalSubmission = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [teamName, setTeamName] = useState('');
   const [selectedSupervisors, setSelectedSupervisors] = useState<string[]>([]);
-  const [teamMembers, setTeamMembers] = useState<Student[]>([students[0]]);
+  const [teamMembers, setTeamMembers] = useState<Student[]>([]);
   const [selectedMember, setSelectedMember] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [activeTab, setActiveTab] = useState('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  
+  // State for storing students and supervisors from database
+  const [students, setStudents] = useState<Student[]>([]);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
+
+  // Fetch students and supervisors from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
+
+      try {
+        // Fetch students
+        const { data: studentsData, error: studentsError } = await supabase
+          .from('profiles')
+          .select('id, full_name, nim')
+          .eq('role', 'student');
+
+        if (studentsError) {
+          throw studentsError;
+        }
+
+        // Fetch supervisors
+        const { data: supervisorsData, error: supervisorsError } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('role', 'supervisor');
+
+        if (supervisorsError) {
+          throw supervisorsError;
+        }
+
+        setStudents(studentsData || []);
+        setSupervisors(supervisorsData || []);
+
+        // Add current user as team member if they're a student
+        if (profile && profile.role === 'student') {
+          setTeamMembers([{
+            id: user.id,
+            full_name: profile.full_name || 'Unnamed Student',
+            nim: profile.nim
+          }]);
+        }
+
+      } catch (error: any) {
+        console.error('Error fetching data:', error);
+        toast.error(`Failed to load data: ${error.message}`);
+      }
+    };
+
+    fetchData();
+  }, [user, profile]);
 
   // Filter students not yet in team
   const availableStudents = students.filter(
@@ -43,7 +108,7 @@ const ProposalSubmission = () => {
 
   const handleRemoveMember = (id: string) => {
     // Don't allow removing self (first member)
-    if (id === teamMembers[0].id) {
+    if (id === teamMembers[0]?.id) {
       toast.error('Anda tidak dapat menghapus diri sendiri dari tim');
       return;
     }
@@ -56,7 +121,7 @@ const ProposalSubmission = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate form
     if (!title || !description || !teamName || selectedSupervisors.length === 0 || !file) {
       toast.error('Harap isi semua bidang yang diperlukan');
@@ -68,14 +133,48 @@ const ProposalSubmission = () => {
       return;
     }
 
+    if (!user || !profile) {
+      toast.error('Anda harus login untuk mengajukan proposal');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Insert proposal into the database
+      const { data: proposalData, error: proposalError } = await supabase
+        .from('proposals')
+        .insert({
+          student_id: user.id,
+          title,
+          description,
+          company_name: companyName,
+          supervisor_id: selectedSupervisors[0], // Primary supervisor
+          status: 'submitted'
+        })
+        .select();
+
+      if (proposalError) {
+        throw proposalError;
+      }
+
+      // Log the activity
+      await supabase.from('activity_logs').insert({
+        user_id: user.id,
+        user_name: profile.full_name || user.email,
+        action: 'submitted',
+        target_type: 'proposal',
+        target_id: proposalData[0].id
+      });
+
       toast.success('Proposal berhasil diajukan');
       navigate('/student');
-    }, 1500);
+    } catch (error: any) {
+      console.error('Error submitting proposal:', error);
+      toast.error(`Gagal mengajukan proposal: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddSupervisor = (id: string) => {
@@ -136,6 +235,16 @@ const ProposalSubmission = () => {
               </div>
               
               <div className="space-y-2">
+                <Label htmlFor="companyName">Nama Perusahaan/Instansi</Label>
+                <Input 
+                  id="companyName" 
+                  placeholder="Masukkan nama perusahaan/instansi" 
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
                 <Label htmlFor="teamName">Nama Tim</Label>
                 <Input 
                   id="teamName" 
@@ -182,7 +291,7 @@ const ProposalSubmission = () => {
                       <div className="flex items-center gap-2">
                         <User size={18} />
                         <span>
-                          {member.name} {index === 0 && <Badge className="ml-1">Ketua</Badge>}
+                          {member.full_name || 'Unnamed'} {member.nim ? `(${member.nim})` : ''} {index === 0 && <Badge className="ml-1">Ketua</Badge>}
                         </span>
                       </div>
                       
@@ -207,7 +316,7 @@ const ProposalSubmission = () => {
                     <SelectContent>
                       {availableStudents.map(student => (
                         <SelectItem key={student.id} value={student.id}>
-                          {student.name} ({student.nim})
+                          {student.full_name} {student.nim ? `(${student.nim})` : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -239,7 +348,7 @@ const ProposalSubmission = () => {
                         >
                           <div className="flex items-center gap-2">
                             <User size={18} />
-                            <span>{supervisor.name}</span>
+                            <span>{supervisor.full_name}</span>
                           </div>
                           
                           <Button 
@@ -276,7 +385,7 @@ const ProposalSubmission = () => {
                       disabled={selectedSupervisors.length >= 2 && !selectedSupervisors.includes(supervisor.id)}
                     >
                       <User size={16} className="mr-2" />
-                      {supervisor.name}
+                      {supervisor.full_name}
                     </Button>
                   ))}
                 </div>
