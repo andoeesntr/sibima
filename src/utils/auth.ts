@@ -12,22 +12,23 @@ export const registerUser = async (userData: {
   role: 'student' | 'coordinator' | 'admin' | 'supervisor';
 }) => {
   try {
-    const response = await fetch(`https://ciaymvntmwwbnvewedue.supabase.co/functions/v1/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${await supabase.auth.getSession().then(res => res.data.session?.access_token)}`
-      },
-      body: JSON.stringify(userData)
+    // Use the invoke method to call the edge function
+    const { data, error } = await supabase.functions.invoke('register', {
+      body: userData
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || 'Registration failed');
+    if (error) {
+      console.error("Registration function error:", error);
+      throw new Error(error.message || 'Registration failed');
+    }
+
+    if (!data) {
+      throw new Error('Registration failed: No data returned');
     }
 
     return data;
   } catch (error: any) {
+    console.error("Registration error:", error);
     throw new Error(`Registration error: ${error.message}`);
   }
 };

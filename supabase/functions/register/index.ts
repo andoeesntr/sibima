@@ -1,6 +1,6 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.43.3'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +30,7 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     
+    // Create the admin client properly
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
     
     const { email, password, full_name, role, nim, nip, faculty, department } = await req.json() as RegisterData
@@ -46,6 +47,8 @@ serve(async (req) => {
       )
     }
 
+    console.log("Creating user with email:", email, "and role:", role)
+
     // Create user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -54,6 +57,7 @@ serve(async (req) => {
     })
 
     if (authError) {
+      console.error("Auth error:", authError)
       return new Response(
         JSON.stringify({ error: authError.message }), 
         { 
@@ -64,6 +68,7 @@ serve(async (req) => {
     }
 
     if (!authData.user) {
+      console.error("No user created")
       return new Response(
         JSON.stringify({ error: 'Failed to create user' }), 
         { 
@@ -72,6 +77,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log("User created with ID:", authData.user.id)
 
     // Update the profile with additional data
     const { error: profileError } = await supabaseAdmin
@@ -87,6 +94,7 @@ serve(async (req) => {
       .eq('id', authData.user.id)
 
     if (profileError) {
+      console.error("Profile update error:", profileError)
       // If profile update fails, we should ideally delete the user, but for simplicity we'll just return the error
       return new Response(
         JSON.stringify({ error: `User created but profile update failed: ${profileError.message}` }), 
@@ -96,6 +104,8 @@ serve(async (req) => {
         }
       )
     }
+
+    console.log("Profile updated successfully for user:", authData.user.id)
 
     return new Response(
       JSON.stringify({ 
