@@ -100,19 +100,11 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus pengguna ${userName}?`)) {
-      return;
-    }
-    
     try {
-      // Delete from profiles table first (will cascade to auth user due to foreign key)
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-        
-      if (profileError) {
-        throw profileError;
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        throw error;
       }
       
       setUsers(users.filter(user => user.id !== userId));
@@ -140,12 +132,8 @@ const UserManagement = () => {
     }
 
     try {
-      // Use the edge function to reset password
-      const { data, error } = await supabase.functions.invoke('reset-password', {
-        body: {
-          userId: editingUser.id,
-          newPassword
-        }
+      const { error } = await supabase.auth.admin.updateUserById(editingUser.id, {
+        password: newPassword
       });
 
       if (error) {
@@ -200,7 +188,7 @@ const UserManagement = () => {
       </div>
       
       <Tabs defaultValue="all" value={activeTab} onValueChange={(value) => setActiveTab(value as UserTab)}>
-        <TabsList className="grid w-full grid-cols-5 mb-4">
+        <TabsList className="grid grid-cols-5 mb-4">
           <TabsTrigger value="all">Semua</TabsTrigger>
           <TabsTrigger value="student">Mahasiswa</TabsTrigger>
           <TabsTrigger value="supervisor">Dosen</TabsTrigger>
@@ -600,7 +588,6 @@ const EditUserForm = ({
     setIsSubmitting(true);
     
     try {
-      // Update user profile
       const { error } = await supabase
         .from('profiles')
         .update({
