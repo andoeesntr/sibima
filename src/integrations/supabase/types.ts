@@ -9,6 +9,82 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          id: string
+          target_id: string | null
+          target_type: string
+          timestamp: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          action: string
+          id?: string
+          target_id?: string | null
+          target_type: string
+          timestamp?: string | null
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          action?: string
+          id?: string
+          target_id?: string | null
+          target_type?: string
+          timestamp?: string | null
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      digital_signatures: {
+        Row: {
+          created_at: string | null
+          id: string
+          qr_code_url: string | null
+          signature_url: string | null
+          status: string | null
+          supervisor_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          qr_code_url?: string | null
+          signature_url?: string | null
+          status?: string | null
+          supervisor_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          qr_code_url?: string | null
+          signature_url?: string | null
+          status?: string | null
+          supervisor_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_signatures_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -47,6 +123,57 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      proposals: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          status: string | null
+          student_id: string
+          supervisor_id: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          student_id: string
+          supervisor_id?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          student_id?: string
+          supervisor_id?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

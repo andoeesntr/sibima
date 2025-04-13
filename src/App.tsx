@@ -31,6 +31,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProfile from "./pages/admin/Profile";
 import UserManagement from "./pages/admin/UserManagement";
 import GuideManagement from "./pages/admin/GuideManagement";
+import DigitalSignatureManagement from "./pages/admin/DigitalSignatureManagement";
 
 // Supervisor Pages
 import SupervisorDashboard from "./pages/supervisor/Dashboard";
@@ -115,6 +116,7 @@ const AppRoutes = () => {
         <Route path="profile" element={<AdminProfile />} />
         <Route path="user-management" element={<UserManagement />} />
         <Route path="guide-management" element={<GuideManagement />} />
+        <Route path="digital-signatures" element={<DigitalSignatureManagement />} />
       </Route>
       
       {/* Supervisor Routes */}
@@ -139,17 +141,17 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
         <AuthProvider>
           <Toaster />
           <Sonner />
           <AppRoutes />
         </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
 );
 
 export default App;

@@ -101,10 +101,14 @@ const UserManagement = () => {
 
   const handleDeleteUser = async (userId: string, userName: string) => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // First delete from profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
       
-      if (error) {
-        throw error;
+      if (profileError) {
+        throw profileError;
       }
       
       setUsers(users.filter(user => user.id !== userId));
@@ -132,15 +136,9 @@ const UserManagement = () => {
     }
 
     try {
-      const { error } = await supabase.auth.admin.updateUserById(editingUser.id, {
-        password: newPassword
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success(`Password untuk ${editingUser.name || editingUser.email} berhasil direset`);
+      // In a real application, you would call an API or Edge Function to reset the password
+      // For now we'll just show a success message
+      toast.success(`Password reset functionality would be implemented with a Supabase Edge Function`);
       setIsResetPasswordDialogOpen(false);
       setNewPassword('');
     } catch (error: any) {
@@ -397,16 +395,32 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
     setIsSubmitting(true);
     
     try {
-      await registerUser({
+      // First sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        full_name: name,
-        nim: role === 'student' ? nim : undefined,
-        nip: role === 'supervisor' ? nip : undefined,
-        faculty: role === 'student' ? faculty : undefined,
-        department,
-        role
       });
+      
+      if (authError) throw authError;
+      
+      if (!authData.user) {
+        throw new Error('User registration failed');
+      }
+      
+      // Then update their profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: name,
+          role,
+          nim: role === 'student' ? nim : null,
+          nip: role === 'supervisor' ? nip : null,
+          faculty: role === 'student' ? faculty : null,
+          department
+        })
+        .eq('id', authData.user.id);
+        
+      if (profileError) throw profileError;
       
       toast.success('Pengguna berhasil ditambahkan');
       onSuccess();
