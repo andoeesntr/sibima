@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
+        console.log('Auth state changed:', event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
@@ -60,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('Fetching user profile for:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -71,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      console.log('Profile data fetched:', data);
       setProfile(data);
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -90,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, full_name')
           .eq('id', data.user.id)
           .single();
 
@@ -102,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (profileData) {
           const role = profileData.role;
+          console.log('Logged in user profile:', profileData);
           // Redirect based on role
           navigate(`/${role}`);
           toast.success(`Berhasil login sebagai ${role}`);

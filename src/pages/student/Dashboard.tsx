@@ -1,12 +1,12 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, FileCheck, FileWarning, User, Users, Building, Calendar } from 'lucide-react';
+import { Clock, FileCheck, FileWarning, User, Users, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Proposal, Student, KpTeam } from '@/types';
-import { proposals, teams, students, formatDate } from '@/services/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -24,22 +24,72 @@ const statusLabels = {
   rejected: "Ditolak",
 };
 
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+};
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
-  const [currentUser] = useState<Student>(students[0]);
-  const [userTeam, setUserTeam] = useState<KpTeam | null>(null);
-  const [teamProposal, setTeamProposal] = useState<Proposal | null>(null);
+  const { user, profile } = useAuth();
+  const [proposal, setProposal] = useState(null);
+  const [team, setTeam] = useState(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // In a real app, fetch this data from an API
-    const team = teams.find(t => t.id === currentUser.kpTeamId);
-    setUserTeam(team || null);
+    const fetchData = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const simulatedTeam = {
+          id: 'team-1',
+          name: `Team ${profile?.full_name || 'KP'}`,
+          members: [
+            {
+              id: user.id,
+              name: profile?.full_name || 'Student',
+              nim: profile?.nim || 'Unknown NIM'
+            }
+          ],
+          supervisors: [
+            {
+              id: 'supervisor-1',
+              name: 'Dr. Supervisor'
+            }
+          ]
+        };
+        
+        setTeam(simulatedTeam);
+        
+        const simulatedProposal = {
+          id: 'proposal-1',
+          title: 'Pengembangan Aplikasi KP',
+          status: 'submitted',
+          submissionDate: new Date().toISOString(),
+          teamId: 'team-1',
+        };
+        
+        setProposal(simulatedProposal);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Gagal memuat data');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    if (team?.proposalId) {
-      const proposal = proposals.find(p => p.id === team.proposalId);
-      setTeamProposal(proposal || null);
-    }
-  }, [currentUser]);
+    fetchData();
+  }, [user, profile]);
+  
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -51,17 +101,17 @@ const StudentDashboard = () => {
             <CardDescription>Informasi tentang status KP Anda saat ini</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {teamProposal ? (
+            {proposal ? (
               <>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Judul KP:</span>
-                  <span>{teamProposal.title}</span>
+                  <span>{proposal.title}</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Status:</span>
-                  <Badge className={statusColors[teamProposal.status]}>
-                    {statusLabels[teamProposal.status]}
+                  <Badge className={statusColors[proposal.status]}>
+                    {statusLabels[proposal.status]}
                   </Badge>
                 </div>
                 
@@ -69,25 +119,25 @@ const StudentDashboard = () => {
                   <span className="font-medium text-gray-700">Tanggal Pengajuan:</span>
                   <span className="flex items-center">
                     <Calendar size={16} className="mr-1" />
-                    {formatDate(teamProposal.submissionDate)}
+                    {formatDate(proposal.submissionDate)}
                   </span>
                 </div>
                 
-                {teamProposal.reviewDate && (
+                {proposal.reviewDate && (
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-700">Tanggal Review:</span>
                     <span className="flex items-center">
                       <Clock size={16} className="mr-1" />
-                      {formatDate(teamProposal.reviewDate)}
+                      {formatDate(proposal.reviewDate)}
                     </span>
                   </div>
                 )}
                 
-                {teamProposal.status === 'rejected' && teamProposal.rejectionReason && (
+                {proposal.status === 'rejected' && proposal.rejectionReason && (
                   <div>
                     <span className="font-medium text-gray-700 block mb-1">Alasan Penolakan:</span>
                     <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
-                      {teamProposal.rejectionReason}
+                      {proposal.rejectionReason}
                     </p>
                   </div>
                 )}
@@ -106,13 +156,13 @@ const StudentDashboard = () => {
             )}
           </CardContent>
           
-          {teamProposal && (
+          {proposal && (
             <CardFooter className="flex justify-end">
               <Button 
                 className="bg-primary hover:bg-primary/90" 
                 onClick={() => navigate('/student/proposal-submission')}
               >
-                {teamProposal.status === 'rejected' ? 'Ajukan Ulang' : 'Lihat Detail'}
+                {proposal.status === 'rejected' ? 'Ajukan Ulang' : 'Lihat Detail'}
               </Button>
             </CardFooter>
           )}
@@ -125,17 +175,17 @@ const StudentDashboard = () => {
             <CardDescription>Informasi tim KP Anda</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {userTeam ? (
+            {team ? (
               <>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Nama Tim:</span>
-                  <span>{userTeam.name}</span>
+                  <span>{team.name}</span>
                 </div>
                 
                 <div>
                   <span className="font-medium text-gray-700 block mb-2">Anggota:</span>
                   <div className="space-y-2">
-                    {userTeam.members.map(member => (
+                    {team.members.map(member => (
                       <div key={member.id} className="flex items-center p-2 bg-gray-50 rounded">
                         <User size={16} className="mr-2" />
                         <span>{member.name} ({member.nim})</span>
@@ -147,7 +197,7 @@ const StudentDashboard = () => {
                 <div>
                   <span className="font-medium text-gray-700 block mb-2">Pembimbing:</span>
                   <div className="space-y-2">
-                    {userTeam.supervisors.map(supervisor => (
+                    {team.supervisors.map(supervisor => (
                       <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
                         <User size={16} className="mr-2" />
                         <span>{supervisor.name}</span>
@@ -208,9 +258,9 @@ const StudentDashboard = () => {
             <Button 
               className="bg-secondary hover:bg-secondary/90"
               onClick={() => navigate('/student/digital-signature')}
-              disabled={!teamProposal || teamProposal.status !== 'approved'}
+              disabled={!proposal || proposal.status !== 'approved'}
             >
-              {(!teamProposal || teamProposal.status !== 'approved') ? 
+              {(!proposal || proposal.status !== 'approved') ? 
                 'Belum Tersedia' : 'Akses'}
             </Button>
           </CardFooter>

@@ -1,36 +1,66 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from 'sonner';
-import { students } from '@/services/mockData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
-import { Lock, Mail, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const StudentProfile = () => {
-  const [student] = useState(students[0]);
-  const [name, setName] = useState(student.name);
-  const [email, setEmail] = useState(student.email);
+  const { profile, user } = useAuth();
+  
+  const [name, setName] = useState(profile?.full_name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const handleUpdateProfile = () => {
+  useEffect(() => {
+    // Update state when profile or user data changes
+    if (profile) {
+      setName(profile.full_name || '');
+    }
+    if (user) {
+      setEmail(user.email || '');
+    }
+  }, [profile, user]);
+  
+  const handleUpdateProfile = async () => {
+    if (!user) {
+      toast.error('Anda harus login untuk memperbarui profil');
+      return;
+    }
+    
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: name
+        })
+        .eq('id', user.id);
+      
+      if (error) {
+        throw error;
+      }
+      
       toast.success('Profil berhasil diperbarui');
-    }, 1000);
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast.error(`Gagal memperbarui profil: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       toast.error('Konfirmasi password tidak cocok');
       return;
@@ -43,14 +73,25 @@ const StudentProfile = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       toast.success('Password berhasil diperbarui');
-    }, 1000);
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(`Gagal memperbarui password: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -58,11 +99,11 @@ const StudentProfile = () => {
       <div className="flex items-center space-x-4">
         <Avatar className="h-20 w-20">
           <AvatarImage src="/placeholder.svg" />
-          <AvatarFallback>{student.name[0]}</AvatarFallback>
+          <AvatarFallback>{profile?.full_name ? profile.full_name[0].toUpperCase() : user?.email?.[0].toUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
-          <h1 className="text-2xl font-bold">{student.name}</h1>
-          <p className="text-gray-600">{student.nim} - Mahasiswa</p>
+          <h1 className="text-2xl font-bold">{profile?.full_name || 'User Profile'}</h1>
+          <p className="text-gray-600">{profile?.nim || 'No NIM'} - Mahasiswa</p>
         </div>
       </div>
       
@@ -83,7 +124,7 @@ const StudentProfile = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="nim">NIM</Label>
-                <Input id="nim" value={student.nim} disabled />
+                <Input id="nim" value={profile?.nim || ''} disabled />
                 <p className="text-sm text-gray-500">
                   NIM tidak dapat diubah
                 </p>
@@ -104,8 +145,11 @@ const StudentProfile = () => {
                   id="email" 
                   type="email" 
                   value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
+                  disabled
                 />
+                <p className="text-sm text-gray-500">
+                  Email tidak dapat diubah
+                </p>
               </div>
               
               <Separator />
@@ -113,11 +157,11 @@ const StudentProfile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="faculty">Fakultas</Label>
-                  <Input id="faculty" value={student.faculty} disabled />
+                  <Input id="faculty" value={profile?.faculty || ''} disabled />
                 </div>
                 <div>
                   <Label htmlFor="department">Program Studi</Label>
-                  <Input id="department" value={student.department} disabled />
+                  <Input id="department" value={profile?.department || ''} disabled />
                 </div>
               </div>
             </CardContent>
