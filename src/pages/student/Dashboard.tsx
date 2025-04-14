@@ -46,7 +46,7 @@ interface ProposalType {
   supervisor?: {
     id: string;
     full_name: string;
-  };
+  } | null;
 }
 
 interface TeamMember {
@@ -87,8 +87,8 @@ const StudentDashboard = () => {
             status,
             created_at,
             supervisor:supervisor_id (
-              id,
-              full_name
+              id:id,
+              full_name:full_name
             )
           `)
           .eq('student_id', user.id)
@@ -130,8 +130,8 @@ const StudentDashboard = () => {
           // Add supervisor if proposal has one
           if (proposalData?.supervisor) {
             teamData.supervisors = [{
-              id: proposalData.supervisor.id,
-              name: proposalData.supervisor.full_name
+              id: proposalData.supervisor.id || '',
+              name: proposalData.supervisor.full_name || ''
             }];
           }
           
