@@ -9,14 +9,19 @@ import { useState } from "react";
 
 const StudentGuide = () => {
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewName, setPreviewName] = useState('');
 
   const handleDownload = (fileUrl: string, title: string) => {
-    // In a real app, this would trigger a file download
+    // Open in a new tab
+    window.open(fileUrl, '_blank');
     toast.success(`Downloading ${title}`);
   };
 
-  const handlePreview = (fileUrl: string) => {
+  const handlePreview = (fileUrl: string, title: string) => {
     setSelectedDoc(fileUrl);
+    setPreviewName(title);
+    setPreviewDialogOpen(true);
   };
 
   return (
@@ -46,7 +51,7 @@ const StudentGuide = () => {
                 <Button 
                   variant="outline" 
                   className="flex-1"
-                  onClick={() => handlePreview(doc.fileUrl)}
+                  onClick={() => handlePreview(doc.fileUrl, doc.title)}
                 >
                   <Eye size={16} className="mr-2" /> Preview
                 </Button>
@@ -63,10 +68,10 @@ const StudentGuide = () => {
       </div>
 
       {/* Preview Dialog */}
-      <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && setSelectedDoc(null)}>
+      <Dialog open={previewDialogOpen} onOpenChange={(open) => !open && setPreviewDialogOpen(false)}>
         <DialogContent className="max-w-3xl h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Preview Dokumen</DialogTitle>
+            <DialogTitle>Preview: {previewName}</DialogTitle>
             <DialogDescription>
               Pratinjau dokumen panduan
             </DialogDescription>
@@ -85,7 +90,7 @@ const StudentGuide = () => {
                 Jika dokumen tidak tampil, silakan download langsung
               </p>
               <Button 
-                onClick={() => handleDownload(selectedDoc || '', 'Dokumen')}
+                onClick={() => handleDownload(selectedDoc || '', previewName)}
                 className="bg-primary hover:bg-primary/90"
               >
                 <Download size={16} className="mr-2" /> Download

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +75,6 @@ const ProposalDetail = () => {
 
       setLoading(true);
       try {
-        // Fetch proposal data
         const { data: proposalData, error: proposalError } = await supabase
           .from('proposals')
           .select(`
@@ -118,8 +116,6 @@ const ProposalDetail = () => {
           supervisor: supervisorData
         });
 
-        // For demo purposes, add mock attachments
-        // In a real application, you would fetch this from your storage
         setAttachments([
           { 
             id: '1', 
@@ -152,23 +148,7 @@ const ProposalDetail = () => {
   };
 
   const handleDownload = (url: string, filename: string) => {
-    // Create an invisible a element
-    const a = document.createElement("a");
-    a.style.display = "none";
-    document.body.appendChild(a);
-    
-    // Set the a element's href to the file URL
-    a.href = url;
-    
-    // Set the a element's download attribute to the filename
-    a.setAttribute("download", filename);
-    
-    // Trigger a click on the a element
-    a.click();
-    
-    // Clean up by removing the a element
-    document.body.removeChild(a);
-    
+    window.open(url, '_blank');
     toast.success(`Downloading ${filename}`);
   };
 
@@ -324,7 +304,6 @@ const ProposalDetail = () => {
         </CardFooter>
       </Card>
 
-      {/* Document Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>

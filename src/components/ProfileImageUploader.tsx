@@ -41,11 +41,13 @@ const ProfileImageUploader = ({
     
     try {
       // Create avatar bucket if it doesn't exist
-      const { data: storageData, error: storageError } = await supabase
+      const { data: bucketList } = await supabase
         .storage
-        .getBucket('avatars');
+        .listBuckets();
+        
+      const bucketExists = bucketList?.some(bucket => bucket.name === 'avatars');
       
-      if (storageError && storageError.message.includes('not found')) {
+      if (!bucketExists) {
         // Bucket doesn't exist yet, create it
         await supabase
           .storage
@@ -109,8 +111,12 @@ const ProfileImageUploader = ({
   return (
     <div className="flex flex-col items-center space-y-3">
       <div className="relative">
-        <Avatar className="h-24 w-24 border-2 border-primary/20">
-          <AvatarImage src={imageUrl || undefined} alt="Profile" />
+        <Avatar className="h-24 w-24 border-2 border-primary/20 overflow-hidden bg-white">
+          <AvatarImage 
+            src={imageUrl || undefined} 
+            alt="Profile" 
+            className="object-cover w-full h-full"
+          />
           <AvatarFallback className="text-2xl bg-primary/10 text-primary">
             {fallbackText}
           </AvatarFallback>
@@ -119,7 +125,7 @@ const ProfileImageUploader = ({
         <div className="absolute -right-2 -bottom-2">
           <Label 
             htmlFor="profile-image-upload" 
-            className="bg-primary text-white p-2 rounded-full cursor-pointer hover:bg-primary/90 transition-colors"
+            className="bg-primary text-white p-2 rounded-full cursor-pointer hover:bg-primary/90 transition-colors flex items-center justify-center w-8 h-8"
           >
             {isUploading ? (
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-t-transparent" />

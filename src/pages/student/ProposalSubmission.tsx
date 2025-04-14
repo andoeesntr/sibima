@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -40,17 +39,17 @@ const ProposalSubmission = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companyName, setCompanyName] = useState('');
   
-  // State for storing students and supervisors from database
+  const [formStepValid, setFormStepValid] = useState(false);
+  const [teamStepValid, setTeamStepValid] = useState(false);
+
   const [students, setStudents] = useState<Student[]>([]);
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
 
-  // Fetch students and supervisors from Supabase
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
 
       try {
-        // Fetch students
         const { data: studentsData, error: studentsError } = await supabase
           .from('profiles')
           .select('id, full_name, nim')
@@ -60,7 +59,6 @@ const ProposalSubmission = () => {
           throw studentsError;
         }
 
-        // Fetch supervisors
         const { data: supervisorsData, error: supervisorsError } = await supabase
           .from('profiles')
           .select('id, full_name')
@@ -73,7 +71,6 @@ const ProposalSubmission = () => {
         setStudents(studentsData || []);
         setSupervisors(supervisorsData || []);
 
-        // Add current user as team member if they're a student
         if (profile && profile.role === 'student') {
           setTeamMembers([{
             id: user.id,
@@ -91,7 +88,6 @@ const ProposalSubmission = () => {
     fetchData();
   }, [user, profile]);
 
-  // Filter students not yet in team
   const availableStudents = students.filter(
     student => !teamMembers.some(member => member.id === student.id)
   );
@@ -107,7 +103,6 @@ const ProposalSubmission = () => {
   };
 
   const handleRemoveMember = (id: string) => {
-    // Don't allow removing self (first member)
     if (id === teamMembers[0]?.id) {
       toast.error('Anda tidak dapat menghapus diri sendiri dari tim');
       return;
@@ -121,9 +116,32 @@ const ProposalSubmission = () => {
     }
   };
 
+  const handleTabChange = (value: string) => {
+    if (activeTab === 'form' && value === 'team') {
+      if (!formStepValid) {
+        toast.error('Harap isi semua bidang yang diperlukan pada Formulir Proposal');
+        return;
+      }
+    }
+    
+    if (activeTab === 'team' && value === 'upload') {
+      if (!teamStepValid) {
+        toast.error('Harap pilih minimal satu dosen pembimbing dan pastikan tim memiliki anggota');
+        return;
+      }
+    }
+    
+    if ((activeTab === 'team' && value === 'form') || 
+        (activeTab === 'upload' && (value === 'form' || value === 'team'))) {
+      setActiveTab(value);
+      return;
+    }
+    
+    setActiveTab(value);
+  };
+
   const handleSubmit = async () => {
-    // Validate form
-    if (!title || !description || !teamName || selectedSupervisors.length === 0 || !file) {
+    if (!formStepValid || !teamStepValid || !file) {
       toast.error('Harap isi semua bidang yang diperlukan');
       return;
     }
@@ -141,7 +159,6 @@ const ProposalSubmission = () => {
     setIsSubmitting(true);
 
     try {
-      // Insert proposal into the database
       const { data: proposalData, error: proposalError } = await supabase
         .from('proposals')
         .insert({
@@ -149,7 +166,7 @@ const ProposalSubmission = () => {
           title,
           description,
           company_name: companyName,
-          supervisor_id: selectedSupervisors[0], // Primary supervisor
+          supervisor_id: selectedSupervisors[0],
           status: 'submitted'
         })
         .select();
@@ -158,7 +175,6 @@ const ProposalSubmission = () => {
         throw proposalError;
       }
 
-      // Log the activity
       await supabase.from('activity_logs').insert({
         user_id: user.id,
         user_name: profile.full_name || user.email,
@@ -192,18 +208,25 @@ const ProposalSubmission = () => {
     setSelectedSupervisors(selectedSupervisors.filter(supervisorId => supervisorId !== id));
   };
 
+  useEffect(() => {
+    setFormStepValid(!!title && !!description && !!teamName && !!companyName);
+  }, [title, description, teamName, companyName]);
+
+  useEffect(() => {
+    setTeamStepValid(teamMembers.length > 0 && selectedSupervisors.length > 0);
+  }, [teamMembers, selectedSupervisors]);
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Pengajuan Proposal KP</h1>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="form">Formulir Proposal</TabsTrigger>
           <TabsTrigger value="team">Tim KP</TabsTrigger>
           <TabsTrigger value="upload">Upload Dokumen</TabsTrigger>
         </TabsList>
         
-        {/* Form Tab */}
         <TabsContent value="form">
           <Card className="shadow-sm">
             <CardHeader>
@@ -214,7 +237,7 @@ const ProposalSubmission = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Judul Proposal</Label>
+                <Label htmlFor="title">Judul Proposal <span className="text-red-500">*</span></Label>
                 <Input 
                   id="title" 
                   placeholder="Masukkan judul proposal" 
@@ -224,7 +247,7 @@ const ProposalSubmission = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="description">Deskripsi</Label>
+                <Label htmlFor="description">Deskripsi <span className="text-red-500">*</span></Label>
                 <Textarea 
                   id="description" 
                   placeholder="Jelaskan singkat tentang proposal KP Anda"
@@ -235,7 +258,7 @@ const ProposalSubmission = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="companyName">Nama Perusahaan/Instansi</Label>
+                <Label htmlFor="companyName">Nama Perusahaan/Instansi <span className="text-red-500">*</span></Label>
                 <Input 
                   id="companyName" 
                   placeholder="Masukkan nama perusahaan/instansi" 
@@ -245,7 +268,7 @@ const ProposalSubmission = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="teamName">Nama Tim</Label>
+                <Label htmlFor="teamName">Nama Tim <span className="text-red-500">*</span></Label>
                 <Input 
                   id="teamName" 
                   placeholder="Masukkan nama tim KP" 
@@ -259,7 +282,7 @@ const ProposalSubmission = () => {
                 Batal
               </Button>
               <Button 
-                onClick={() => setActiveTab('team')}
+                onClick={() => handleTabChange('team')}
                 className="bg-primary hover:bg-primary/90"
               >
                 Selanjutnya
@@ -268,7 +291,6 @@ const ProposalSubmission = () => {
           </Card>
         </TabsContent>
         
-        {/* Team Tab */}
         <TabsContent value="team">
           <Card>
             <CardHeader>
@@ -278,9 +300,8 @@ const ProposalSubmission = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Team Members */}
               <div className="space-y-3">
-                <Label>Anggota Tim</Label>
+                <Label>Anggota Tim <span className="text-red-500">*</span></Label>
                 
                 <div className="space-y-2">
                   {teamMembers.map((member, index) => (
@@ -333,9 +354,8 @@ const ProposalSubmission = () => {
                 </div>
               </div>
               
-              {/* Supervisors */}
               <div className="space-y-3">
-                <Label>Dosen Pembimbing (Maksimal 2)</Label>
+                <Label>Dosen Pembimbing (Maksimal 2) <span className="text-red-500">*</span></Label>
                 
                 <div className="space-y-2">
                   {selectedSupervisors.length > 0 ? (
@@ -392,11 +412,11 @@ const ProposalSubmission = () => {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => setActiveTab('form')}>
+              <Button variant="outline" onClick={() => handleTabChange('form')}>
                 Kembali
               </Button>
               <Button 
-                onClick={() => setActiveTab('upload')}
+                onClick={() => handleTabChange('upload')}
                 className="bg-primary hover:bg-primary/90"
               >
                 Selanjutnya
@@ -405,7 +425,6 @@ const ProposalSubmission = () => {
           </Card>
         </TabsContent>
         
-        {/* Upload Tab */}
         <TabsContent value="upload">
           <Card>
             <CardHeader>
@@ -456,13 +475,13 @@ const ProposalSubmission = () => {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => setActiveTab('team')}>
+              <Button variant="outline" onClick={() => handleTabChange('team')}>
                 Kembali
               </Button>
               <Button 
                 onClick={handleSubmit}
                 className="bg-primary hover:bg-primary/90"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !file}
               >
                 {isSubmitting ? 'Memproses...' : 'Ajukan Proposal'}
               </Button>
