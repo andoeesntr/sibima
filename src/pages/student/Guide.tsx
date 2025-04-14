@@ -90,7 +90,7 @@ const StudentGuide = () => {
                 Jika dokumen tidak tampil, silakan download langsung
               </p>
               <Button 
-                onClick={() => handleDownload(selectedDoc || '', previewName)}
+                onClick={() => selectedDoc && handleDownload(selectedDoc, previewName)}
                 className="bg-primary hover:bg-primary/90"
               >
                 <Download size={16} className="mr-2" /> Download

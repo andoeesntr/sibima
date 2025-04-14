@@ -40,57 +40,52 @@ const ProfileImageUploader = ({
     setIsUploading(true);
     
     try {
-      // Create avatar bucket if it doesn't exist
-      const { data: bucketList } = await supabase
-        .storage
-        .listBuckets();
-        
-      const bucketExists = bucketList?.some(bucket => bucket.name === 'avatars');
+      // Check if avatars bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
       
-      if (!bucketExists) {
-        // Bucket doesn't exist yet, create it
-        await supabase
-          .storage
-          .createBucket('avatars', {
-            public: true,
-            fileSizeLimit: 2097152, // 2MB in bytes
-          });
+      // Create bucket if it doesn't exist
+      if (!avatarBucketExists) {
+        await supabase.storage.createBucket('avatars', {
+          public: true,
+          fileSizeLimit: 2097152, // 2MB in bytes
+        });
       }
       
-      // Upload the file
-      const filePath = `${user.id}/${new Date().getTime()}.${file.name.split('.').pop()}`;
+      // Generate file path
+      const filePath = `${user.id}/${new Date().getTime()}-${file.name}`;
       
-      const { error: uploadError } = await supabase
+      // Upload file
+      const { error: uploadError, data } = await supabase
         .storage
         .from('avatars')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: true,
         });
-        
+      
       if (uploadError) {
-        throw uploadError;
+        console.error('Upload error:', uploadError);
+        throw new Error('Failed to upload image: ' + uploadError.message);
       }
       
-      // Get the public URL
-      const { data: urlData } = await supabase
+      // Get public URL
+      const { data: { publicUrl } } = supabase
         .storage
         .from('avatars')
         .getPublicUrl(filePath);
       
-      const publicUrl = urlData.publicUrl;
-      
       // Update state
       setImageUrl(publicUrl);
       
-      // Update profile in database
+      // Update profile
       if (profile) {
         await updateProfile({
           profile_image: publicUrl
         });
       }
       
-      // Call callback if provided
+      // Call callback
       if (onImageUpdate) {
         onImageUpdate(publicUrl);
       }
@@ -111,7 +106,7 @@ const ProfileImageUploader = ({
   return (
     <div className="flex flex-col items-center space-y-3">
       <div className="relative">
-        <Avatar className="h-24 w-24 border-2 border-primary/20 overflow-hidden bg-white">
+        <Avatar className="h-24 w-24 border-2 border-primary/20 overflow-hidden">
           <AvatarImage 
             src={imageUrl || undefined} 
             alt="Profile" 

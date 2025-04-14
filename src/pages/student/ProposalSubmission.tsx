@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -117,13 +118,15 @@ const ProposalSubmission = () => {
   };
 
   const handleTabChange = (value: string) => {
-    if (activeTab === 'form' && value === 'team') {
+    // From Form to another tab
+    if (activeTab === 'form' && (value === 'team' || value === 'upload')) {
       if (!formStepValid) {
         toast.error('Harap isi semua bidang yang diperlukan pada Formulir Proposal');
         return;
       }
     }
     
+    // From Team to Upload
     if (activeTab === 'team' && value === 'upload') {
       if (!teamStepValid) {
         toast.error('Harap pilih minimal satu dosen pembimbing dan pastikan tim memiliki anggota');
@@ -131,13 +134,18 @@ const ProposalSubmission = () => {
       }
     }
     
+    // Always allow backward navigation
     if ((activeTab === 'team' && value === 'form') || 
         (activeTab === 'upload' && (value === 'form' || value === 'team'))) {
       setActiveTab(value);
       return;
     }
     
-    setActiveTab(value);
+    // Allow navigation if current step is valid
+    if ((activeTab === 'form' && value === 'team' && formStepValid) ||
+        (activeTab === 'team' && value === 'upload' && teamStepValid)) {
+      setActiveTab(value);
+    }
   };
 
   const handleSubmit = async () => {
