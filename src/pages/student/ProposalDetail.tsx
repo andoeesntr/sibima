@@ -4,11 +4,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Calendar, User, ArrowLeft, Download, Clock, FileCheck } from 'lucide-react';
+import { FileText, Calendar, User, ArrowLeft, Download, Clock, FileCheck, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -47,7 +48,15 @@ interface Proposal {
   supervisor: {
     id: string;
     full_name: string;
+    profile_image?: string;
   } | null;
+}
+
+interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
 }
 
 const ProposalDetail = () => {
@@ -56,10 +65,10 @@ const ProposalDetail = () => {
   const { user } = useAuth();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
-  const [attachments] = useState<{name: string, url: string}[]>([
-    { name: 'proposal_kp.pdf', url: '#' },
-    { name: 'surat_persetujuan.pdf', url: '#' }
-  ]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewName, setPreviewName] = useState('');
 
   useEffect(() => {
     const fetchProposal = async () => {
@@ -95,7 +104,7 @@ const ProposalDetail = () => {
         if (proposalData.supervisor_id) {
           const { data: supervisor, error: supervisorError } = await supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, profile_image')
             .eq('id', proposalData.supervisor_id)
             .single();
             
@@ -108,6 +117,23 @@ const ProposalDetail = () => {
           ...proposalData,
           supervisor: supervisorData
         });
+
+        // For demo purposes, add mock attachments
+        // In a real application, you would fetch this from your storage
+        setAttachments([
+          { 
+            id: '1', 
+            name: 'proposal_kp.pdf', 
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', 
+            type: 'pdf' 
+          },
+          { 
+            id: '2', 
+            name: 'surat_persetujuan.pdf', 
+            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', 
+            type: 'pdf' 
+          }
+        ]);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Gagal memuat data');
@@ -118,6 +144,33 @@ const ProposalDetail = () => {
 
     fetchProposal();
   }, [id, user, navigate]);
+
+  const handlePreview = (url: string, name: string) => {
+    setPreviewUrl(url);
+    setPreviewName(name);
+    setPreviewDialogOpen(true);
+  };
+
+  const handleDownload = (url: string, filename: string) => {
+    // Create an invisible a element
+    const a = document.createElement("a");
+    a.style.display = "none";
+    document.body.appendChild(a);
+    
+    // Set the a element's href to the file URL
+    a.href = url;
+    
+    // Set the a element's download attribute to the filename
+    a.setAttribute("download", filename);
+    
+    // Trigger a click on the a element
+    a.click();
+    
+    // Clean up by removing the a element
+    document.body.removeChild(a);
+    
+    toast.success(`Downloading ${filename}`);
+  };
 
   if (loading) {
     return (
@@ -205,7 +258,7 @@ const ProposalDetail = () => {
                   {proposal.supervisor ? (
                     <>
                       <Avatar className="h-6 w-6 mr-2">
-                        <AvatarImage src="/placeholder.svg" alt={proposal.supervisor.full_name} />
+                        <AvatarImage src={proposal.supervisor.profile_image || "/placeholder.svg"} alt={proposal.supervisor.full_name} />
                         <AvatarFallback>{proposal.supervisor.full_name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       {proposal.supervisor.full_name}
@@ -222,15 +275,28 @@ const ProposalDetail = () => {
             <h3 className="font-medium mb-3">Lampiran</h3>
             {attachments.length > 0 ? (
               <div className="space-y-2">
-                {attachments.map((attachment, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                {attachments.map((attachment) => (
+                  <div key={attachment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                     <div className="flex items-center">
                       <FileText size={18} className="mr-2 text-primary" />
                       <span>{attachment.name}</span>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <Download size={16} className="mr-1" /> Download
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handlePreview(attachment.url, attachment.name)}
+                      >
+                        <Eye size={16} className="mr-1" /> Preview
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDownload(attachment.url, attachment.name)}
+                      >
+                        <Download size={16} className="mr-1" /> Download
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -257,6 +323,33 @@ const ProposalDetail = () => {
           )}
         </CardFooter>
       </Card>
+
+      {/* Document Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Preview: {previewName}</DialogTitle>
+            <DialogDescription>
+              Preview dokumen
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 h-[60vh] border rounded overflow-hidden">
+            <iframe 
+              src={previewUrl || ''} 
+              title={previewName}
+              className="w-full h-full"
+              sandbox="allow-same-origin allow-scripts"
+            />
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button
+              onClick={() => previewUrl && handleDownload(previewUrl, previewName)}
+            >
+              <Download className="mr-2 h-4 w-4" /> Download
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

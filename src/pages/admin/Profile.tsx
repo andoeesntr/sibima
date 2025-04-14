@@ -6,28 +6,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from 'sonner';
-import { users } from '@/services/mockData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from '@/contexts/AuthContext';
+import ProfileImageUploader from '@/components/ProfileImageUploader';
 
 const AdminProfile = () => {
-  // Assuming first user is the admin
-  const [admin] = useState(users[0]);
-  const [name, setName] = useState(admin.name);
-  const [email, setEmail] = useState(admin.email);
+  const { profile, updateProfile } = useAuth();
+  const [name, setName] = useState(profile?.full_name || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const handleUpdateProfile = () => {
+  const handleUpdateProfile = async () => {
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await updateProfile({
+        full_name: name
+      });
       toast.success('Profil berhasil diperbarui');
-    }, 1000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Gagal memperbarui profil');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleChangePassword = () => {
@@ -43,7 +48,8 @@ const AdminProfile = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
+    // Password change would be implemented with Supabase Auth
+    // This is a placeholder for now
     setTimeout(() => {
       setIsLoading(false);
       setCurrentPassword('');
@@ -55,13 +61,10 @@ const AdminProfile = () => {
   
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center space-x-4">
-        <Avatar className="h-20 w-20">
-          <AvatarImage src="/placeholder.svg" />
-          <AvatarFallback>{admin.name[0]}</AvatarFallback>
-        </Avatar>
+      <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6">
+        <ProfileImageUploader initialImage={profile?.profile_image} />
         <div>
-          <h1 className="text-2xl font-bold">{admin.name}</h1>
+          <h1 className="text-2xl font-bold">{profile?.full_name || 'Admin'}</h1>
           <div className="flex items-center mt-1">
             <Badge className="bg-purple-500">Super Admin</Badge>
             <span className="text-gray-500 text-sm ml-2">Akses Penuh</span>
@@ -85,10 +88,10 @@ const AdminProfile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" value={admin.username} disabled />
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" value={profile?.email || ''} disabled />
                 <p className="text-sm text-gray-500">
-                  Username tidak dapat diubah
+                  Email tidak dapat diubah
                 </p>
               </div>
               
@@ -98,16 +101,6 @@ const AdminProfile = () => {
                   id="name" 
                   value={name} 
                   onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               

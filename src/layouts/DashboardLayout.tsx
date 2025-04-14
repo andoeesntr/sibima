@@ -59,6 +59,13 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
     signOut();
   };
 
+  const getInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+    }
+    return role[0].toUpperCase();
+  };
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
@@ -153,9 +160,9 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
             
             <div className="flex items-center space-x-4">
               <Avatar className="cursor-pointer" onClick={() => navigate(`/${role}/profile`)}>
-                <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback>
-                  {profile?.full_name ? profile.full_name[0].toUpperCase() : role[0].toUpperCase()}
+                <AvatarImage src={profile?.profile_image || '/placeholder.svg'} />
+                <AvatarFallback className="bg-primary/10 text-primary">
+                  {getInitials()}
                 </AvatarFallback>
               </Avatar>
             </div>
