@@ -19,12 +19,13 @@ import StudentProfile from "./pages/student/Profile";
 import ProposalSubmission from "./pages/student/ProposalSubmission";
 import StudentGuide from "./pages/student/Guide";
 import DigitalSignature from "./pages/student/DigitalSignature";
+import ProposalDetail from "./pages/student/ProposalDetail";
 
 // Coordinator Pages
 import CoordinatorDashboard from "./pages/coordinator/Dashboard";
 import CoordinatorProfile from "./pages/coordinator/Profile";
 import ProposalReview from "./pages/coordinator/ProposalReview";
-import ProposalDetail from "./pages/coordinator/ProposalDetail";
+import ProposalDetail as CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
 
 // SuperAdmin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -84,6 +85,7 @@ const AppRoutes = () => {
         <Route index element={<StudentDashboard />} />
         <Route path="profile" element={<StudentProfile />} />
         <Route path="proposal-submission" element={<ProposalSubmission />} />
+        <Route path="proposal-detail/:id" element={<ProposalDetail />} />
         <Route path="guide" element={<StudentGuide />} />
         <Route path="digital-signature" element={<DigitalSignature />} />
       </Route>
@@ -100,7 +102,7 @@ const AppRoutes = () => {
         <Route index element={<CoordinatorDashboard />} />
         <Route path="profile" element={<CoordinatorProfile />} />
         <Route path="proposal-review" element={<ProposalReview />} />
-        <Route path="proposal-detail/:id" element={<ProposalDetail />} />
+        <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
       </Route>
       
       {/* SuperAdmin Routes */}

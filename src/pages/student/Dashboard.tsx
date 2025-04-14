@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -234,9 +235,9 @@ const StudentDashboard = () => {
             <CardFooter className="flex justify-end">
               <Button 
                 className="bg-primary hover:bg-primary/90" 
-                onClick={() => navigate('/student/proposal-submission')}
+                onClick={() => navigate(`/student/proposal-detail/${proposal.id}`)}
               >
-                {proposal.status === 'rejected' ? 'Ajukan Ulang' : 'Lihat Detail'}
+                {proposal.status === 'rejected' ? 'Lihat Detail Penolakan' : 'Lihat Detail Proposal'}
               </Button>
             </CardFooter>
           )}
@@ -261,7 +262,10 @@ const StudentDashboard = () => {
                   <div className="space-y-2">
                     {team.members.map(member => (
                       <div key={member.id} className="flex items-center p-2 bg-gray-50 rounded">
-                        <User size={16} className="mr-2" />
+                        <Avatar className="h-8 w-8 mr-2">
+                          <AvatarImage src="/lovable-uploads/cf1cd298-5ceb-4140-9045-4486c2030e4e.png" alt={member.full_name} />
+                          <AvatarFallback>{member.full_name.charAt(0)}</AvatarFallback>
+                        </Avatar>
                         <span>{member.full_name} {member.nim ? `(${member.nim})` : ''}</span>
                       </div>
                     ))}
@@ -274,7 +278,10 @@ const StudentDashboard = () => {
                     <div className="space-y-2">
                       {team.supervisors.map(supervisor => (
                         <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
-                          <User size={16} className="mr-2" />
+                          <Avatar className="h-8 w-8 mr-2">
+                            <AvatarImage src="/placeholder.svg" alt={supervisor.name} />
+                            <AvatarFallback>{supervisor.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
                           <span>{supervisor.name}</span>
                         </div>
                       ))}
