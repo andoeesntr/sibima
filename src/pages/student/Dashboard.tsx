@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,18 +77,14 @@ const StudentDashboard = () => {
       
       setLoading(true);
       try {
-        // Fetch the student's proposal with explicit column selection and alias to avoid ambiguity
+        // First fetch the proposal
         const { data: proposalData, error: proposalError } = await supabase
           .from('proposals')
           .select(`
             id,
             title,
             status,
-            created_at,
-            supervisor:profiles!proposals.supervisor_id(
-              id,
-              full_name
-            )
+            created_at
           `)
           .eq('student_id', user.id)
           .order('created_at', { ascending: false })
@@ -102,15 +97,22 @@ const StudentDashboard = () => {
           toast.error('Gagal memuat data proposal');
         }
         
+        let supervisorData = null;
+        
+        // If we have a proposal and it has a supervisor_id, fetch the supervisor data separately
+        if (proposalData && proposalData.supervisor_id) {
+          const { data: supervisor, error: supervisorError } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('id', proposalData.supervisor_id)
+            .single();
+            
+          if (!supervisorError) {
+            supervisorData = supervisor;
+          }
+        }
+        
         if (proposalData) {
-          // Type check supervisor data before using it
-          const supervisorData = proposalData.supervisor 
-            ? {
-                id: typeof proposalData.supervisor.id === 'string' ? proposalData.supervisor.id : '',
-                full_name: typeof proposalData.supervisor.full_name === 'string' ? proposalData.supervisor.full_name : ''
-              } 
-            : null;
-
           setProposal({
             id: proposalData.id,
             title: proposalData.title,
@@ -135,17 +137,12 @@ const StudentDashboard = () => {
             supervisors: []
           };
           
-          // Add supervisor if proposal has one and the supervisor data is valid
-          if (proposalData?.supervisor) {
-            const supervisorId = typeof proposalData.supervisor.id === 'string' ? proposalData.supervisor.id : '';
-            const supervisorName = typeof proposalData.supervisor.full_name === 'string' ? proposalData.supervisor.full_name : '';
-            
-            if (supervisorId && supervisorName) {
-              teamData.supervisors = [{
-                id: supervisorId,
-                name: supervisorName
-              }];
-            }
+          // Add supervisor if we have one from our separate query
+          if (supervisorData) {
+            teamData.supervisors = [{
+              id: supervisorData.id,
+              name: supervisorData.full_name
+            }];
           }
           
           setTeam(teamData);
