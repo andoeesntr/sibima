@@ -78,7 +78,7 @@ const StudentDashboard = () => {
       
       setLoading(true);
       try {
-        // Fetch the student's proposal
+        // Fetch the student's proposal with explicit column selection to avoid ambiguity
         const { data: proposalData, error: proposalError } = await supabase
           .from('proposals')
           .select(`
@@ -86,9 +86,9 @@ const StudentDashboard = () => {
             title,
             status,
             created_at,
-            supervisor:supervisor_id (
-              id:id,
-              full_name:full_name
+            supervisor:supervisor_id(
+              id,
+              full_name
             )
           `)
           .eq('student_id', user.id)
@@ -103,13 +103,19 @@ const StudentDashboard = () => {
         }
         
         if (proposalData) {
+          // Ensure we have valid supervisor data or set to null
+          const supervisorData = proposalData.supervisor ? {
+            id: proposalData.supervisor.id || '',
+            full_name: proposalData.supervisor.full_name || ''
+          } : null;
+
           setProposal({
             id: proposalData.id,
             title: proposalData.title,
             status: proposalData.status,
             submissionDate: proposalData.created_at,
             created_at: proposalData.created_at,
-            supervisor: proposalData.supervisor
+            supervisor: supervisorData
           });
         }
         
@@ -127,11 +133,11 @@ const StudentDashboard = () => {
             supervisors: []
           };
           
-          // Add supervisor if proposal has one
-          if (proposalData?.supervisor) {
+          // Add supervisor if proposal has one and the supervisor data is valid
+          if (proposalData?.supervisor && proposalData.supervisor.id && proposalData.supervisor.full_name) {
             teamData.supervisors = [{
-              id: proposalData.supervisor.id || '',
-              name: proposalData.supervisor.full_name || ''
+              id: proposalData.supervisor.id,
+              name: proposalData.supervisor.full_name
             }];
           }
           
