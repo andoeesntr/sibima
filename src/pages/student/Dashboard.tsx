@@ -78,7 +78,7 @@ const StudentDashboard = () => {
       
       setLoading(true);
       try {
-        // Fetch the student's proposal with explicit column selection to avoid ambiguity
+        // Fetch the student's proposal with explicit column selection and alias to avoid ambiguity
         const { data: proposalData, error: proposalError } = await supabase
           .from('proposals')
           .select(`
@@ -86,7 +86,7 @@ const StudentDashboard = () => {
             title,
             status,
             created_at,
-            supervisor:supervisor_id(
+            supervisor:profiles!proposals.supervisor_id(
               id,
               full_name
             )
@@ -103,11 +103,13 @@ const StudentDashboard = () => {
         }
         
         if (proposalData) {
-          // Ensure we have valid supervisor data or set to null
-          const supervisorData = proposalData.supervisor ? {
-            id: proposalData.supervisor.id || '',
-            full_name: proposalData.supervisor.full_name || ''
-          } : null;
+          // Type check supervisor data before using it
+          const supervisorData = proposalData.supervisor 
+            ? {
+                id: typeof proposalData.supervisor.id === 'string' ? proposalData.supervisor.id : '',
+                full_name: typeof proposalData.supervisor.full_name === 'string' ? proposalData.supervisor.full_name : ''
+              } 
+            : null;
 
           setProposal({
             id: proposalData.id,
@@ -134,11 +136,16 @@ const StudentDashboard = () => {
           };
           
           // Add supervisor if proposal has one and the supervisor data is valid
-          if (proposalData?.supervisor && proposalData.supervisor.id && proposalData.supervisor.full_name) {
-            teamData.supervisors = [{
-              id: proposalData.supervisor.id,
-              name: proposalData.supervisor.full_name
-            }];
+          if (proposalData?.supervisor) {
+            const supervisorId = typeof proposalData.supervisor.id === 'string' ? proposalData.supervisor.id : '';
+            const supervisorName = typeof proposalData.supervisor.full_name === 'string' ? proposalData.supervisor.full_name : '';
+            
+            if (supervisorId && supervisorName) {
+              teamData.supervisors = [{
+                id: supervisorId,
+                name: supervisorName
+              }];
+            }
           }
           
           setTeam(teamData);
