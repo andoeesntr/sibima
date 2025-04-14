@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,14 +78,15 @@ const StudentDashboard = () => {
       
       setLoading(true);
       try {
-        // First fetch the proposal
+        // First fetch the proposal - adding supervisor_id to the select query
         const { data: proposalData, error: proposalError } = await supabase
           .from('proposals')
           .select(`
             id,
             title,
             status,
-            created_at
+            created_at,
+            supervisor_id
           `)
           .eq('student_id', user.id)
           .order('created_at', { ascending: false })
