@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,7 +24,7 @@ import ProposalDetail from "./pages/student/ProposalDetail";
 import CoordinatorDashboard from "./pages/coordinator/Dashboard";
 import CoordinatorProfile from "./pages/coordinator/Profile";
 import ProposalReview from "./pages/coordinator/ProposalReview";
-import ProposalDetail as CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
+import CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
 
 // SuperAdmin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
