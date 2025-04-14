@@ -1,14 +1,15 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/contexts/AuthContext';
 import ProfileImageUploader from '@/components/ProfileImageUploader';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminProfile = () => {
   const { profile, updateProfile, user } = useAuth();
@@ -34,7 +35,7 @@ const AdminProfile = () => {
     }
   };
   
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       toast.error('Konfirmasi password tidak cocok');
       return;
@@ -47,15 +48,38 @@ const AdminProfile = () => {
     
     setIsLoading(true);
     
-    // Password change would be implemented with Supabase Auth
-    // This is a placeholder for now
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // First verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: currentPassword,
+      });
+      
+      if (signInError) {
+        toast.error('Password saat ini tidak valid');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Then update password
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       toast.success('Password berhasil diperbarui');
-    }, 1000);
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast.error(`Gagal memperbarui password: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (

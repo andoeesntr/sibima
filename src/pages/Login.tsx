@@ -26,9 +26,12 @@ const Login = () => {
         return;
       }
       
+      console.log('Attempting login with:', email);
       await signIn(email, password);
+      console.log('Login successful, navigation should happen via auth state change');
     } catch (error) {
       console.error('Login error:', error);
+      // Error is already handled in the signIn function
     } finally {
       setIsLoading(false);
     }

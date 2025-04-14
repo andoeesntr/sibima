@@ -44,47 +44,9 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check active session
-    const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error getting session:', error);
-        setLoading(false);
-        return;
-      }
-      
-      if (data?.session) {
-        setUser(data.session.user);
-        fetchProfile(data.session.user.id);
-      } else {
-        setLoading(false);
-      }
-    };
-
-    const authListener = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        setUser(session.user);
-        await fetchProfile(session.user.id);
-        const role = profile?.role || 'student';
-        navigate(`/${role}`);
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-        navigate('/');
-      }
-    });
-
-    checkSession();
-
-    return () => {
-      authListener.data.subscription.unsubscribe();
-    };
-  }, [navigate]);
-
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -92,10 +54,12 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         .single();
 
       if (error) {
+        console.error('Error fetching profile:', error);
         throw error;
       }
 
       if (data) {
+        console.log('Profile data retrieved:', data);
         setProfile(data);
 
         // Redirect based on role if not already on the correct route
@@ -110,6 +74,51 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.id);
+      if (event === 'SIGNED_IN' && session) {
+        setUser(session.user);
+        
+        // Use setTimeout to avoid potential deadlock with Supabase auth
+        setTimeout(() => {
+          fetchProfile(session.user.id);
+        }, 0);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        navigate('/');
+      }
+    });
+
+    // THEN check for existing session
+    const checkSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error getting session:', error);
+        setLoading(false);
+        return;
+      }
+      
+      if (data?.session) {
+        console.log('Existing session found:', data.session.user.id);
+        setUser(data.session.user);
+        await fetchProfile(data.session.user.id);
+      } else {
+        console.log('No existing session found');
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+
+    return () => {
+      authListener.data.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
   const refreshProfile = async () => {
     if (!user) return;
     try {
@@ -123,6 +132,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     if (!user) return;
     
     try {
+      console.log('Updating profile with:', updates);
       const { error } = await supabase
         .from('profiles')
         .update(updates)
@@ -134,7 +144,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       
       // Update local state
       setProfile(prev => prev ? { ...prev, ...updates } : prev);
-      
+      toast.success('Profile updated successfully');
       return;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -144,20 +154,22 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('Signing in with:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('Sign in error:', error);
         throw error;
       }
 
       if (data && data.user) {
+        console.log('Sign in successful:', data.user.id);
         setUser(data.user);
-        await fetchProfile(data.user.id);
-        const userRole = profile?.role || 'student';
-        navigate(`/${userRole}`);
+        
+        // Since onAuthStateChange will handle the redirect, we don't need to duplicate that logic here
       }
     } catch (error: any) {
       console.error('Error signing in:', error);
@@ -168,6 +180,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
   const signOut = async () => {
     try {
+      console.log('Signing out');
       const { error } = await supabase.auth.signOut();
       if (error) {
         throw error;
