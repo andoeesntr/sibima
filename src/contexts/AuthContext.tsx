@@ -13,6 +13,7 @@ interface Profile {
   faculty?: string;
   department?: string;
   profile_image?: string;
+  email?: string;
 }
 
 interface AuthContextType {
@@ -22,6 +23,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -31,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => {},
   signOut: async () => {},
   updateProfile: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -107,6 +110,15 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
+  const refreshProfile = async () => {
+    if (!user) return;
+    try {
+      await fetchProfile(user.id);
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
+
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return;
     
@@ -178,7 +190,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         loading,
         signIn,
         signOut,
-        updateProfile
+        updateProfile,
+        refreshProfile
       }}
     >
       {children}

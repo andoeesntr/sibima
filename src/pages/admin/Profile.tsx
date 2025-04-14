@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ProfileImageUploader from '@/components/ProfileImageUploader';
 
 const AdminProfile = () => {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, user } = useAuth();
   const [name, setName] = useState(profile?.full_name || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -89,7 +88,7 @@ const AdminProfile = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" value={profile?.email || ''} disabled />
+                <Input id="email" value={user?.email || ''} disabled />
                 <p className="text-sm text-gray-500">
                   Email tidak dapat diubah
                 </p>

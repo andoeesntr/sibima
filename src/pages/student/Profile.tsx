@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import ProfileImageUploader from '@/components/ProfileImageUploader';
 
 const StudentProfile = () => {
-  const { profile, user, refreshProfile } = useAuth();
+  const { profile, user, updateProfile } = useAuth();
   
   const [name, setName] = useState(profile?.full_name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -40,19 +40,9 @@ const StudentProfile = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: name
-        })
-        .eq('id', user.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Refresh the profile data
-      await refreshProfile();
+      await updateProfile({
+        full_name: name
+      });
       
       toast.success('Profil berhasil diperbarui');
     } catch (error: any) {
@@ -112,13 +102,10 @@ const StudentProfile = () => {
   
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center space-x-4">
-        <Avatar className="h-20 w-20">
-          <AvatarImage src="/placeholder.svg" />
-          <AvatarFallback>{profile?.full_name ? profile.full_name[0].toUpperCase() : user?.email?.[0].toUpperCase()}</AvatarFallback>
-        </Avatar>
+      <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6">
+        <ProfileImageUploader initialImage={profile?.profile_image} />
         <div>
-          <h1 className="text-2xl font-bold">{profile?.full_name || 'User Profile'}</h1>
+          <h1 className="text-2xl font-bold">{profile?.full_name || 'Mahasiswa'}</h1>
           <p className="text-gray-600">{profile?.nim || 'No NIM'} - Mahasiswa</p>
         </div>
       </div>
