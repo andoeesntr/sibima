@@ -167,6 +167,35 @@ const ProposalSubmission = () => {
     setIsSubmitting(true);
 
     try {
+      // Create team first
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .insert({
+          name: teamName
+        })
+        .select('id')
+        .single();
+
+      if (teamError) {
+        throw teamError;
+      }
+
+      // Add team members
+      const teamMembersToInsert = teamMembers.map(member => ({
+        team_id: teamData.id,
+        user_id: member.id,
+        role: member.id === user.id ? 'leader' : 'member'
+      }));
+
+      const { error: memberError } = await supabase
+        .from('team_members')
+        .insert(teamMembersToInsert);
+
+      if (memberError) {
+        throw memberError;
+      }
+
+      // Create the proposal
       const { data: proposalData, error: proposalError } = await supabase
         .from('proposals')
         .insert({
@@ -175,7 +204,8 @@ const ProposalSubmission = () => {
           description,
           company_name: companyName,
           supervisor_id: selectedSupervisors[0],
-          status: 'submitted'
+          status: 'submitted',
+          team_id: teamData.id
         })
         .select();
 

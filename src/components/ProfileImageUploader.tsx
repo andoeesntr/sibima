@@ -40,23 +40,12 @@ const ProfileImageUploader = ({
     setIsUploading(true);
     
     try {
-      // Check if avatars bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const avatarBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
-      
-      // Create bucket if it doesn't exist
-      if (!avatarBucketExists) {
-        await supabase.storage.createBucket('avatars', {
-          public: true,
-          fileSizeLimit: 2097152, // 2MB in bytes
-        });
-      }
-      
-      // Generate file path
-      const filePath = `${user.id}/${new Date().getTime()}-${file.name}`;
+      // Generate file path with user ID as folder
+      const fileName = `${new Date().getTime()}-${file.name.replace(/\s+/g, '-')}`;
+      const filePath = `${user.id}/${fileName}`;
       
       // Upload file
-      const { error: uploadError, data } = await supabase
+      const { error: uploadError } = await supabase
         .storage
         .from('avatars')
         .upload(filePath, file, {
@@ -75,6 +64,8 @@ const ProfileImageUploader = ({
         .from('avatars')
         .getPublicUrl(filePath);
       
+      console.log('Image uploaded successfully. Public URL:', publicUrl);
+      
       // Update state
       setImageUrl(publicUrl);
       
@@ -91,7 +82,7 @@ const ProfileImageUploader = ({
       }
       
       toast.success('Profile image updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
       toast.error('Failed to upload image. Please try again.');
     } finally {

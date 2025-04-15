@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -48,12 +49,18 @@ interface ProposalType {
     id: string;
     full_name: string;
   } | null;
+  company_name?: string | null;
+  team?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface TeamMember {
   id: string;
   full_name: string;
   nim?: string;
+  profile_image?: string;
 }
 
 interface Team {
@@ -63,13 +70,15 @@ interface Team {
   supervisors: {
     id: string;
     name: string;
+    profile_image?: string;
   }[];
 }
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const [proposal, setProposal] = useState<ProposalType | null>(null);
+  const [proposals, setProposals] = useState<ProposalType[]>([]);
+  const [selectedProposal, setSelectedProposal] = useState<ProposalType | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -79,76 +88,159 @@ const StudentDashboard = () => {
       
       setLoading(true);
       try {
-        // First fetch the proposal - adding supervisor_id to the select query
-        const { data: proposalData, error: proposalError } = await supabase
+        // Fetch all proposals by the student
+        const { data: proposalsData, error: proposalsError } = await supabase
           .from('proposals')
           .select(`
             id,
             title,
             status,
             created_at,
-            supervisor_id
+            supervisor_id,
+            company_name,
+            team_id
           `)
           .eq('student_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          .order('created_at', { ascending: false });
         
-        if (proposalError && proposalError.code !== 'PGRST116') {
-          // PGRST116 is "no rows returned" which is fine, just means no proposals yet
-          console.error('Error fetching proposal:', proposalError);
+        if (proposalsError) {
+          console.error('Error fetching proposals:', proposalsError);
           toast.error('Gagal memuat data proposal');
+          return;
         }
         
-        let supervisorData = null;
+        if (!proposalsData || proposalsData.length === 0) {
+          setProposals([]);
+          setSelectedProposal(null);
+          setLoading(false);
+          return;
+        }
+
+        // Process proposals data
+        const processedProposals: ProposalType[] = [];
         
-        // If we have a proposal and it has a supervisor_id, fetch the supervisor data separately
-        if (proposalData && proposalData.supervisor_id) {
-          const { data: supervisor, error: supervisorError } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .eq('id', proposalData.supervisor_id)
-            .single();
-            
-          if (!supervisorError) {
-            supervisorData = supervisor;
+        for (const proposal of proposalsData) {
+          let supervisorData = null;
+          let teamData = null;
+          
+          // Fetch supervisor data if exists
+          if (proposal.supervisor_id) {
+            const { data: supervisor, error: supervisorError } = await supabase
+              .from('profiles')
+              .select('id, full_name, profile_image')
+              .eq('id', proposal.supervisor_id)
+              .single();
+              
+            if (!supervisorError) {
+              supervisorData = supervisor;
+            }
           }
-        }
-        
-        if (proposalData) {
-          setProposal({
-            id: proposalData.id,
-            title: proposalData.title,
-            status: proposalData.status,
-            submissionDate: proposalData.created_at,
-            created_at: proposalData.created_at,
-            supervisor: supervisorData
+          
+          // Fetch team data if exists
+          if (proposal.team_id) {
+            const { data: team, error: teamError } = await supabase
+              .from('teams')
+              .select('id, name')
+              .eq('id', proposal.team_id)
+              .single();
+              
+            if (!teamError) {
+              teamData = team;
+            }
+          }
+          
+          processedProposals.push({
+            id: proposal.id,
+            title: proposal.title,
+            status: proposal.status || 'draft',
+            submissionDate: proposal.created_at,
+            created_at: proposal.created_at,
+            supervisor: supervisorData,
+            company_name: proposal.company_name,
+            team: teamData
           });
         }
         
-        // For now, use the current user's information as the team
-        // In a more complete implementation, this would fetch team members from a teams table
-        if (profile) {
-          const teamData: Team = {
-            id: 'team-' + user.id,
-            name: `Tim ${profile.full_name || 'KP'}`,
-            members: [{
-              id: user.id,
-              full_name: profile.full_name || 'Student',
-              nim: profile.nim
-            }],
-            supervisors: []
-          };
+        setProposals(processedProposals);
+        setSelectedProposal(processedProposals[0]);
+        
+        // Fetch team data for the selected proposal
+        let proposalToUseForTeam = processedProposals[0];
+        
+        // Fetch team members if we have team data
+        if (proposalToUseForTeam.team) {
+          const teamMembers: TeamMember[] = [];
           
-          // Add supervisor if we have one from our separate query
-          if (supervisorData) {
-            teamData.supervisors = [{
-              id: supervisorData.id,
-              name: supervisorData.full_name
-            }];
+          // Fetch team members using team_members table
+          const { data: teamMembersData, error: teamMembersError } = await supabase
+            .from('team_members')
+            .select(`
+              profiles:user_id (id, full_name, nim, profile_image)
+            `)
+            .eq('team_id', proposalToUseForTeam.team.id);
+          
+          if (!teamMembersError && teamMembersData) {
+            for (const memberData of teamMembersData) {
+              if (memberData.profiles) {
+                teamMembers.push({
+                  id: memberData.profiles.id,
+                  full_name: memberData.profiles.full_name || 'Unnamed',
+                  nim: memberData.profiles.nim,
+                  profile_image: memberData.profiles.profile_image
+                });
+              }
+            }
           }
           
-          setTeam(teamData);
+          // If no team members found in the team_members table, add the current user
+          if (teamMembers.length === 0 && profile) {
+            teamMembers.push({
+              id: user.id,
+              full_name: profile.full_name || 'Unnamed',
+              nim: profile.nim,
+              profile_image: profile.profile_image
+            });
+          }
+          
+          const supervisors = [];
+          if (proposalToUseForTeam.supervisor) {
+            supervisors.push({
+              id: proposalToUseForTeam.supervisor.id,
+              name: proposalToUseForTeam.supervisor.full_name,
+              profile_image: proposalToUseForTeam.supervisor.profile_image
+            });
+          }
+          
+          setTeam({
+            id: proposalToUseForTeam.team.id,
+            name: proposalToUseForTeam.team.name,
+            members: teamMembers,
+            supervisors: supervisors
+          });
+        } else {
+          // Create a temporary team based on the user
+          if (profile) {
+            const supervisors = [];
+            if (proposalToUseForTeam.supervisor) {
+              supervisors.push({
+                id: proposalToUseForTeam.supervisor.id,
+                name: proposalToUseForTeam.supervisor.full_name,
+                profile_image: proposalToUseForTeam.supervisor.profile_image
+              });
+            }
+            
+            setTeam({
+              id: 'temp-' + proposalToUseForTeam.id,
+              name: `Tim ${profile.full_name || 'KP'}`,
+              members: [{
+                id: user.id,
+                full_name: profile.full_name || 'Unnamed',
+                nim: profile.nim,
+                profile_image: profile.profile_image
+              }],
+              supervisors: supervisors
+            });
+          }
         }
         
       } catch (error) {
@@ -161,6 +253,10 @@ const StudentDashboard = () => {
     
     fetchData();
   }, [user, profile]);
+
+  const handleSelectProposal = (proposal: ProposalType) => {
+    setSelectedProposal(proposal);
+  };
   
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -176,45 +272,76 @@ const StudentDashboard = () => {
             <CardDescription>Informasi tentang status KP Anda saat ini</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {proposal ? (
+            {proposals.length > 0 ? (
               <>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-700">Judul KP:</span>
-                  <span>{proposal.title}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-700">Status:</span>
-                  <Badge className={statusColors[proposal.status as keyof typeof statusColors] || "bg-gray-500"}>
-                    {statusLabels[proposal.status as keyof typeof statusLabels] || "Unknown"}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-700">Tanggal Pengajuan:</span>
-                  <span className="flex items-center">
-                    <Calendar size={16} className="mr-1" />
-                    {formatDate(proposal.created_at)}
-                  </span>
-                </div>
-                
-                {proposal.reviewDate && (
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-700">Tanggal Review:</span>
-                    <span className="flex items-center">
-                      <Clock size={16} className="mr-1" />
-                      {formatDate(proposal.reviewDate)}
-                    </span>
+                {proposals.length > 1 && (
+                  <div className="mb-4">
+                    <Tabs 
+                      value={selectedProposal?.id} 
+                      onValueChange={(value) => {
+                        const selected = proposals.find(p => p.id === value);
+                        if (selected) handleSelectProposal(selected);
+                      }}
+                    >
+                      <TabsList className="grid grid-cols-2 w-full">
+                        {proposals.slice(0, 2).map((proposal, index) => (
+                          <TabsTrigger key={proposal.id} value={proposal.id}>
+                            Proposal {index + 1}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
                   </div>
                 )}
                 
-                {proposal.status === 'rejected' && proposal.rejectionReason && (
-                  <div>
-                    <span className="font-medium text-gray-700 block mb-1">Alasan Penolakan:</span>
-                    <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
-                      {proposal.rejectionReason}
-                    </p>
-                  </div>
+                {selectedProposal && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-700">Judul KP:</span>
+                      <span>{selectedProposal.title}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-700">Status:</span>
+                      <Badge className={statusColors[selectedProposal.status as keyof typeof statusColors] || "bg-gray-500"}>
+                        {statusLabels[selectedProposal.status as keyof typeof statusLabels] || "Unknown"}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-700">Tanggal Pengajuan:</span>
+                      <span className="flex items-center">
+                        <Calendar size={16} className="mr-1" />
+                        {formatDate(selectedProposal.created_at)}
+                      </span>
+                    </div>
+                    
+                    {selectedProposal.company_name && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Perusahaan/Instansi:</span>
+                        <span>{selectedProposal.company_name}</span>
+                      </div>
+                    )}
+                    
+                    {selectedProposal.reviewDate && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Tanggal Review:</span>
+                        <span className="flex items-center">
+                          <Clock size={16} className="mr-1" />
+                          {formatDate(selectedProposal.reviewDate)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {selectedProposal.status === 'rejected' && selectedProposal.rejectionReason && (
+                      <div>
+                        <span className="font-medium text-gray-700 block mb-1">Alasan Penolakan:</span>
+                        <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
+                          {selectedProposal.rejectionReason}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             ) : (
@@ -231,13 +358,13 @@ const StudentDashboard = () => {
             )}
           </CardContent>
           
-          {proposal && (
+          {selectedProposal && (
             <CardFooter className="flex justify-end">
               <Button 
                 className="bg-primary hover:bg-primary/90" 
-                onClick={() => navigate(`/student/proposal-detail/${proposal.id}`)}
+                onClick={() => navigate(`/student/proposal-detail/${selectedProposal.id}`)}
               >
-                {proposal.status === 'rejected' ? 'Lihat Detail Penolakan' : 'Lihat Detail Proposal'}
+                {selectedProposal.status === 'rejected' ? 'Lihat Detail Penolakan' : 'Lihat Detail Proposal'}
               </Button>
             </CardFooter>
           )}
@@ -263,7 +390,7 @@ const StudentDashboard = () => {
                     {team.members.map(member => (
                       <div key={member.id} className="flex items-center p-2 bg-gray-50 rounded">
                         <Avatar className="h-8 w-8 mr-2">
-                          <AvatarImage src="/lovable-uploads/cf1cd298-5ceb-4140-9045-4486c2030e4e.png" alt={member.full_name} />
+                          <AvatarImage src={member.profile_image || "/placeholder.svg"} alt={member.full_name} />
                           <AvatarFallback>{member.full_name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <span>{member.full_name} {member.nim ? `(${member.nim})` : ''}</span>
@@ -279,7 +406,7 @@ const StudentDashboard = () => {
                       {team.supervisors.map(supervisor => (
                         <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
                           <Avatar className="h-8 w-8 mr-2">
-                            <AvatarImage src="/placeholder.svg" alt={supervisor.name} />
+                            <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.name} />
                             <AvatarFallback>{supervisor.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <span>{supervisor.name}</span>
@@ -341,9 +468,9 @@ const StudentDashboard = () => {
             <Button 
               className="bg-secondary hover:bg-secondary/90"
               onClick={() => navigate('/student/digital-signature')}
-              disabled={!proposal || proposal.status !== 'approved'}
+              disabled={!selectedProposal || selectedProposal.status !== 'approved'}
             >
-              {(!proposal || proposal.status !== 'approved') ? 
+              {(!selectedProposal || selectedProposal.status !== 'approved') ? 
                 'Belum Tersedia' : 'Akses'}
             </Button>
           </CardFooter>

@@ -95,6 +95,7 @@ export type Database = {
           id: string
           nim: string | null
           nip: string | null
+          profile_image: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
         }
@@ -107,6 +108,7 @@ export type Database = {
           id: string
           nim?: string | null
           nip?: string | null
+          profile_image?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
@@ -119,6 +121,7 @@ export type Database = {
           id?: string
           nim?: string | null
           nip?: string | null
+          profile_image?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
@@ -133,6 +136,7 @@ export type Database = {
           status: string | null
           student_id: string
           supervisor_id: string | null
+          team_id: string | null
           title: string
           updated_at: string | null
         }
@@ -144,6 +148,7 @@ export type Database = {
           status?: string | null
           student_id: string
           supervisor_id?: string | null
+          team_id?: string | null
           title: string
           updated_at?: string | null
         }
@@ -155,6 +160,7 @@ export type Database = {
           status?: string | null
           student_id?: string
           supervisor_id?: string | null
+          team_id?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -173,7 +179,77 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "proposals_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      team_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string | null
+          team_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          team_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
