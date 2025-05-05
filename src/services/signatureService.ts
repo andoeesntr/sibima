@@ -89,7 +89,7 @@ export const uploadSignature = async (
       }
       
       // Call edge function with authentication
-      const response = await fetch(`https://ciaymvntmwwbnvewedue.supabase.co/functions/v1/upload-signature`, {
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/upload-signature`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -123,37 +123,48 @@ export const saveSignatureToDatabase = async (
   userId: string, 
   publicUrl: string
 ): Promise<void> => {
-  // Use the update-signature edge function to save to database with service role
-  const { data: functionData, error: functionError } = await supabase.functions.invoke(
-    'update-signature',
-    {
-      body: {
-        supervisor_id: userId,
-        status: 'pending',
-        signature_url: publicUrl
+  try {
+    // Use the update-signature edge function to save to database with service role
+    const { data: functionData, error: functionError } = await supabase.functions.invoke(
+      'update-signature',
+      {
+        body: {
+          supervisor_id: userId,
+          status: 'pending',
+          signature_url: publicUrl
+        }
       }
+    );
+    
+    if (functionError) {
+      console.error('Function error:', functionError);
+      throw new Error(`Function error: ${functionError.message}`);
     }
-  );
-  
-  if (functionError) {
-    console.error('Function error:', functionError);
-    throw new Error(`Function error: ${functionError.message}`);
+  } catch (error: any) {
+    console.error('Error saving signature to database:', error);
+    throw error;
   }
 };
 
 export const deleteSignature = async (userId: string): Promise<void> => {
-  // Use the update-signature edge function to delete from database with service role
-  const { data: functionData, error: functionError } = await supabase.functions.invoke(
-    'update-signature',
-    {
-      body: {
-        supervisor_id: userId,
-        status: 'deleted'
+  try {
+    // Use the update-signature edge function to delete from database with service role
+    const { data: functionData, error: functionError } = await supabase.functions.invoke(
+      'update-signature',
+      {
+        body: {
+          supervisor_id: userId,
+          status: 'deleted'
+        }
       }
+    );
+    
+    if (functionError) {
+      console.error('Error deleting signature:', functionError);
+      throw new Error(`Function error: ${functionError.message}`);
     }
-  );
-  
-  if (functionError) {
-    throw functionError;
+  } catch (error: any) {
+    console.error('Error deleting signature:', error);
+    throw error;
   }
 };
