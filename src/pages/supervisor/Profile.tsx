@@ -17,9 +17,9 @@ const SupervisorProfile = () => {
   const { profile, user, updateProfile } = useAuth();
   
   // State for form fields
-  const [name, setName] = useState(profile?.full_name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [department, setDepartment] = useState(profile?.department || '');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [department, setDepartment] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,6 +28,9 @@ const SupervisorProfile = () => {
   
   // Update state when profile or user data changes
   useEffect(() => {
+    console.log("Profile data in SupervisorProfile:", profile);
+    console.log("User data in SupervisorProfile:", user);
+    
     if (profile) {
       setName(profile.full_name || '');
       setDepartment(profile.department || '');

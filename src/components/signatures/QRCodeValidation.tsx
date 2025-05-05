@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { QrCode } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface QRCodeValidationProps {
   hasSignature: boolean;
@@ -10,6 +11,8 @@ interface QRCodeValidationProps {
 }
 
 const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationProps) => {
+  const [showQRDialog, setShowQRDialog] = React.useState(false);
+
   return (
     <div className="border-t pt-6">
       <h2 className="text-lg font-medium mb-4">QR Code Validasi</h2>
@@ -41,11 +44,7 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
               <Button 
                 variant="outline" 
                 disabled={status !== 'approved' || !qrCodeUrl}
-                onClick={() => {
-                  if (qrCodeUrl) {
-                    window.open(qrCodeUrl, '_blank');
-                  }
-                }}
+                onClick={() => setShowQRDialog(true)}
               >
                 <QrCode size={16} className="mr-1" /> 
                 {status === 'approved' && qrCodeUrl ? 'Lihat QR Code' : 'QR Code Sedang Diproses'}
@@ -62,6 +61,40 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
           </p>
         </div>
       )}
+
+      {/* QR Code Dialog */}
+      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Code Validasi</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            {qrCodeUrl && (
+              <img 
+                src={qrCodeUrl} 
+                alt="QR Code Validation" 
+                className="w-64 h-64 object-contain border p-2"
+              />
+            )}
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-2">
+              Scan QR code ini untuk memvalidasi dokumen
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (qrCodeUrl) {
+                  window.open(qrCodeUrl, '_blank');
+                }
+              }}
+              className="mt-2"
+            >
+              Buka di Tab Baru
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
