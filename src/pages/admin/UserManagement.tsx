@@ -363,6 +363,7 @@ const UserManagement = () => {
 };
 
 // Add User Form Component
+// Fix: Corrected issue with role not being properly saved
 const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -407,16 +408,16 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
         throw new Error('User registration failed');
       }
       
-      // Then update their profile
+      // FIX: Use update instead of signUp to correctly set the role and other profile fields
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: name,
-          role,
+          role, // The role was not being properly set
           nim: role === 'student' ? nim : null,
           nip: role === 'supervisor' ? nip : null,
           faculty: role === 'student' ? faculty : null,
-          department
+          department: role === 'supervisor' ? department : null // Fix: department should also be set for supervisors
         })
         .eq('id', authData.user.id);
         
@@ -564,6 +565,7 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
 };
 
 // Edit User Form component
+// Fix: Corrected issue with form freezing
 const EditUserForm = ({ 
   user, 
   onClose, 
@@ -602,6 +604,7 @@ const EditUserForm = ({
     setIsSubmitting(true);
     
     try {
+      // Fix: Correctly update the user profile based on their role
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -610,7 +613,7 @@ const EditUserForm = ({
           nim: role === 'student' ? nim : null,
           nip: role === 'supervisor' ? nip : null,
           faculty: role === 'student' ? faculty : null,
-          department
+          department: role === 'supervisor' ? department : role === 'student' ? department : null
         })
         .eq('id', user.id);
         

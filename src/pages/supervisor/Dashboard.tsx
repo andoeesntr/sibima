@@ -1,11 +1,13 @@
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Calendar, Clock, FileText, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { proposals, students, formatDate } from '@/services/mockData';
-import { Student } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -23,27 +25,137 @@ const statusLabels = {
   rejected: "Ditolak",
 };
 
+interface Proposal {
+  id: string;
+  title: string;
+  status: string;
+  submissionDate: string;
+  student: {
+    id: string;
+    full_name: string;
+  };
+  teamId?: string;
+}
+
+interface Student {
+  id: string;
+  full_name: string;
+  nim?: string;
+}
+
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [supervisedProposals, setSupervisedProposals] = useState<Proposal[]>([]);
+  const [supervisedStudents, setSupervisedStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Filter proposals for this supervisor (we're using the first supervisor's ID)
-  const supervisorId = '6';
-  const supervisedProposals = proposals.filter(p => 
-    p.supervisorIds.includes(supervisorId)
-  );
+  // Fetch data from Supabase
+  useEffect(() => {
+    if (user) {
+      fetchSupervisorData();
+    }
+  }, [user]);
   
-  // Get all supervised students
-  const supervisedStudents = students.filter(student => {
-    // Check if student is part of a team that has a proposal supervised by this supervisor
-    const studentTeamIds = supervisedProposals.map(p => p.teamId);
-    return 'kpTeamId' in student && studentTeamIds.includes(student.kpTeamId || '');
-  });
+  const fetchSupervisorData = async () => {
+    setIsLoading(true);
+    try {
+      if (!user?.id) {
+        return;
+      }
+      
+      // Fetch proposals supervised by this supervisor
+      const { data: proposalsData, error: proposalsError } = await supabase
+        .from('proposals')
+        .select(`
+          id,
+          title,
+          status,
+          created_at,
+          student_id,
+          team_id,
+          profiles:student_id (id, full_name)
+        `)
+        .eq('supervisor_id', user.id);
+      
+      if (proposalsError) {
+        throw proposalsError;
+      }
+      
+      const formattedProposals = proposalsData.map(proposal => ({
+        id: proposal.id,
+        title: proposal.title,
+        status: proposal.status || 'submitted',
+        submissionDate: proposal.created_at,
+        student: proposal.profiles,
+        teamId: proposal.team_id,
+      }));
+      
+      setSupervisedProposals(formattedProposals);
+      
+      // Fetch all students from teams with proposals supervised by this supervisor
+      // First get all team IDs
+      const teamIds = proposalsData
+        .filter(p => p.team_id)
+        .map(p => p.team_id);
+      
+      if (teamIds.length > 0) {
+        const { data: teamMembersData, error: teamMembersError } = await supabase
+          .from('team_members')
+          .select(`
+            user_id,
+            profiles:user_id (id, full_name, nim)
+          `)
+          .in('team_id', teamIds);
+          
+        if (teamMembersError) {
+          throw teamMembersError;
+        }
+        
+        const formattedStudents = teamMembersData.map(member => ({
+          id: member.profiles.id,
+          full_name: member.profiles.full_name,
+          nim: member.profiles.nim
+        }));
+        
+        setSupervisedStudents(formattedStudents);
+      } else {
+        // If no teams, just get the students who directly submitted proposals
+        const studentIds = proposalsData.map(p => p.student_id);
+        
+        const { data: studentsData, error: studentsError } = await supabase
+          .from('profiles')
+          .select('id, full_name, nim')
+          .in('id', studentIds);
+          
+        if (studentsError) {
+          throw studentsError;
+        }
+        
+        setSupervisedStudents(studentsData as Student[]);
+      }
+    } catch (error) {
+      console.error('Error fetching supervisor data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
-  // Stats
+  // Stats calculation
   const stats = {
     totalSupervisedProposals: supervisedProposals.length,
     totalSupervisedStudents: supervisedStudents.length,
-    pendingFeedback: supervisedProposals.filter(p => p.status === 'approved' && !p.feedback?.length).length,
+    pendingFeedback: supervisedProposals.filter(p => p.status === 'approved').length,
+  };
+  
+  // Format date function
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -105,7 +217,11 @@ const SupervisorDashboard = () => {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          {supervisedProposals.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : supervisedProposals.length > 0 ? (
             supervisedProposals.map(proposal => (
               <div 
                 key={proposal.id}
@@ -116,11 +232,14 @@ const SupervisorDashboard = () => {
                   <span className="text-sm text-gray-500">
                     Submitted: {formatDate(proposal.submissionDate)}
                   </span>
+                  <span className="text-sm text-gray-500">
+                    Student: {proposal.student?.full_name || 'Unknown'}
+                  </span>
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Badge className={statusColors[proposal.status]}>
-                    {statusLabels[proposal.status]}
+                  <Badge className={statusColors[proposal.status as keyof typeof statusColors]}>
+                    {statusLabels[proposal.status as keyof typeof statusLabels] || proposal.status}
                   </Badge>
                   <Button 
                     variant="ghost" 
