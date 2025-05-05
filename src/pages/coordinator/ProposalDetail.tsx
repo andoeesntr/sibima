@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -76,6 +75,7 @@ interface Proposal {
   company_name?: string;
   team?: Team;
   documents: ProposalDocument[];
+  rejectionReason?: string; // Add this property to fix the error
 }
 
 const ProposalDetail = () => {
