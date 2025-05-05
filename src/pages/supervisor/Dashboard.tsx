@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,7 +63,7 @@ const SupervisorDashboard = () => {
         return;
       }
       
-      // Fetch proposals supervised by this supervisor - FIX: Use specific column name for profiles
+      // Fetch proposals supervised by this supervisor with explicit column name for profiles join
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('proposals')
         .select(`
@@ -74,7 +73,7 @@ const SupervisorDashboard = () => {
           created_at,
           student_id,
           team_id,
-          profiles:student_id (id, full_name)
+          profiles!student_id (id, full_name)
         `)
         .eq('supervisor_id', user.id);
       
@@ -82,7 +81,8 @@ const SupervisorDashboard = () => {
         throw proposalsError;
       }
       
-      const formattedProposals = proposalsData.map(proposal => ({
+      // Transform the data to match our expected Proposal interface
+      const formattedProposals: Proposal[] = proposalsData.map(proposal => ({
         id: proposal.id,
         title: proposal.title,
         status: proposal.status || 'submitted',
@@ -104,7 +104,7 @@ const SupervisorDashboard = () => {
           .from('team_members')
           .select(`
             user_id,
-            profiles:user_id (id, full_name, nim)
+            profiles!user_id (id, full_name, nim)
           `)
           .in('team_id', teamIds);
           
