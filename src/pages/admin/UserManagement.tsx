@@ -86,28 +86,35 @@ const UserManagement = () => {
 
   const handleDeleteUser = async (userId: string, userName: string) => {
     try {
-      // First delete the authentication user
-      const { error: authError } = await supabase.auth.admin.deleteUser(
-        userId
-      );
+      console.log("Attempting to delete user:", userId);
       
-      if (authError) {
-        console.error('Error deleting auth user:', authError);
-        // Continue with profile deletion even if auth deletion fails
-      }
-      
-      // Then delete from profiles
+      // First delete the profile - this is the important step that was missing
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
       
       if (profileError) {
+        console.error('Error deleting user profile:', profileError);
         throw profileError;
+      }
+      
+      // Then use the admin API to delete the auth user
+      // Note: This will likely require a function with service_role key
+      const { error: authError } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
+      
+      if (authError) {
+        console.error('Error in delete-user function:', authError);
+        throw authError;
       }
       
       setUsers(users.filter(user => user.id !== userId));
       toast.success(`User ${userName} berhasil dihapus`);
+      
+      // Force refresh to ensure accurate data
+      await fetchUsers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
       toast.error(`Failed to delete user: ${error.message}`);

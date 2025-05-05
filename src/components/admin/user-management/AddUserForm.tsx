@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Label } from "@/components/ui/label";
@@ -46,69 +45,25 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
     setIsSubmitting(true);
     
     try {
-      console.log("Adding user with role:", role); // Debug log
+      console.log("Adding user with role:", role);
       
-      // First sign up the user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            role: role // Store role in user metadata
-          }
+      // Use our edge function to create a new user with proper permissions
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email,
+          password,
+          full_name: name,
+          role,
+          nim: role === 'student' ? nim : null,
+          nip: role === 'supervisor' ? nip : null,
+          faculty: role === 'student' ? faculty : null,
+          department: role === 'student' || role === 'supervisor' ? department : null
         }
       });
       
-      if (authError) throw authError;
+      if (error) throw error;
       
-      if (!authData.user) {
-        throw new Error('User registration failed');
-      }
-      
-      console.log("Auth user created:", authData.user.id, "with role:", role); // Debug log
-      
-      // Explicitly create profile with the correct role
-      const profileData = {
-        id: authData.user.id,
-        email: email,
-        full_name: name,
-        role: role
-      };
-      
-      // Add role-specific fields to profile data
-      if (role === 'student') {
-        Object.assign(profileData, {
-          nim: nim,
-          faculty: faculty,
-          department: department,
-          nip: null
-        });
-      } else if (role === 'supervisor') {
-        Object.assign(profileData, {
-          nip: nip,
-          department: department,
-          nim: null,
-          faculty: null
-        });
-      } else {
-        // For other roles, set fields to null
-        Object.assign(profileData, {
-          nim: null,
-          nip: null,
-          faculty: null,
-          department: null
-        });
-      }
-      
-      console.log("Creating profile with data:", profileData); // Debug log
-      
-      // Insert the new profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert(profileData);
-        
-      if (profileError) throw profileError;
+      console.log("User created successfully:", data);
       
       toast.success('Pengguna berhasil ditambahkan');
       onSuccess();

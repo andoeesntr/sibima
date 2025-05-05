@@ -49,37 +49,20 @@ export const EditUserForm = ({ user, onClose, onSuccess }: EditUserFormProps) =>
     try {
       console.log("Updating user with ID:", user.id, "to role:", role);
       
-      // Create a clean update object with only the fields we want to update
-      const updateData: Record<string, any> = {
-        full_name: name,
-        role: role
-      };
-      
-      // Add role-specific fields
-      if (role === 'student') {
-        updateData.nim = nim;
-        updateData.faculty = faculty;
-        updateData.department = department;
-        updateData.nip = null;
-      } else if (role === 'supervisor') {
-        updateData.nip = nip;
-        updateData.department = department;
-        updateData.nim = null;
-        updateData.faculty = null;
-      } else {
-        // For other roles, clear student/supervisor specific fields
-        updateData.nim = null;
-        updateData.nip = null;
-        updateData.faculty = null;
-        updateData.department = null;
-      }
-      
-      console.log("Updating profile with data:", updateData);
-      
-      const { error } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', user.id);
+      // Use the edge function to update the user with service role permissions
+      const { error } = await supabase.functions.invoke('update-user', {
+        body: {
+          userId: user.id,
+          userData: {
+            full_name: name,
+            role,
+            nim: role === 'student' ? nim : null,
+            nip: role === 'supervisor' ? nip : null,
+            faculty: role === 'student' ? faculty : null,
+            department: role === 'student' || role === 'supervisor' ? department : null
+          }
+        }
+      });
         
       if (error) throw error;
       
