@@ -89,7 +89,7 @@ export const uploadSignature = async (
       }
       
       // Call edge function with authentication
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/upload-signature`, {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-signature`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`
