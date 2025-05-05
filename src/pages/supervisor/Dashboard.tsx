@@ -64,7 +64,7 @@ const SupervisorDashboard = () => {
         return;
       }
       
-      // Fetch proposals supervised by this supervisor
+      // Fetch proposals supervised by this supervisor - FIX: Use specific column name for profiles
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('proposals')
         .select(`
