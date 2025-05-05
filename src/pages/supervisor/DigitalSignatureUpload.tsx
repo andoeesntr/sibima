@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,50 @@ const DigitalSignatureUpload = () => {
     }
   };
 
+  const createBucketIfNotExists = async () => {
+    try {
+      // Check if the bucket exists
+      const { data: buckets, error: bucketsError } = await supabase
+        .storage
+        .listBuckets();
+      
+      if (bucketsError) {
+        throw new Error(`Could not list buckets: ${bucketsError.message}`);
+      }
+      
+      // Check if signatures bucket exists
+      const signaturesBucketExists = buckets?.find(bucket => bucket.name === 'signatures');
+      
+      // If bucket doesn't exist, create it using functions service
+      if (!signaturesBucketExists) {
+        console.log('Signatures bucket not found, creating it...');
+        
+        // Use service role to create bucket (can't create buckets with normal permissions)
+        // This will create the bucket on the backend side
+        const { error: createBucketError, data } = await supabase.functions.invoke(
+          'create-storage-bucket',
+          {
+            body: {
+              name: 'signatures',
+              public: true
+            }
+          }
+        );
+        
+        if (createBucketError) {
+          throw new Error(`Failed to create signatures bucket: ${createBucketError.message}`);
+        }
+        
+        console.log('Bucket creation response:', data);
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Error checking/creating bucket:', error);
+      throw error;
+    }
+  };
+
   const handleUpload = async () => {
     if (!signature || !user) {
       toast.error('Harap pilih file tanda tangan terlebih dahulu');
@@ -91,6 +136,9 @@ const DigitalSignatureUpload = () => {
         return;
       }
       
+      // Ensure the bucket exists
+      await createBucketIfNotExists();
+
       // Upload file to Supabase Storage
       const fileExt = signature.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
