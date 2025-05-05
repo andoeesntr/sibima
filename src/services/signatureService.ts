@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export const createBucketIfNotExists = async (): Promise<boolean> => {
   try {
@@ -35,6 +36,9 @@ export const createBucketIfNotExists = async (): Promise<boolean> => {
       }
       
       console.log('Bucket creation response:', data);
+      
+      // Add a small delay to ensure the bucket and policies are properly created
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     return true;
@@ -68,6 +72,36 @@ export const uploadSignature = async (
     
   if (storageError) {
     console.error('Storage error:', storageError);
+    
+    // If it's a permissions error, try using the edge function with service role
+    if (storageError.message.includes('policy') || storageError.message.includes('permission')) {
+      console.log('Attempting upload with service role through edge function...');
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('path', fileName);
+      
+      try {
+        const response = await fetch(`https://ciaymvntmwwbnvewedue.supabase.co/functions/v1/upload-signature`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+          },
+          body: formData
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Unknown error during upload');
+        }
+        
+        return data.publicUrl;
+      } catch (edgeFunctionError) {
+        console.error('Edge function upload error:', edgeFunctionError);
+        throw new Error(`Storage permission error: ${storageError.message}`);
+      }
+    }
+    
     throw new Error(`Storage error: ${storageError.message}`);
   }
   

@@ -79,3 +79,6 @@ verify_jwt = true
 verify_jwt = true
 [functions.create-storage-bucket]
 verify_jwt = true
+[functions.upload-signature]
+verify_jwt = true
+
