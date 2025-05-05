@@ -46,7 +46,55 @@ serve(async (req) => {
     // Prepare the file for upload
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = new Uint8Array(arrayBuffer);
-    const filePath = `signatures/${path}`;
+    const filePath = `${userId}/${path}`;
+
+    // First, check if the signatures bucket exists
+    const { data: buckets, error: bucketsError } = await supabaseAdmin
+      .storage
+      .listBuckets();
+    
+    if (bucketsError) {
+      console.error("Error listing buckets:", bucketsError);
+      throw bucketsError;
+    }
+
+    // Check if signatures bucket exists
+    const signaturesBucketExists = buckets?.find(bucket => bucket.name === 'signatures');
+    
+    // If bucket doesn't exist, create it
+    if (!signaturesBucketExists) {
+      console.log('Creating signatures bucket...');
+      const { error: createBucketError } = await supabaseAdmin
+        .storage
+        .createBucket('signatures', { public: true });
+      
+      if (createBucketError) {
+        console.error("Error creating signatures bucket:", createBucketError);
+        throw createBucketError;
+      }
+      
+      // Create policies for the bucket to allow public access
+      try {
+        await supabaseAdmin.rpc('create_storage_policy', {
+          bucket_name: 'signatures',
+          policy_name: 'signatures_public_select',
+          definition: `bucket_id = 'signatures'`,
+          operation: 'SELECT',
+          role_name: 'anon'
+        });
+        
+        await supabaseAdmin.rpc('create_storage_policy', {
+          bucket_name: 'signatures',
+          policy_name: 'signatures_auth_insert',
+          definition: `bucket_id = 'signatures' AND auth.role() = 'authenticated'`,
+          operation: 'INSERT',
+          role_name: 'authenticated'
+        });
+      } catch (policyError) {
+        console.error("Policy creation error:", policyError);
+        // Continue even if policy creation fails
+      }
+    }
 
     // Upload the file using the admin client (bypassing RLS)
     const { data: uploadData, error: uploadError } = await supabaseAdmin

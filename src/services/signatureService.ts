@@ -57,61 +57,66 @@ export const uploadSignature = async (
 
   // Upload file to Supabase Storage
   const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}-${Date.now()}.${fileExt}`;
-  const filePath = `signatures/${fileName}`;
+  const fileName = `${Date.now()}.${fileExt}`;
+  const filePath = `${userId}/${fileName}`;
   
   console.log('Uploading signature to storage:', filePath);
   
-  // Upload to storage
-  const { error: storageError } = await supabase
-    .storage
-    .from('signatures')
-    .upload(filePath, file, {
-      upsert: true
-    });
-    
-  if (storageError) {
-    console.error('Storage error:', storageError);
-    
-    // If it's a permissions error, try using the edge function with service role
-    if (storageError.message.includes('policy') || storageError.message.includes('permission')) {
-      console.log('Attempting upload with service role through edge function...');
+  try {
+    // Try direct upload first (if permissions allow)
+    const { error: storageError, data } = await supabase
+      .storage
+      .from('signatures')
+      .upload(filePath, file, {
+        upsert: true
+      });
+      
+    if (storageError) {
+      console.log('Direct upload failed, trying edge function:', storageError.message);
+      
+      // Fall back to edge function with service role
       const formData = new FormData();
       formData.append('file', file);
       formData.append('userId', userId);
       formData.append('path', fileName);
       
-      try {
-        const response = await fetch(`https://ciaymvntmwwbnvewedue.supabase.co/functions/v1/upload-signature`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
-          },
-          body: formData
-        });
-        
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || 'Unknown error during upload');
-        }
-        
-        return data.publicUrl;
-      } catch (edgeFunctionError) {
-        console.error('Edge function upload error:', edgeFunctionError);
-        throw new Error(`Storage permission error: ${storageError.message}`);
+      // Get current session token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error('No authentication token available');
       }
+      
+      // Call edge function with authentication
+      const response = await fetch(`https://ciaymvntmwwbnvewedue.supabase.co/functions/v1/upload-signature`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Edge function error: ${response.statusText}`);
+      }
+      
+      const responseData = await response.json();
+      return responseData.publicUrl;
     }
     
-    throw new Error(`Storage error: ${storageError.message}`);
+    // If direct upload succeeded, get public URL
+    const { data: { publicUrl } } = supabase
+      .storage
+      .from('signatures')
+      .getPublicUrl(filePath);
+    
+    return publicUrl;
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    throw new Error(`Storage permission error: ${error.message}`);
   }
-  
-  // Get public URL
-  const { data: { publicUrl } } = supabase
-    .storage
-    .from('signatures')
-    .getPublicUrl(filePath);
-
-  return publicUrl;
 };
 
 export const saveSignatureToDatabase = async (
