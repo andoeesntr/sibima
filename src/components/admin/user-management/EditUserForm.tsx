@@ -68,11 +68,14 @@ export const EditUserForm = ({ user, onClose, onSuccess }: EditUserFormProps) =>
       
       toast.success('Pengguna berhasil diperbarui');
       
-      // Close the dialog before refreshing data to prevent freezing
+      // First, close the dialog to prevent UI freeze
       onClose();
       
-      // After closing the dialog, refresh data
-      await onSuccess();
+      // Then, refresh data after a small delay
+      setTimeout(() => {
+        onSuccess();
+      }, 100);
+      
     } catch (error: any) {
       console.error('Error updating user:', error);
       toast.error(`Failed to update user: ${error.message}`);

@@ -49,6 +49,7 @@ const DigitalSignatureManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSignature, setSelectedSignature] = useState<DigitalSignature | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
   useEffect(() => {
     fetchSignatures();
@@ -109,19 +110,58 @@ const DigitalSignatureManagement = () => {
 
   const handleApproveSignature = async (signatureId: string) => {
     try {
-      const { error } = await supabase
+      setIsGeneratingQr(true);
+      
+      // Find the signature in the local state
+      const signature = signatures.find(sig => sig.id === signatureId);
+      if (!signature) {
+        throw new Error("Signature not found");
+      }
+      
+      // Update status to approved in Supabase
+      const { error: updateError } = await supabase
         .from('digital_signatures')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .update({ 
+          status: 'approved', 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', signatureId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // Update local state
+      // Update local state to show status as approved
       setSignatures(signatures.map(sig => 
         sig.id === signatureId ? { ...sig, status: 'approved' } : sig
       ));
+      
+      // Generate QR code using our edge function
+      const { data: qrData, error: qrError } = await supabase.functions.invoke('generate-qrcode', {
+        body: {
+          signatureId,
+          supervisorId: signature.supervisor.id,
+          supervisorName: signature.supervisor.name,
+          baseUrl: window.location.origin
+        }
+      });
 
-      toast.success('Tanda tangan berhasil disetujui');
+      if (qrError) throw qrError;
+      
+      // Update the signature with QR code URL
+      if (qrData && qrData.qr_code_url) {
+        setSignatures(signatures.map(sig => 
+          sig.id === signatureId ? { ...sig, status: 'approved', qr_code_url: qrData.qr_code_url } : sig
+        ));
+        
+        if (selectedSignature && selectedSignature.id === signatureId) {
+          setSelectedSignature({
+            ...selectedSignature,
+            status: 'approved',
+            qr_code_url: qrData.qr_code_url
+          });
+        }
+      }
+
+      toast.success('Tanda tangan berhasil disetujui dan QR Code dibuat');
       
       // Create activity log
       await supabase.from('activity_logs').insert({
@@ -135,6 +175,8 @@ const DigitalSignatureManagement = () => {
     } catch (error) {
       console.error('Error approving signature:', error);
       toast.error('Gagal menyetujui tanda tangan');
+    } finally {
+      setIsGeneratingQr(false);
     }
   };
 
@@ -151,6 +193,13 @@ const DigitalSignatureManagement = () => {
       setSignatures(signatures.map(sig => 
         sig.id === signatureId ? { ...sig, status: 'rejected' } : sig
       ));
+      
+      if (selectedSignature && selectedSignature.id === signatureId) {
+        setSelectedSignature({
+          ...selectedSignature,
+          status: 'rejected'
+        });
+      }
 
       toast.success('Tanda tangan berhasil ditolak');
       
@@ -405,8 +454,8 @@ const DigitalSignatureManagement = () => {
                     className="text-red-600 border-red-600"
                     onClick={() => {
                       handleRejectSignature(selectedSignature.id);
-                      setIsViewDialogOpen(false);
                     }}
+                    disabled={isGeneratingQr}
                   >
                     <XCircle size={16} className="mr-2" />
                     Tolak
@@ -415,11 +464,17 @@ const DigitalSignatureManagement = () => {
                     className="bg-green-600 hover:bg-green-700"
                     onClick={() => {
                       handleApproveSignature(selectedSignature.id);
-                      setIsViewDialogOpen(false);
                     }}
+                    disabled={isGeneratingQr}
                   >
-                    <CheckCircle size={16} className="mr-2" />
-                    Setujui
+                    {isGeneratingQr ? (
+                      <>Memproses...</>
+                    ) : (
+                      <>
+                        <CheckCircle size={16} className="mr-2" />
+                        Setujui
+                      </>
+                    )}
                   </Button>
                 </div>
               )}
