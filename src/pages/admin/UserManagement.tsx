@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import { UserRole } from '@/types';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { registerUser } from '@/utils/auth';
 
 type UserTab = 'all' | 'student' | 'supervisor' | 'admin' | 'coordinator';
 
@@ -362,8 +361,7 @@ const UserManagement = () => {
   );
 };
 
-// Add User Form Component
-// Fix: Corrected issue with role not being properly saved
+// Add User Form Component - FIXED: Correctly save role and other data
 const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -408,18 +406,19 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
         throw new Error('User registration failed');
       }
       
-      // FIX: Use update instead of signUp to correctly set the role and other profile fields
+      // FIX: Create a new profile record instead of updating the existing one
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({
+        .insert({
+          id: authData.user.id,
+          email: email,
           full_name: name,
-          role, // The role was not being properly set
+          role: role, // Set the correct role
           nim: role === 'student' ? nim : null,
           nip: role === 'supervisor' ? nip : null,
           faculty: role === 'student' ? faculty : null,
-          department: role === 'supervisor' ? department : null // Fix: department should also be set for supervisors
-        })
-        .eq('id', authData.user.id);
+          department: role === 'supervisor' ? department : null
+        });
         
       if (profileError) throw profileError;
       
@@ -564,8 +563,7 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
   );
 };
 
-// Edit User Form component
-// Fix: Corrected issue with form freezing
+// Edit User Form component - FIXED: Issue with form freezing
 const EditUserForm = ({ 
   user, 
   onClose, 
@@ -605,16 +603,18 @@ const EditUserForm = ({
     
     try {
       // Fix: Correctly update the user profile based on their role
+      const updateData = {
+        full_name: name,
+        role: role,
+        nim: role === 'student' ? nim : null,
+        nip: role === 'supervisor' ? nip : null,
+        faculty: role === 'student' ? faculty : null,
+        department: role === 'supervisor' ? department : role === 'student' ? department : null
+      };
+      
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: name,
-          role,
-          nim: role === 'student' ? nim : null,
-          nip: role === 'supervisor' ? nip : null,
-          faculty: role === 'student' ? faculty : null,
-          department: role === 'supervisor' ? department : role === 'student' ? department : null
-        })
+        .update(updateData)
         .eq('id', user.id);
         
       if (error) throw error;

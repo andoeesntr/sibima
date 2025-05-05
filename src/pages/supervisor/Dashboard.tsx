@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,8 @@ const SupervisorDashboard = () => {
       if (proposalsError) {
         throw proposalsError;
       }
+      
+      console.log("Retrieved proposals:", proposalsData);
       
       // Transform the data to match our expected Proposal interface
       const formattedProposals: Proposal[] = proposalsData.map(proposal => ({
