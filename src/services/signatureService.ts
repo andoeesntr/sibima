@@ -88,8 +88,13 @@ export const uploadSignature = async (
         throw new Error('No authentication token available');
       }
       
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('VITE_SUPABASE_URL is not defined');
+      }
+      
       // Call edge function with authentication
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-signature`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/upload-signature`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -98,12 +103,25 @@ export const uploadSignature = async (
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Edge function error: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Edge function error response:', errorText);
+        try {
+          // Try to parse as JSON, but handle case where it's not JSON
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error || `Edge function error: ${response.statusText}`);
+        } catch (parseError) {
+          throw new Error(`Server error (${response.status}): Please try again later`);
+        }
       }
       
-      const responseData = await response.json();
-      return responseData.publicUrl;
+      const responseText = await response.text();
+      try {
+        const responseData = JSON.parse(responseText);
+        return responseData.publicUrl;
+      } catch (parseError) {
+        console.error('Failed to parse response:', responseText);
+        throw new Error('Invalid response from server');
+      }
     }
     
     // If direct upload succeeded, get public URL
@@ -148,6 +166,8 @@ export const saveSignatureToDatabase = async (
 
 export const deleteSignature = async (userId: string): Promise<void> => {
   try {
+    console.log('Deleting signature for user:', userId);
+    
     // Use the update-signature edge function to delete from database with service role
     const { data: functionData, error: functionError } = await supabase.functions.invoke(
       'update-signature',

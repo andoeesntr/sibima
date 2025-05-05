@@ -43,6 +43,8 @@ serve(async (req) => {
       throw new Error("No path provided");
     }
 
+    console.log(`Processing upload for user ${userId}, file path: ${path}`);
+
     // Prepare the file for upload
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = new Uint8Array(arrayBuffer);
@@ -94,7 +96,12 @@ serve(async (req) => {
         console.error("Policy creation error:", policyError);
         // Continue even if policy creation fails
       }
+      
+      // Let's wait a bit to make sure the bucket is ready
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+
+    console.log(`Uploading file to path: ${filePath}`);
 
     // Upload the file using the admin client (bypassing RLS)
     const { data: uploadData, error: uploadError } = await supabaseAdmin
@@ -109,6 +116,8 @@ serve(async (req) => {
       console.error("Error uploading file:", uploadError);
       throw uploadError;
     }
+
+    console.log("File uploaded successfully, generating public URL");
 
     // Get the public URL
     const { data: { publicUrl } } = supabaseAdmin

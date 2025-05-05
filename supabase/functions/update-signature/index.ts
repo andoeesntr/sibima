@@ -16,9 +16,10 @@ serve(async (req) => {
   }
 
   try {
-    const { signatureId, status, signature_url, supervisor_id } = await req.json();
+    const reqData = await req.json();
+    const { signatureId, status, signature_url, supervisor_id } = reqData;
     
-    console.log("Received request with data:", { signatureId, status, signature_url, supervisor_id });
+    console.log("Received request with data:", reqData);
 
     // Validate required parameters
     if ((!signatureId && !supervisor_id) || !status) {
@@ -31,7 +32,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
     
-    let updateData = {
+    // Prepare the update data object
+    const updateData: Record<string, any> = {
       status,
       updated_at: new Date().toISOString()
     };
@@ -74,13 +76,13 @@ serve(async (req) => {
       if (existingRecord) {
         console.log(`Found existing signature with ID: ${existingRecord.id}, updating...`);
         // Update existing record
-        const { data: updateData, error: updateError } = await supabaseAdmin
+        const { data: updateData2, error: updateError } = await supabaseAdmin
           .from('digital_signatures')
           .update(updateData)
           .eq('id', existingRecord.id)
           .select();
           
-        result = updateData;
+        result = updateData2;
         error = updateError;
       } else {
         console.log(`No existing signature found for supervisor: ${supervisor_id}, creating new record...`);
