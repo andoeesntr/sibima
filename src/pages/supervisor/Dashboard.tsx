@@ -64,7 +64,7 @@ const SupervisorDashboard = () => {
         return;
       }
       
-      // Fetch proposals supervised by this supervisor with correct column specification
+      // Fetch proposals supervised by this supervisor with explicit column specification
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('proposals')
         .select(`
@@ -90,7 +90,10 @@ const SupervisorDashboard = () => {
         title: proposal.title,
         status: proposal.status || 'submitted',
         submissionDate: proposal.created_at,
-        student: proposal.profiles,
+        student: {
+          id: proposal.profiles.id,
+          full_name: proposal.profiles.full_name
+        },
         teamId: proposal.team_id,
       }));
       

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,7 +84,7 @@ const SupervisorFeedback = () => {
         return;
       }
 
-      // Get proposals supervised by this supervisor
+      // Get proposals supervised by this supervisor with explicit column specification
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('proposals')
         .select(`
@@ -110,7 +111,11 @@ const SupervisorFeedback = () => {
         status: proposal.status || 'submitted',
         submissionDate: proposal.created_at,
         description: proposal.description,
-        student: proposal.profiles,
+        student: {
+          id: proposal.profiles.id,
+          full_name: proposal.profiles.full_name,
+          nim: proposal.profiles.nim
+        },
         teamId: proposal.team_id,
         attachments: [], // Will be populated later if needed
         feedback: [] // Will be populated later if needed
