@@ -106,7 +106,8 @@ const ProposalReview = () => {
         submissionDate: proposal.created_at,
         studentName: proposal.student?.full_name || 'Unknown Student',
         supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
-        // We'll handle document URL separately as it might be in a different table
+        // Since we don't have a separate table for documents yet, we'll use a placeholder
+        // In the future, you can store document URLs in the proposals table directly or create a new table
       }));
       
       setProposals(formattedProposals);
@@ -196,32 +197,9 @@ type ProposalCardProps = {
 };
 
 const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
-  // State to hold the document URL which we'll fetch separately
-  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  // Since we don't have a documents table yet, we'll create a UI element that indicates
+  // that in the future, document links will be available here
   
-  // Fetch document URL when the component mounts
-  useEffect(() => {
-    const fetchDocumentUrl = async () => {
-      try {
-        // This is a simplification - you may need to adjust this query based on how
-        // documents are actually stored in your database
-        const { data, error } = await supabase
-          .from('proposal_documents')
-          .select('file_url')
-          .eq('proposal_id', proposal.id)
-          .maybeSingle();
-        
-        if (data && data.file_url) {
-          setDocumentUrl(data.file_url);
-        }
-      } catch (error) {
-        console.error("Error fetching document URL:", error);
-      }
-    };
-    
-    fetchDocumentUrl();
-  }, [proposal.id]);
-
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -253,19 +231,10 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
               Reviewed: {formatDate(proposal.reviewDate)}
             </div>
           )}
-          {documentUrl && (
-            <div className="flex items-center text-blue-600">
-              <FileText size={14} className="mr-1" />
-              <a 
-                href={documentUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                Lihat Dokumen
-              </a>
-            </div>
-          )}
+          <div className="flex items-center text-gray-500">
+            <FileText size={14} className="mr-1" />
+            <span>Dokumen belum tersedia</span>
+          </div>
         </div>
       </CardContent>
       <CardFooter className="flex justify-between">
