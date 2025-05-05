@@ -213,6 +213,47 @@ const ProposalSubmission = () => {
         throw proposalError;
       }
 
+      // Upload file to storage
+      const fileName = `${Date.now()}_${file.name}`;
+      const fileExt = fileName.split('.').pop();
+      const filePath = `${user.id}/${proposalData[0].id}/${fileName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('proposal-documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get the public URL for the uploaded file
+      const { data: publicURLData } = supabase.storage
+        .from('proposal-documents')
+        .getPublicUrl(filePath);
+
+      if (!publicURLData.publicUrl) {
+        throw new Error('Failed to get public URL for uploaded file');
+      }
+
+      // Add document record in the database
+      const { error: documentError } = await supabase
+        .from('proposal_documents')
+        .insert({
+          proposal_id: proposalData[0].id,
+          file_name: fileName,
+          file_url: publicURLData.publicUrl,
+          file_type: fileExt,
+          uploaded_by: user.id
+        });
+
+      if (documentError) {
+        throw documentError;
+      }
+
       await supabase.from('activity_logs').insert({
         user_id: user.id,
         user_name: profile.full_name || user.email,
@@ -482,7 +523,7 @@ const ProposalSubmission = () => {
                   <Input
                     id="file-upload"
                     type="file"
-                    accept=".pdf"
+                    accept=".pdf,.doc,.docx"
                     onChange={handleFileChange}
                     className="w-full"
                   />
@@ -506,7 +547,7 @@ const ProposalSubmission = () => {
                 <div className="text-sm text-yellow-700">
                   <p className="font-medium mb-1">Informasi penting</p>
                   <p>
-                    Dokumen proposal harus dalam format PDF dengan ukuran maksimal 5MB.
+                    Dokumen proposal harus dalam format PDF, DOC, atau DOCX dengan ukuran maksimal 5MB.
                     Pastikan proposal sudah sesuai dengan template yang tersedia di panduan KP.
                   </p>
                 </div>

@@ -54,9 +54,10 @@ interface Proposal {
 
 interface Attachment {
   id: string;
-  name: string;
-  url: string;
-  type: string;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  uploaded_at: string;
 }
 
 const ProposalDetail = () => {
@@ -112,25 +113,22 @@ const ProposalDetail = () => {
           }
         }
 
+        // Fetch documents
+        const { data: documentData, error: documentError } = await supabase
+          .from('proposal_documents')
+          .select('id, file_name, file_url, file_type, uploaded_at')
+          .eq('proposal_id', id);
+
+        if (documentError) {
+          console.error('Error fetching documents:', documentError);
+        }
+
         setProposal({
           ...proposalData,
           supervisor: supervisorData
         });
 
-        setAttachments([
-          { 
-            id: '1', 
-            name: 'proposal_kp.pdf', 
-            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', 
-            type: 'pdf' 
-          },
-          { 
-            id: '2', 
-            name: 'surat_persetujuan.pdf', 
-            url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf', 
-            type: 'pdf' 
-          }
-        ]);
+        setAttachments(documentData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Gagal memuat data');
@@ -260,20 +258,20 @@ const ProposalDetail = () => {
                   <div key={attachment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                     <div className="flex items-center">
                       <FileText size={18} className="mr-2 text-primary" />
-                      <span>{attachment.name}</span>
+                      <span>{attachment.file_name}</span>
                     </div>
                     <div className="flex space-x-2">
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handlePreview(attachment.url, attachment.name)}
+                        onClick={() => handlePreview(attachment.file_url, attachment.file_name)}
                       >
                         <Eye size={16} className="mr-1" /> Preview
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => handleDownload(attachment.url, attachment.name)}
+                        onClick={() => handleDownload(attachment.file_url, attachment.file_name)}
                       >
                         <Download size={16} className="mr-1" /> Download
                       </Button>

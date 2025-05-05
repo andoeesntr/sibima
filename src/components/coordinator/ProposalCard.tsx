@@ -28,9 +28,6 @@ type ProposalCardProps = {
 };
 
 const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
-  // Since we don't have a documents table yet, we'll create a UI element that indicates
-  // that in the future, document links will be available here
-  
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -64,7 +61,9 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
           )}
           <div className="flex items-center text-gray-500">
             <FileText size={14} className="mr-1" />
-            <span>Dokumen belum tersedia</span>
+            <span>{proposal.documents && proposal.documents.length > 0 
+              ? `${proposal.documents.length} dokumen` 
+              : 'Tidak ada dokumen'}</span>
           </div>
         </div>
       </CardContent>

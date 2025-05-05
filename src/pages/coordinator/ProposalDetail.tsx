@@ -1,14 +1,14 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Check, Download, File, User, X } from 'lucide-react';
+import { ArrowLeft, Check, Download, File, User, X, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { proposals, supervisors, formatDate, teams, students } from '@/services/mockData';
+import { supabase } from '@/integrations/supabase/client';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -26,24 +26,246 @@ const statusLabels = {
   rejected: "Ditolak",
 };
 
+const formatDate = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+};
+
+interface ProposalDocument {
+  id: string;
+  file_name: string;
+  file_url: string;
+  file_type?: string;
+}
+
+interface Supervisor {
+  id: string;
+  full_name: string;
+  profile_image?: string;
+}
+
+interface TeamMember {
+  id: string;
+  full_name: string;
+  nim?: string;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  members: TeamMember[];
+}
+
+interface Proposal {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  created_at: string;
+  updated_at?: string;
+  student: {
+    id: string;
+    full_name: string;
+  };
+  supervisor?: Supervisor;
+  company_name?: string;
+  team?: Team;
+  documents: ProposalDocument[];
+}
+
 const ProposalDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewName, setPreviewName] = useState('');
   
-  // Find proposal by ID
-  const proposal = proposals.find(p => p.id === id);
-  
-  // Find team associated with this proposal
-  const team = proposal ? teams.find(t => t.id === proposal.teamId) : undefined;
-  
-  // Find supervisors for this proposal
-  const proposalSupervisors = proposal?.supervisorIds.map(id => 
-    supervisors.find(s => s.id === id)
-  ).filter(Boolean) || [];
+  useEffect(() => {
+    const fetchProposalData = async () => {
+      if (!id) return;
+      
+      setLoading(true);
+      try {
+        // Fetch proposal data
+        const { data: proposalData, error: proposalError } = await supabase
+          .from('proposals')
+          .select(`
+            id, 
+            title,
+            description,
+            status,
+            created_at,
+            updated_at,
+            company_name,
+            team_id,
+            supervisor_id,
+            supervisor:profiles!supervisor_id(id, full_name, profile_image),
+            student:profiles!student_id(id, full_name)
+          `)
+          .eq('id', id)
+          .single();
+          
+        if (proposalError) {
+          console.error("Error fetching proposal:", proposalError);
+          throw proposalError;
+        }
+        
+        // Fetch documents
+        const { data: documentsData, error: documentsError } = await supabase
+          .from('proposal_documents')
+          .select('id, file_name, file_url, file_type')
+          .eq('proposal_id', id);
+        
+        if (documentsError) {
+          console.error("Error fetching documents:", documentsError);
+          throw documentsError;
+        }
+
+        // Fetch team data if available
+        let teamData = null;
+        if (proposalData.team_id) {
+          const { data: team, error: teamError } = await supabase
+            .from('teams')
+            .select('id, name')
+            .eq('id', proposalData.team_id)
+            .single();
+            
+          if (teamError) {
+            console.error("Error fetching team:", teamError);
+          } else if (team) {
+            // Fetch team members
+            const { data: membersData, error: membersError } = await supabase
+              .from('team_members')
+              .select(`
+                user_id,
+                profiles:user_id(id, full_name, nim)
+              `)
+              .eq('team_id', team.id);
+              
+            if (membersError) {
+              console.error("Error fetching team members:", membersError);
+            } else {
+              teamData = {
+                id: team.id,
+                name: team.name,
+                members: membersData.map(member => ({
+                  id: member.profiles.id,
+                  full_name: member.profiles.full_name,
+                  nim: member.profiles.nim
+                }))
+              };
+            }
+          }
+        }
+
+        const fullProposal = {
+          ...proposalData,
+          team: teamData,
+          documents: documentsData || []
+        };
+        
+        setProposal(fullProposal);
+        console.log("Fetched proposal data:", fullProposal);
+      } catch (error) {
+        console.error("Error fetching proposal data:", error);
+        toast.error("Failed to load proposal data");
+        navigate('/coordinator/proposal-review');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProposalData();
+  }, [id, navigate]);
+
+  const handleApprove = async () => {
+    if (!proposal) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('proposals')
+        .update({ 
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposal.id);
+        
+      if (error) throw error;
+      
+      toast.success('Proposal berhasil disetujui');
+      setIsApproveDialogOpen(false);
+      navigate('/coordinator/proposal-review');
+    } catch (error: any) {
+      console.error("Error approving proposal:", error);
+      toast.error(`Failed to approve proposal: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!proposal) return;
+    
+    if (!rejectionReason.trim()) {
+      toast.error('Harap berikan alasan penolakan');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('proposals')
+        .update({ 
+          status: 'rejected',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposal.id);
+        
+      if (error) throw error;
+      
+      toast.success('Proposal berhasil ditolak');
+      setIsRejectDialogOpen(false);
+      navigate('/coordinator/proposal-review');
+    } catch (error: any) {
+      console.error("Error rejecting proposal:", error);
+      toast.error(`Failed to reject proposal: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePreviewDocument = (url: string, name: string) => {
+    setPreviewUrl(url);
+    setPreviewName(name);
+    setPreviewDialogOpen(true);
+  };
+
+  const handleDownloadFile = (url: string, fileName: string) => {
+    window.open(url, '_blank');
+    toast.success(`Downloading ${fileName}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   if (!proposal) {
     return (
@@ -59,39 +281,6 @@ const ProposalDetail = () => {
     );
   }
 
-  const handleApprove = () => {
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsApproveDialogOpen(false);
-      toast.success('Proposal berhasil disetujui');
-      navigate('/coordinator/proposal-review');
-    }, 1000);
-  };
-
-  const handleReject = () => {
-    if (!rejectionReason.trim()) {
-      toast.error('Harap berikan alasan penolakan');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsRejectDialogOpen(false);
-      toast.success('Proposal berhasil ditolak');
-      navigate('/coordinator/proposal-review');
-    }, 1000);
-  };
-
-  const handleDownloadFile = (fileName: string) => {
-    toast.success(`Downloading ${fileName}`);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -106,8 +295,8 @@ const ProposalDetail = () => {
           <h1 className="text-2xl font-bold">Detail Proposal</h1>
         </div>
         
-        <Badge className={statusColors[proposal.status]}>
-          {statusLabels[proposal.status]}
+        <Badge className={statusColors[proposal.status as keyof typeof statusColors]}>
+          {statusLabels[proposal.status as keyof typeof statusLabels]}
         </Badge>
       </div>
       
@@ -117,7 +306,7 @@ const ProposalDetail = () => {
           <CardHeader>
             <CardTitle>{proposal.title}</CardTitle>
             <CardDescription>
-              Submitted: {formatDate(proposal.submissionDate)}
+              Submitted: {formatDate(proposal.created_at)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -125,6 +314,13 @@ const ProposalDetail = () => {
               <h3 className="font-medium mb-2">Deskripsi</h3>
               <p className="text-gray-600">{proposal.description}</p>
             </div>
+            
+            {proposal.company_name && (
+              <div>
+                <h3 className="font-medium mb-2">Perusahaan/Instansi</h3>
+                <p className="text-gray-600">{proposal.company_name}</p>
+              </div>
+            )}
             
             {proposal.status === 'rejected' && proposal.rejectionReason && (
               <div className="bg-red-50 border border-red-100 rounded-md p-4">
@@ -134,30 +330,31 @@ const ProposalDetail = () => {
             )}
             
             <div>
-              <h3 className="font-medium mb-2">Attachment</h3>
-              {proposal.attachments.length > 0 ? (
+              <h3 className="font-medium mb-2">Dokumen</h3>
+              {proposal.documents.length > 0 ? (
                 <div className="space-y-3">
-                  {proposal.attachments.map(attachment => (
+                  {proposal.documents.map(doc => (
                     <div 
-                      key={attachment.id}
+                      key={doc.id}
                       className="flex items-center justify-between p-3 border rounded-md"
                     >
                       <div className="flex items-center">
                         <File size={16} className="mr-2 text-blue-500" />
-                        <span>{attachment.name}</span>
+                        <span>{doc.file_name}</span>
                       </div>
                       <div className="flex items-center">
                         <Button 
                           variant="outline" 
                           size="sm"
                           className="mr-2"
+                          onClick={() => handlePreviewDocument(doc.file_url, doc.file_name)}
                         >
-                          Buka
+                          <Eye size={14} className="mr-1" /> Preview
                         </Button>
                         <Button 
                           size="sm" 
                           className="bg-primary hover:bg-primary/90"
-                          onClick={() => handleDownloadFile(attachment.name)}
+                          onClick={() => handleDownloadFile(doc.file_url, doc.file_name)}
                         >
                           <Download size={14} className="mr-1" /> Download
                         </Button>
@@ -166,7 +363,7 @@ const ProposalDetail = () => {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500">Tidak ada attachment</p>
+                <p className="text-gray-500">Tidak ada dokumen</p>
               )}
             </div>
           </CardContent>
@@ -195,25 +392,25 @@ const ProposalDetail = () => {
             <CardTitle>Informasi Tim</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {team && (
+            {proposal.team && (
               <>
                 <div>
                   <h3 className="font-medium mb-2">Nama Tim</h3>
-                  <p className="text-gray-600">{team.name}</p>
+                  <p className="text-gray-600">{proposal.team.name}</p>
                 </div>
                 
                 <div>
                   <h3 className="font-medium mb-2">Anggota Tim</h3>
                   <div className="space-y-2">
-                    {team.members.map(member => (
+                    {proposal.team.members.map(member => (
                       <div 
                         key={member.id}
                         className="flex items-center p-2 bg-gray-50 rounded"
                       >
                         <User size={16} className="mr-2" />
                         <div>
-                          <div className="font-medium">{member.name}</div>
-                          <div className="text-xs text-gray-500">{member.nim}</div>
+                          <div className="font-medium">{member.full_name}</div>
+                          {member.nim && <div className="text-xs text-gray-500">{member.nim}</div>}
                         </div>
                       </div>
                     ))}
@@ -223,22 +420,22 @@ const ProposalDetail = () => {
             )}
             
             <div>
-              <h3 className="font-medium mb-2">Dosen Pembimbing</h3>
-              <div className="space-y-2">
-                {proposalSupervisors.map(supervisor => supervisor && (
-                  <div 
-                    key={supervisor.id}
-                    className="flex items-center p-2 bg-gray-50 rounded"
-                  >
-                    <User size={16} className="mr-2" />
-                    <div>
-                      <div className="font-medium">{supervisor.name}</div>
-                      <div className="text-xs text-gray-500">{supervisor.nip}</div>
-                    </div>
-                  </div>
-                ))}
+              <h3 className="font-medium mb-2">Mahasiswa</h3>
+              <div className="flex items-center p-2 bg-gray-50 rounded">
+                <User size={16} className="mr-2" />
+                <div className="font-medium">{proposal.student.full_name}</div>
               </div>
             </div>
+            
+            {proposal.supervisor && (
+              <div>
+                <h3 className="font-medium mb-2">Dosen Pembimbing</h3>
+                <div className="flex items-center p-2 bg-gray-50 rounded">
+                  <User size={16} className="mr-2" />
+                  <div className="font-medium">{proposal.supervisor.full_name}</div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -304,6 +501,33 @@ const ProposalDetail = () => {
               {isSubmitting ? 'Memproses...' : 'Tolak'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Preview: {previewName}</DialogTitle>
+            <DialogDescription>
+              Preview dokumen
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 h-[60vh] border rounded overflow-hidden">
+            <iframe 
+              src={previewUrl} 
+              title={previewName}
+              className="w-full h-full"
+              sandbox="allow-same-origin allow-scripts"
+            />
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button
+              onClick={() => handleDownloadFile(previewUrl, previewName)}
+            >
+              <Download className="mr-2 h-4 w-4" /> Download
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

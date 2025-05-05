@@ -12,7 +12,14 @@ export interface Proposal {
   reviewDate?: string;
   supervisorIds: string[];
   studentName?: string;
+  companyName?: string;
   documentUrl?: string;
+  documents?: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+    fileType?: string;
+  }[];
 }
 
 export type ProposalStatus = 'submitted' | 'approved' | 'rejected' | 'all';
@@ -25,19 +32,6 @@ export const useProposals = () => {
     try {
       setLoading(true);
       
-      // Check database structure first
-      const { data: checkData, error: checkError } = await supabase
-        .from('proposals')
-        .select('*')
-        .limit(1);
-      
-      if (checkError) {
-        console.error("Error checking table structure:", checkError);
-        throw checkError;
-      }
-      
-      console.log("Table structure sample:", checkData);
-
       // Fetch proposals with student information
       const { data, error } = await supabase
         .from('proposals')
@@ -47,6 +41,7 @@ export const useProposals = () => {
           description,
           status, 
           created_at,
+          company_name,
           supervisor_id,
           student_id,
           student:profiles!student_id (full_name)
@@ -64,21 +59,40 @@ export const useProposals = () => {
         return;
       }
 
-      // Transform data for our component
-      const formattedProposals: Proposal[] = data.map(proposal => ({
-        id: proposal.id,
-        title: proposal.title,
-        description: proposal.description || '',
-        status: proposal.status || 'submitted',
-        submissionDate: proposal.created_at,
-        studentName: proposal.student?.full_name || 'Unknown Student',
-        supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
-        // Since we don't have a separate table for documents yet, we'll use a placeholder
-        // In the future, you can store document URLs in the proposals table directly or create a new table
-      }));
+      // Fetch documents for each proposal
+      const proposalsWithDocuments = await Promise.all(
+        data.map(async (proposal) => {
+          const { data: documentData, error: documentError } = await supabase
+            .from('proposal_documents')
+            .select('id, file_name, file_url, file_type')
+            .eq('proposal_id', proposal.id);
+          
+          if (documentError) {
+            console.error(`Error fetching documents for proposal ${proposal.id}:`, documentError);
+          }
+
+          // Transform data for our component
+          return {
+            id: proposal.id,
+            title: proposal.title,
+            description: proposal.description || '',
+            status: proposal.status || 'submitted',
+            submissionDate: proposal.created_at,
+            studentName: proposal.student?.full_name || 'Unknown Student',
+            supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
+            companyName: proposal.company_name,
+            documents: documentData?.map(doc => ({
+              id: doc.id,
+              fileName: doc.file_name,
+              fileUrl: doc.file_url,
+              fileType: doc.file_type
+            })) || []
+          };
+        })
+      );
       
-      setProposals(formattedProposals);
-      console.log("Fetched proposals:", formattedProposals);
+      setProposals(proposalsWithDocuments);
+      console.log("Fetched proposals with documents:", proposalsWithDocuments);
     } catch (error: any) {
       console.error("Error fetching proposals:", error);
       toast.error("Failed to load proposals");
