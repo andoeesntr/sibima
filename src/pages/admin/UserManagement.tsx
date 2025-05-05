@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -136,7 +135,6 @@ const UserManagement = () => {
 
     try {
       // In a real application, you would call an API or Edge Function to reset the password
-      // For now we'll just show a success message
       toast.success(`Password reset functionality would be implemented with a Supabase Edge Function`);
       setIsResetPasswordDialogOpen(false);
       setNewPassword('');
@@ -406,19 +404,35 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
         throw new Error('User registration failed');
       }
       
-      // FIX: Create a new profile record instead of updating the existing one
+      // Create profile data based on the selected role
+      const profileData = {
+        id: authData.user.id,
+        email: email,
+        full_name: name,
+        role: role, // Make sure role is explicitly set
+      };
+      
+      // Add role-specific fields to profile data
+      if (role === 'student') {
+        Object.assign(profileData, {
+          nim: nim,
+          faculty: faculty,
+          department: department,
+          nip: null // Ensure nip is null for students
+        });
+      } else if (role === 'supervisor') {
+        Object.assign(profileData, {
+          nip: nip,
+          department: department,
+          nim: null, // Ensure nim is null for supervisors
+          faculty: null // Ensure faculty is null for supervisors
+        });
+      }
+      
+      // Insert the new profile
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          full_name: name,
-          role: role, // Set the correct role
-          nim: role === 'student' ? nim : null,
-          nip: role === 'supervisor' ? nip : null,
-          faculty: role === 'student' ? faculty : null,
-          department: role === 'supervisor' ? department : null
-        });
+        .insert(profileData);
         
       if (profileError) throw profileError;
       
@@ -602,15 +616,39 @@ const EditUserForm = ({
     setIsSubmitting(true);
     
     try {
-      // Fix: Correctly update the user profile based on their role
-      const updateData = {
+      // Create update data based on role to avoid null field issues
+      let updateData: any = {
         full_name: name,
-        role: role,
-        nim: role === 'student' ? nim : null,
-        nip: role === 'supervisor' ? nip : null,
-        faculty: role === 'student' ? faculty : null,
-        department: role === 'supervisor' ? department : role === 'student' ? department : null
+        role: role
       };
+      
+      // Add role-specific fields
+      if (role === 'student') {
+        updateData = {
+          ...updateData,
+          nim: nim,
+          faculty: faculty,
+          department: department,
+          nip: null // Ensure nip is null for students
+        };
+      } else if (role === 'supervisor') {
+        updateData = {
+          ...updateData,
+          nip: nip,
+          department: department,
+          nim: null, // Ensure nim is null for supervisors
+          faculty: null // Ensure faculty is null for supervisors
+        };
+      } else {
+        // For other roles, clear student/supervisor specific fields
+        updateData = {
+          ...updateData,
+          nim: null,
+          nip: null,
+          faculty: null,
+          department: null
+        };
+      }
       
       const { error } = await supabase
         .from('profiles')

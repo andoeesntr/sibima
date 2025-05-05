@@ -64,7 +64,7 @@ const SupervisorDashboard = () => {
         return;
       }
       
-      // Fetch proposals supervised by this supervisor with explicit column name for profiles join
+      // Fetch proposals supervised by this supervisor with correct column specification
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('proposals')
         .select(`
@@ -74,7 +74,7 @@ const SupervisorDashboard = () => {
           created_at,
           student_id,
           team_id,
-          profiles!student_id (id, full_name)
+          profiles:student_id (id, full_name)
         `)
         .eq('supervisor_id', user.id);
       
