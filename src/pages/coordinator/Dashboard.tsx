@@ -1,13 +1,68 @@
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CheckCircle, FileText, HelpCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { proposals, activityLogs, formatDate } from '@/services/mockData';
+import { activityLogs, formatDate } from '@/services/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface Proposal {
+  id: string;
+  title: string;
+  status: string;
+  submissionDate: string;
+  studentName?: string;
+}
 
 const CoordinatorDashboard = () => {
   const navigate = useNavigate();
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    fetchProposals();
+  }, []);
+  
+  const fetchProposals = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch proposals with student information
+      const { data, error } = await supabase
+        .from('proposals')
+        .select(`
+          id,
+          title,
+          status,
+          created_at,
+          student:profiles!student_id (full_name)
+        `);
+      
+      if (error) {
+        throw error;
+      }
+
+      // Transform data for our component
+      const formattedProposals = data.map(proposal => ({
+        id: proposal.id,
+        title: proposal.title,
+        status: proposal.status || 'submitted',
+        submissionDate: proposal.created_at,
+        studentName: proposal.student?.full_name || 'Unknown Student'
+      }));
+      
+      setProposals(formattedProposals);
+      console.log("Fetched proposals:", formattedProposals);
+    } catch (error: any) {
+      console.error("Error fetching proposals:", error);
+      toast.error("Failed to load proposals");
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const pendingProposals = proposals.filter(p => p.status === 'submitted');
   
@@ -78,7 +133,11 @@ const CoordinatorDashboard = () => {
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            {pendingProposals.length > 0 ? (
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : pendingProposals.length > 0 ? (
               pendingProposals.slice(0, 3).map(proposal => (
                 <div 
                   key={proposal.id}
@@ -89,6 +148,11 @@ const CoordinatorDashboard = () => {
                     <span className="text-sm text-gray-500">
                       Submitted: {formatDate(proposal.submissionDate)}
                     </span>
+                    {proposal.studentName && (
+                      <span className="text-sm text-gray-500">
+                        By: {proposal.studentName}
+                      </span>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-2">

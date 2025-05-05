@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,22 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, Check, FileText, Search, User, X } from 'lucide-react';
-import { proposals, formatDate } from '@/services/mockData';
-import { Proposal } from '@/types';
+import { formatDate } from '@/services/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type ProposalStatus = 'submitted' | 'approved' | 'rejected' | 'all';
+
+interface Proposal {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  submissionDate: string;
+  reviewDate?: string;
+  supervisorIds: string[];
+  studentName?: string;
+}
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -32,6 +44,55 @@ const ProposalReview = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<ProposalStatus>('submitted');
   const [searchQuery, setSearchQuery] = useState('');
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch proposals from database
+  useEffect(() => {
+    fetchProposals();
+  }, []);
+
+  const fetchProposals = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch proposals with student information
+      const { data, error } = await supabase
+        .from('proposals')
+        .select(`
+          id, 
+          title,
+          description,
+          status, 
+          created_at,
+          supervisor_id,
+          student:profiles!student_id (full_name)
+        `);
+      
+      if (error) {
+        throw error;
+      }
+
+      // Transform data for our component
+      const formattedProposals: Proposal[] = data.map(proposal => ({
+        id: proposal.id,
+        title: proposal.title,
+        description: proposal.description || '',
+        status: proposal.status || 'submitted',
+        submissionDate: proposal.created_at,
+        studentName: proposal.student?.full_name || 'Unknown Student',
+        supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
+      }));
+      
+      setProposals(formattedProposals);
+      console.log("Fetched proposals:", formattedProposals);
+    } catch (error: any) {
+      console.error("Error fetching proposals:", error);
+      toast.error("Failed to load proposals");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredProposals = proposals.filter(proposal => {
     // Filter by tab selection
@@ -75,7 +136,11 @@ const ProposalReview = () => {
         </TabsList>
         
         <TabsContent value={activeTab} className="space-y-4">
-          {filteredProposals.length > 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredProposals.length > 0 ? (
             filteredProposals.map((proposal) => (
               <ProposalCard 
                 key={proposal.id}
@@ -110,8 +175,8 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg">{proposal.title}</CardTitle>
-        <Badge className={statusColors[proposal.status]}>
-          {statusLabels[proposal.status]}
+        <Badge className={statusColors[proposal.status as keyof typeof statusColors]}>
+          {statusLabels[proposal.status as keyof typeof statusLabels] || proposal.status}
         </Badge>
       </CardHeader>
       <CardContent>
@@ -124,6 +189,11 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
             <User size={14} className="mr-1" />
             <span>{proposal.supervisorIds.length} Pembimbing</span>
           </div>
+          {proposal.studentName && (
+            <div>
+              Student: {proposal.studentName}
+            </div>
+          )}
           <div>
             Submitted: {formatDate(proposal.submissionDate)}
           </div>
