@@ -74,7 +74,7 @@ const SupervisorDashboard = () => {
           created_at,
           student_id,
           team_id,
-          profiles:student_id (id, full_name)
+          student:profiles!student_id (id, full_name)
         `)
         .eq('supervisor_id', user.id);
       
@@ -91,8 +91,8 @@ const SupervisorDashboard = () => {
         status: proposal.status || 'submitted',
         submissionDate: proposal.created_at,
         student: {
-          id: proposal.profiles.id,
-          full_name: proposal.profiles.full_name
+          id: proposal.student.id,
+          full_name: proposal.student.full_name
         },
         teamId: proposal.team_id,
       }));

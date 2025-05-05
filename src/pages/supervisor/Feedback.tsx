@@ -94,7 +94,7 @@ const SupervisorFeedback = () => {
           description,
           created_at,
           team_id,
-          profiles:student_id (id, full_name, nim)
+          student:profiles!student_id (id, full_name, nim)
         `)
         .eq('supervisor_id', user.id);
 
@@ -112,9 +112,9 @@ const SupervisorFeedback = () => {
         submissionDate: proposal.created_at,
         description: proposal.description,
         student: {
-          id: proposal.profiles.id,
-          full_name: proposal.profiles.full_name,
-          nim: proposal.profiles.nim
+          id: proposal.student.id,
+          full_name: proposal.student.full_name,
+          nim: proposal.student.nim
         },
         teamId: proposal.team_id,
         attachments: [], // Will be populated later if needed
