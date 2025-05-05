@@ -40,15 +40,15 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
             <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline" 
-                disabled={status !== 'approved'}
+                disabled={status !== 'approved' || !qrCodeUrl}
                 onClick={() => {
                   if (qrCodeUrl) {
-                    window.open(qrCodeUrl);
+                    window.open(qrCodeUrl, '_blank');
                   }
                 }}
               >
                 <QrCode size={16} className="mr-1" /> 
-                {status === 'approved' ? 'Lihat QR Code' : 'QR Code Sedang Diproses'}
+                {status === 'approved' && qrCodeUrl ? 'Lihat QR Code' : 'QR Code Sedang Diproses'}
               </Button>
             </div>
           </div>

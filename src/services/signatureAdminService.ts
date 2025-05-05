@@ -66,7 +66,7 @@ export const fetchSignatures = async (): Promise<DigitalSignature[]> => {
 
 export const approveSignature = async (signatureId: string, signatureSupervisorId: string, signatureSupervisorName: string): Promise<{ qr_code_url?: string }> => {
   try {
-    // Update status to approved in Supabase
+    // First update status to approved in database to avoid race conditions
     const { error: updateError } = await supabase
       .from('digital_signatures')
       .update({ 
@@ -77,17 +77,49 @@ export const approveSignature = async (signatureId: string, signatureSupervisorI
 
     if (updateError) throw updateError;
     
-    // Generate QR code using our edge function
-    const { data: qrData, error: qrError } = await supabase.functions.invoke('generate-qrcode', {
-      body: {
+    // Get Supabase URL from client
+    const supabaseUrl = "https://ciaymvntmwwbnvewedue.supabase.co";
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    
+    if (!accessToken) {
+      throw new Error('No authentication token available');
+    }
+    
+    // Generate QR code using direct API call to edge function
+    const response = await fetch(`${supabaseUrl}/functions/v1/generate-qrcode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
         signatureId,
         supervisorId: signatureSupervisorId,
         supervisorName: signatureSupervisorName,
         baseUrl: window.location.origin
-      }
+      })
     });
-
-    if (qrError) throw qrError;
+    
+    if (!response.ok) {
+      // Even if the QR code generation fails, the signature is still approved
+      // Log error but don't throw since the status update succeeded
+      console.error(`Error generating QR code: ${response.statusText}`);
+      
+      // Create activity log for the approval
+      await supabase.from('activity_logs').insert({
+        user_id: '0', // System user or should be replaced with actual admin ID
+        user_name: 'Admin',
+        action: 'menyetujui tanda tangan digital',
+        target_type: 'signature',
+        target_id: signatureId
+      });
+      
+      // Return empty object but don't throw error since approval did succeed
+      return {};
+    }
+    
+    const qrData = await response.json();
     
     // Create activity log
     await supabase.from('activity_logs').insert({

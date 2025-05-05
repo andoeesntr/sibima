@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import qrcode from "https://esm.sh/qrcode@1.5.3";
+import * as qrcode from "https://esm.sh/qrcode@1.5.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,61 +53,71 @@ serve(async (req) => {
     // This creates a URL that can be used to verify the signature
     const verificationUrl = `${baseUrl || "https://siprakerin.app"}/verify?data=${encodeURIComponent(JSON.stringify(verificationData))}`;
     
-    // Generate QR code as data URL
-    const qrCodeDataURL = await qrcode.toDataURL(verificationUrl, {
-      width: 300,
-      margin: 1,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF',
-      },
-    });
-
-    // Convert data URL to binary data
-    const base64Data = qrCodeDataURL.split(",")[1];
-    const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
-
-    // Upload to storage
-    const filePath = `qrcodes/${supervisorId}-${Date.now()}.png`;
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from("signatures")
-      .upload(filePath, binaryData, {
-        contentType: "image/png",
-        upsert: true,
+    console.log("Generating QR code for URL:", verificationUrl);
+    
+    try {
+      // Generate QR code as data URL
+      const qrCodeDataURL = await qrcode.toDataURL(verificationUrl, {
+        margin: 1,
       });
+      
+      console.log("QR code generated successfully");
 
-    if (uploadError) {
-      throw uploadError;
-    }
+      // Convert data URL to binary data
+      const base64Data = qrCodeDataURL.split(",")[1];
+      const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
 
-    // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from("signatures")
-      .getPublicUrl(filePath);
+      // Upload to storage
+      const filePath = `qrcodes/${supervisorId}-${Date.now()}.png`;
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from("signatures")
+        .upload(filePath, binaryData, {
+          contentType: "image/png",
+          upsert: true,
+        });
 
-    // Update the digital signature with QR code URL
-    const { error: updateError } = await supabaseAdmin
-      .from('digital_signatures')
-      .update({
-        qr_code_url: publicUrl,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', signatureId);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        qr_code_url: publicUrl,
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+      if (uploadError) {
+        console.error("Error uploading QR code:", uploadError);
+        throw uploadError;
       }
-    );
+      
+      console.log("QR code uploaded successfully to path:", filePath);
+
+      // Get public URL
+      const { data: { publicUrl } } = supabaseAdmin.storage
+        .from("signatures")
+        .getPublicUrl(filePath);
+
+      // Update the digital signature with QR code URL
+      const { error: updateError } = await supabaseAdmin
+        .from('digital_signatures')
+        .update({
+          qr_code_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', signatureId);
+
+      if (updateError) {
+        console.error("Error updating signature with QR code URL:", updateError);
+        throw updateError;
+      }
+      
+      console.log("Digital signature updated with QR code URL:", publicUrl);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          qr_code_url: publicUrl,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    } catch (qrError) {
+      console.error("QR code generation error:", qrError);
+      throw new Error(`QR code generation error: ${qrError.message || String(qrError)}`);
+    }
   } catch (error) {
     console.error("Error generating QR code:", error);
     

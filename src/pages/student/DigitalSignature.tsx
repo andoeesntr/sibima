@@ -20,7 +20,7 @@ const DigitalSignature = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    const checkProposalStatus = async () => {
+    const fetchSignatureData = async () => {
       if (!user) return;
 
       setIsLoading(true);
@@ -48,8 +48,9 @@ const DigitalSignature = () => {
         if (proposalData && proposalData.status === 'approved') {
           setHasApprovedProposal(true);
           
-          // If we have a supervisor, fetch their name
+          // If we have a supervisor, fetch their name and signature data
           if (proposalData.supervisor_id) {
+            // Fetch supervisor name
             const { data: supervisorData, error: supervisorError } = await supabase
               .from('profiles')
               .select('full_name')
@@ -60,7 +61,7 @@ const DigitalSignature = () => {
               setSupervisorName(supervisorData.full_name);
             }
             
-            // Fetch digital signature
+            // Fetch digital signature and QR code
             const { data: signatureData, error: signatureError } = await supabase
               .from('digital_signatures')
               .select('signature_url, qr_code_url, status')
@@ -71,6 +72,8 @@ const DigitalSignature = () => {
             if (!signatureError && signatureData) {
               setSignatureUrl(signatureData.signature_url);
               setQrCodeUrl(signatureData.qr_code_url);
+            } else {
+              console.log('No approved signature found for supervisor');
             }
           }
         }
@@ -81,7 +84,7 @@ const DigitalSignature = () => {
       }
     };
 
-    checkProposalStatus();
+    fetchSignatureData();
   }, [user]);
 
   const handleDownload = (type: 'qrcode' | 'signature') => {
@@ -119,6 +122,27 @@ const DigitalSignature = () => {
           Silakan ajukan proposal KP terlebih dahulu atau hubungi koordinator KP jika Anda yakin ini adalah kesalahan.
         </AlertDescription>
       </Alert>
+    );
+  }
+
+  // Show a message if signature or QR code are not available
+  if (!signatureUrl && !qrCodeUrl) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Digital Signature</h1>
+        <p className="text-gray-600">
+          Download tanda tangan digital dan QR code untuk dokumen KP Anda
+        </p>
+        
+        <Alert className="max-w-lg mx-auto">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <AlertTitle className="text-amber-500 font-medium">Tanda Tangan Belum Tersedia</AlertTitle>
+          <AlertDescription className="text-gray-600">
+            Dosen pembimbing Anda belum mengupload tanda tangan digital atau tanda tangan belum disetujui.
+            Silakan hubungi dosen pembimbing Anda untuk mengupload tanda tangan digital.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
