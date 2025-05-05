@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Check, FileText, Search, User, X, FileIcon } from 'lucide-react';
+import { ArrowRight, Check, FileText, Search, User, X } from 'lucide-react';
 import { formatDate } from '@/services/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -57,7 +57,21 @@ const ProposalReview = () => {
     try {
       setLoading(true);
       
+      // Check database structure first
+      const { data: checkData, error: checkError } = await supabase
+        .from('proposals')
+        .select('*')
+        .limit(1);
+      
+      if (checkError) {
+        console.error("Error checking table structure:", checkError);
+        throw checkError;
+      }
+      
+      console.log("Table structure sample:", checkData);
+
       // Fetch proposals with student information
+      // Modify query to avoid requesting non-existent columns
       const { data, error } = await supabase
         .from('proposals')
         .select(`
@@ -67,15 +81,21 @@ const ProposalReview = () => {
           status, 
           created_at,
           supervisor_id,
-          document_url,
+          student_id,
           student:profiles!student_id (full_name)
         `);
       
       if (error) {
+        console.error("Error fetching proposals:", error);
         throw error;
       }
 
       console.log("Raw proposal data:", data);
+
+      if (!data) {
+        setProposals([]);
+        return;
+      }
 
       // Transform data for our component
       const formattedProposals: Proposal[] = data.map(proposal => ({
@@ -86,7 +106,7 @@ const ProposalReview = () => {
         submissionDate: proposal.created_at,
         studentName: proposal.student?.full_name || 'Unknown Student',
         supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
-        documentUrl: proposal.document_url,
+        // We'll handle document URL separately as it might be in a different table
       }));
       
       setProposals(formattedProposals);
@@ -176,6 +196,32 @@ type ProposalCardProps = {
 };
 
 const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
+  // State to hold the document URL which we'll fetch separately
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  
+  // Fetch document URL when the component mounts
+  useEffect(() => {
+    const fetchDocumentUrl = async () => {
+      try {
+        // This is a simplification - you may need to adjust this query based on how
+        // documents are actually stored in your database
+        const { data, error } = await supabase
+          .from('proposal_documents')
+          .select('file_url')
+          .eq('proposal_id', proposal.id)
+          .maybeSingle();
+        
+        if (data && data.file_url) {
+          setDocumentUrl(data.file_url);
+        }
+      } catch (error) {
+        console.error("Error fetching document URL:", error);
+      }
+    };
+    
+    fetchDocumentUrl();
+  }, [proposal.id]);
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -207,11 +253,11 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
               Reviewed: {formatDate(proposal.reviewDate)}
             </div>
           )}
-          {proposal.documentUrl && (
+          {documentUrl && (
             <div className="flex items-center text-blue-600">
               <FileText size={14} className="mr-1" />
               <a 
-                href={proposal.documentUrl} 
+                href={documentUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="hover:underline"
