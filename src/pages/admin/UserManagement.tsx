@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,7 +100,17 @@ const UserManagement = () => {
 
   const handleDeleteUser = async (userId: string, userName: string) => {
     try {
-      // First delete from profiles
+      // First delete the authentication user
+      const { error: authError } = await supabase.auth.admin.deleteUser(
+        userId
+      );
+      
+      if (authError) {
+        console.error('Error deleting auth user:', authError);
+        // Continue with profile deletion even if auth deletion fails
+      }
+      
+      // Then delete from profiles
       const { error: profileError } = await supabase
         .from('profiles')
         .delete()
@@ -359,7 +370,7 @@ const UserManagement = () => {
   );
 };
 
-// Add User Form Component - FIXED: Correctly save role and other data
+// Add User Form Component - FIXED: Properly create users with the correct role
 const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -392,10 +403,18 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
     setIsSubmitting(true);
     
     try {
+      console.log("Adding user with role:", role); // Debug log
+      
       // First sign up the user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: name,
+            role: role // Store role in user metadata
+          }
+        }
       });
       
       if (authError) throw authError;
@@ -404,12 +423,14 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
         throw new Error('User registration failed');
       }
       
-      // Create profile data based on the selected role
+      console.log("Auth user created:", authData.user.id, "with role:", role); // Debug log
+      
+      // Explicitly create profile with the correct role
       const profileData = {
         id: authData.user.id,
         email: email,
         full_name: name,
-        role: role, // Make sure role is explicitly set
+        role: role
       };
       
       // Add role-specific fields to profile data
@@ -418,16 +439,26 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
           nim: nim,
           faculty: faculty,
           department: department,
-          nip: null // Ensure nip is null for students
+          nip: null
         });
       } else if (role === 'supervisor') {
         Object.assign(profileData, {
           nip: nip,
           department: department,
-          nim: null, // Ensure nim is null for supervisors
-          faculty: null // Ensure faculty is null for supervisors
+          nim: null,
+          faculty: null
+        });
+      } else {
+        // For other roles, set fields to null
+        Object.assign(profileData, {
+          nim: null,
+          nip: null,
+          faculty: null,
+          department: null
         });
       }
+      
+      console.log("Creating profile with data:", profileData); // Debug log
       
       // Insert the new profile
       const { error: profileError } = await supabase
@@ -453,7 +484,10 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
         <Label htmlFor="role">Role</Label>
         <Select
           value={role}
-          onValueChange={(value) => setRole(value as UserRole)}
+          onValueChange={(value) => {
+            console.log("Role selected:", value); // Debug log
+            setRole(value as UserRole);
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Pilih role" />
@@ -577,7 +611,7 @@ const AddUserForm = ({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
   );
 };
 
-// Edit User Form component - FIXED: Issue with form freezing
+// Edit User Form component - FIXED: Prevent freezing when editing
 const EditUserForm = ({ 
   user, 
   onClose, 
@@ -587,6 +621,7 @@ const EditUserForm = ({
   onClose: () => void, 
   onSuccess: () => void 
 }) => {
+  // Create independent state variables to avoid manipulation of original user data
   const [name, setName] = useState(user.name || '');
   const [role, setRole] = useState<UserRole>(user.role);
   const [nim, setNim] = useState(user.nim || '');
@@ -616,39 +651,34 @@ const EditUserForm = ({
     setIsSubmitting(true);
     
     try {
-      // Create update data based on role to avoid null field issues
-      let updateData: any = {
+      console.log("Updating user with ID:", user.id, "to role:", role);
+      
+      // Create a clean update object with only the fields we want to update
+      const updateData: Record<string, any> = {
         full_name: name,
         role: role
       };
       
       // Add role-specific fields
       if (role === 'student') {
-        updateData = {
-          ...updateData,
-          nim: nim,
-          faculty: faculty,
-          department: department,
-          nip: null // Ensure nip is null for students
-        };
+        updateData.nim = nim;
+        updateData.faculty = faculty;
+        updateData.department = department;
+        updateData.nip = null;
       } else if (role === 'supervisor') {
-        updateData = {
-          ...updateData,
-          nip: nip,
-          department: department,
-          nim: null, // Ensure nim is null for supervisors
-          faculty: null // Ensure faculty is null for supervisors
-        };
+        updateData.nip = nip;
+        updateData.department = department;
+        updateData.nim = null;
+        updateData.faculty = null;
       } else {
         // For other roles, clear student/supervisor specific fields
-        updateData = {
-          ...updateData,
-          nim: null,
-          nip: null,
-          faculty: null,
-          department: null
-        };
+        updateData.nim = null;
+        updateData.nip = null;
+        updateData.faculty = null;
+        updateData.department = null;
       }
+      
+      console.log("Updating profile with data:", updateData);
       
       const { error } = await supabase
         .from('profiles')
@@ -658,7 +688,9 @@ const EditUserForm = ({
       if (error) throw error;
       
       toast.success('Pengguna berhasil diperbarui');
-      onSuccess();
+      
+      // Make sure we refresh data before closing the dialog
+      await onSuccess();
       onClose();
     } catch (error: any) {
       console.error('Error updating user:', error);
@@ -674,7 +706,10 @@ const EditUserForm = ({
         <Label htmlFor="edit-role">Role</Label>
         <Select
           value={role}
-          onValueChange={(value) => setRole(value as UserRole)}
+          onValueChange={(value) => {
+            console.log("Setting role to:", value);
+            setRole(value as UserRole);
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Pilih role" />
