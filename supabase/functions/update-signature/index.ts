@@ -17,6 +17,8 @@ serve(async (req) => {
 
   try {
     const { signatureId, status, signature_url, supervisor_id } = await req.json();
+    
+    console.log("Received request with data:", { signatureId, status, signature_url, supervisor_id });
 
     // Validate required parameters
     if ((!signatureId && !supervisor_id) || !status) {
@@ -39,43 +41,59 @@ serve(async (req) => {
       updateData.signature_url = signature_url;
     }
     
+    let result;
     let error;
     
     // If signatureId is provided, update existing record
     if (signatureId) {
-      const { error: updateError } = await supabaseAdmin
+      console.log(`Updating signature with ID: ${signatureId}`);
+      const { data, error: updateError } = await supabaseAdmin
         .from('digital_signatures')
         .update(updateData)
-        .eq('id', signatureId);
+        .eq('id', signatureId)
+        .select();
         
+      result = data;
       error = updateError;
     } 
     // If supervisor_id is provided but no signatureId, we need to insert or update
     else if (supervisor_id) {
+      console.log(`Checking for existing signature for supervisor: ${supervisor_id}`);
       // First check if a record exists for this supervisor
-      const { data: existingRecord } = await supabaseAdmin
+      const { data: existingRecord, error: lookupError } = await supabaseAdmin
         .from('digital_signatures')
         .select('id')
         .eq('supervisor_id', supervisor_id)
         .maybeSingle();
+      
+      if (lookupError) {
+        console.error("Error checking for existing record:", lookupError);
+        throw lookupError;
+      }
         
       if (existingRecord) {
+        console.log(`Found existing signature with ID: ${existingRecord.id}, updating...`);
         // Update existing record
-        const { error: updateError } = await supabaseAdmin
+        const { data: updateData, error: updateError } = await supabaseAdmin
           .from('digital_signatures')
           .update(updateData)
-          .eq('supervisor_id', supervisor_id);
+          .eq('id', existingRecord.id)
+          .select();
           
+        result = updateData;
         error = updateError;
       } else {
+        console.log(`No existing signature found for supervisor: ${supervisor_id}, creating new record...`);
         // Insert new record
-        const { error: insertError } = await supabaseAdmin
+        const { data: insertData, error: insertError } = await supabaseAdmin
           .from('digital_signatures')
           .insert({
             supervisor_id,
             ...updateData
-          });
+          })
+          .select();
           
+        result = insertData;
         error = insertError;
       }
     }
@@ -89,6 +107,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `Signature status updated to ${status}`,
+        data: result
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

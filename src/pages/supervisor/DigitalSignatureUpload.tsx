@@ -76,10 +76,27 @@ const DigitalSignatureUpload = () => {
     setIsSubmitting(true);
     
     try {
+      // Check if file is valid
+      if (signature.size > 1024 * 1024) { // 1MB limit
+        toast.error('Ukuran file terlalu besar. Maksimal 1MB');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Validate file type
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/gif'];
+      if (!allowedTypes.includes(signature.type)) {
+        toast.error('Format file tidak didukung. Gunakan PNG, JPEG atau GIF');
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Upload file to Supabase Storage
       const fileExt = signature.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       const filePath = `signatures/${fileName}`;
+      
+      console.log('Uploading signature to storage:', filePath);
       
       // Upload to storage
       const { error: storageError, data: storageData } = await supabase
@@ -91,7 +108,7 @@ const DigitalSignatureUpload = () => {
         
       if (storageError) {
         console.error('Storage error:', storageError);
-        throw storageError;
+        throw new Error(`Storage error: ${storageError.message}`);
       }
       
       // Get public URL
@@ -131,7 +148,7 @@ const DigitalSignatureUpload = () => {
       
     } catch (error: any) {
       console.error('Error uploading signature:', error);
-      toast.error('Gagal mengupload tanda tangan');
+      toast.error(`Gagal mengupload tanda tangan: ${error.message || 'Terjadi kesalahan'}`);
     } finally {
       setIsSubmitting(false);
     }
