@@ -34,9 +34,13 @@ serve(async (req) => {
     
     // Prepare the update data object
     const updateData: Record<string, any> = {
-      status,
       updated_at: new Date().toISOString()
     };
+
+    // Don't include status in updateData if it's 'deleted'
+    if (status !== 'deleted') {
+      updateData.status = status;
+    }
     
     // If signature_url is provided, add it to the updateData
     if (signature_url) {
@@ -46,8 +50,32 @@ serve(async (req) => {
     let result;
     let error;
     
+    // If status is 'deleted', we need to delete the record instead of updating it
+    if (status === 'deleted') {
+      console.log(`Deleting signature for ${signatureId || supervisor_id}`);
+      
+      if (signatureId) {
+        const { data, error: deleteError } = await supabaseAdmin
+          .from('digital_signatures')
+          .delete()
+          .eq('id', signatureId)
+          .select();
+          
+        result = data;
+        error = deleteError;
+      } else if (supervisor_id) {
+        const { data, error: deleteError } = await supabaseAdmin
+          .from('digital_signatures')
+          .delete()
+          .eq('supervisor_id', supervisor_id)
+          .select();
+          
+        result = data;
+        error = deleteError;
+      }
+    }
     // If signatureId is provided, update existing record
-    if (signatureId) {
+    else if (signatureId) {
       console.log(`Updating signature with ID: ${signatureId}`);
       const { data, error: updateError } = await supabaseAdmin
         .from('digital_signatures')
@@ -108,7 +136,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Signature status updated to ${status}`,
+        message: status === 'deleted' ? 'Signature deleted successfully' : `Signature status updated to ${status}`,
         data: result
       }),
       {

@@ -88,10 +88,8 @@ export const uploadSignature = async (
         throw new Error('No authentication token available');
       }
       
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl) {
-        throw new Error('VITE_SUPABASE_URL is not defined');
-      }
+      // Get Supabase URL from client
+      const supabaseUrl = "https://ciaymvntmwwbnvewedue.supabase.co";
       
       // Call edge function with authentication
       const response = await fetch(`${supabaseUrl}/functions/v1/upload-signature`, {

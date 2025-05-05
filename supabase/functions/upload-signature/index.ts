@@ -50,92 +50,97 @@ serve(async (req) => {
     const fileBuffer = new Uint8Array(arrayBuffer);
     const filePath = `${userId}/${path}`;
 
-    // First, check if the signatures bucket exists
-    const { data: buckets, error: bucketsError } = await supabaseAdmin
-      .storage
-      .listBuckets();
-    
-    if (bucketsError) {
-      console.error("Error listing buckets:", bucketsError);
-      throw bucketsError;
-    }
-
-    // Check if signatures bucket exists
-    const signaturesBucketExists = buckets?.find(bucket => bucket.name === 'signatures');
-    
-    // If bucket doesn't exist, create it
-    if (!signaturesBucketExists) {
-      console.log('Creating signatures bucket...');
-      const { error: createBucketError } = await supabaseAdmin
+    try {
+      // First, check if the signatures bucket exists
+      const { data: buckets, error: bucketsError } = await supabaseAdmin
         .storage
-        .createBucket('signatures', { public: true });
+        .listBuckets();
       
-      if (createBucketError) {
-        console.error("Error creating signatures bucket:", createBucketError);
-        throw createBucketError;
+      if (bucketsError) {
+        console.error("Error listing buckets:", bucketsError);
+        throw bucketsError;
       }
+
+      // Check if signatures bucket exists
+      const signaturesBucketExists = buckets?.find(bucket => bucket.name === 'signatures');
       
-      // Create policies for the bucket to allow public access
-      try {
-        await supabaseAdmin.rpc('create_storage_policy', {
-          bucket_name: 'signatures',
-          policy_name: 'signatures_public_select',
-          definition: `bucket_id = 'signatures'`,
-          operation: 'SELECT',
-          role_name: 'anon'
-        });
+      // If bucket doesn't exist, create it
+      if (!signaturesBucketExists) {
+        console.log('Creating signatures bucket...');
+        const { error: createBucketError } = await supabaseAdmin
+          .storage
+          .createBucket('signatures', { public: true });
         
-        await supabaseAdmin.rpc('create_storage_policy', {
-          bucket_name: 'signatures',
-          policy_name: 'signatures_auth_insert',
-          definition: `bucket_id = 'signatures' AND auth.role() = 'authenticated'`,
-          operation: 'INSERT',
-          role_name: 'authenticated'
+        if (createBucketError) {
+          console.error("Error creating signatures bucket:", createBucketError);
+          throw createBucketError;
+        }
+        
+        // Create policies for the bucket to allow public access
+        try {
+          await supabaseAdmin.rpc('create_storage_policy', {
+            bucket_name: 'signatures',
+            policy_name: 'signatures_public_select',
+            definition: `bucket_id = 'signatures'`,
+            operation: 'SELECT',
+            role_name: 'anon'
+          });
+          
+          await supabaseAdmin.rpc('create_storage_policy', {
+            bucket_name: 'signatures',
+            policy_name: 'signatures_auth_insert',
+            definition: `bucket_id = 'signatures' AND auth.role() = 'authenticated'`,
+            operation: 'INSERT',
+            role_name: 'authenticated'
+          });
+        } catch (policyError) {
+          console.error("Policy creation error:", policyError);
+          // Continue even if policy creation fails
+        }
+        
+        // Let's wait a bit to make sure the bucket is ready
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      console.log(`Uploading file to path: ${filePath}`);
+
+      // Upload the file using the admin client (bypassing RLS)
+      const { data: uploadData, error: uploadError } = await supabaseAdmin
+        .storage
+        .from('signatures')
+        .upload(filePath, fileBuffer, {
+          upsert: true,
+          contentType: file.type,
         });
-      } catch (policyError) {
-        console.error("Policy creation error:", policyError);
-        // Continue even if policy creation fails
+
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError);
+        throw uploadError;
       }
-      
-      // Let's wait a bit to make sure the bucket is ready
-      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log("File uploaded successfully, generating public URL");
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabaseAdmin
+        .storage
+        .from('signatures')
+        .getPublicUrl(filePath);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "File uploaded successfully",
+          publicUrl
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    } catch (storageError) {
+      console.error("Storage operation error:", storageError);
+      throw new Error(`Storage operation error: ${storageError.message || String(storageError)}`);
     }
-
-    console.log(`Uploading file to path: ${filePath}`);
-
-    // Upload the file using the admin client (bypassing RLS)
-    const { data: uploadData, error: uploadError } = await supabaseAdmin
-      .storage
-      .from('signatures')
-      .upload(filePath, fileBuffer, {
-        upsert: true,
-        contentType: file.type,
-      });
-
-    if (uploadError) {
-      console.error("Error uploading file:", uploadError);
-      throw uploadError;
-    }
-
-    console.log("File uploaded successfully, generating public URL");
-
-    // Get the public URL
-    const { data: { publicUrl } } = supabaseAdmin
-      .storage
-      .from('signatures')
-      .getPublicUrl(filePath);
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "File uploaded successfully",
-        publicUrl
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
   } catch (error) {
     console.error("Error uploading file:", error);
     
