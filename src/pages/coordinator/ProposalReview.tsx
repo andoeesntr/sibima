@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowRight, Check, FileText, Search, User, X } from 'lucide-react';
+import { ArrowRight, Check, FileText, Search, User, X, FileIcon } from 'lucide-react';
 import { formatDate } from '@/services/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ interface Proposal {
   reviewDate?: string;
   supervisorIds: string[];
   studentName?: string;
+  documentUrl?: string;
 }
 
 const statusColors = {
@@ -66,12 +67,15 @@ const ProposalReview = () => {
           status, 
           created_at,
           supervisor_id,
+          document_url,
           student:profiles!student_id (full_name)
         `);
       
       if (error) {
         throw error;
       }
+
+      console.log("Raw proposal data:", data);
 
       // Transform data for our component
       const formattedProposals: Proposal[] = data.map(proposal => ({
@@ -82,6 +86,7 @@ const ProposalReview = () => {
         submissionDate: proposal.created_at,
         studentName: proposal.student?.full_name || 'Unknown Student',
         supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
+        documentUrl: proposal.document_url,
       }));
       
       setProposals(formattedProposals);
@@ -200,6 +205,19 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
           {proposal.reviewDate && (
             <div>
               Reviewed: {formatDate(proposal.reviewDate)}
+            </div>
+          )}
+          {proposal.documentUrl && (
+            <div className="flex items-center text-blue-600">
+              <FileText size={14} className="mr-1" />
+              <a 
+                href={proposal.documentUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Lihat Dokumen
+              </a>
             </div>
           )}
         </div>

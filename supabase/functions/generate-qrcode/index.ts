@@ -56,6 +56,21 @@ serve(async (req) => {
     console.log("Generating QR code for URL:", verificationUrl);
     
     try {
+      // Check if signatures bucket exists, if not create it
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+      
+      if (!buckets?.some(bucket => bucket.name === 'signatures')) {
+        console.log("Creating signatures bucket");
+        const { error: bucketError } = await supabaseAdmin.storage.createBucket('signatures', {
+          public: true
+        });
+        
+        if (bucketError) {
+          console.error("Error creating bucket:", bucketError);
+          throw bucketError;
+        }
+      }
+      
       // Generate QR code as data URL
       const qrCodeDataURL = await qrcode.toDataURL(verificationUrl, {
         margin: 1,

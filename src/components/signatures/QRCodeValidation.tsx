@@ -13,6 +13,9 @@ interface QRCodeValidationProps {
 const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationProps) => {
   const [showQRDialog, setShowQRDialog] = React.useState(false);
 
+  console.log("QR Code URL:", qrCodeUrl);
+  console.log("Signature status:", status);
+
   return (
     <div className="border-t pt-6">
       <h2 className="text-lg font-medium mb-4">QR Code Validasi</h2>
@@ -44,7 +47,10 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
               <Button 
                 variant="outline" 
                 disabled={status !== 'approved' || !qrCodeUrl}
-                onClick={() => setShowQRDialog(true)}
+                onClick={() => {
+                  console.log("QR Code button clicked");
+                  setShowQRDialog(true);
+                }}
               >
                 <QrCode size={16} className="mr-1" /> 
                 {status === 'approved' && qrCodeUrl ? 'Lihat QR Code' : 'QR Code Sedang Diproses'}
