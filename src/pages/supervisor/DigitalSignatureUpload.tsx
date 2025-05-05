@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,50 +89,47 @@ const DigitalSignatureUpload = () => {
           upsert: true
         });
         
-      if (storageError) throw storageError;
+      if (storageError) {
+        console.error('Storage error:', storageError);
+        throw storageError;
+      }
       
       // Get public URL
       const { data: { publicUrl } } = supabase
         .storage
         .from('signatures')
         .getPublicUrl(filePath);
-        
-      // Save to database
-      const { data: existingSignature } = await supabase
-        .from('digital_signatures')
-        .select()
-        .eq('supervisor_id', user.id)
-        .maybeSingle();
-        
-      if (existingSignature) {
-        const { error: updateError } = await supabase
-          .from('digital_signatures')
-          .update({
-            signature_url: publicUrl,
-            status: 'pending',
-            updated_at: new Date().toISOString()
-          })
-          .eq('supervisor_id', user.id);
-          
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('digital_signatures')
-          .insert({
+      
+      console.log('Signature uploaded successfully to storage. Public URL:', publicUrl);
+      
+      // Use the update-signature edge function to save to database with service role
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'update-signature',
+        {
+          body: {
             supervisor_id: user.id,
-            signature_url: publicUrl,
-            status: 'pending'
-          });
-          
-        if (insertError) throw insertError;
+            status: 'pending',
+            signature_url: publicUrl
+          }
+        }
+      );
+      
+      if (functionError) {
+        console.error('Function error:', functionError);
+        throw new Error(`Function error: ${functionError.message}`);
       }
+      
+      console.log('Function response:', functionData);
       
       toast.success('Tanda tangan berhasil diupload');
       setHasUploadedSignature(true);
       setSignatureData({ signature_url: publicUrl, status: 'pending' });
       setActiveTab('status');
       
-    } catch (error) {
+      // Refresh signature data
+      fetchSignatureData();
+      
+    } catch (error: any) {
       console.error('Error uploading signature:', error);
       toast.error('Gagal mengupload tanda tangan');
     } finally {
@@ -147,13 +143,18 @@ const DigitalSignatureUpload = () => {
     setIsSubmitting(true);
     
     try {
-      // Delete from database
-      const { error } = await supabase
-        .from('digital_signatures')
-        .delete()
-        .eq('supervisor_id', user.id);
-        
-      if (error) throw error;
+      // Use the update-signature edge function to delete from database with service role
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'update-signature',
+        {
+          body: {
+            supervisor_id: user.id,
+            status: 'deleted'
+          }
+        }
+      );
+      
+      if (functionError) throw functionError;
       
       setHasUploadedSignature(false);
       setSignature(null);

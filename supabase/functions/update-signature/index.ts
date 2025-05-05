@@ -16,9 +16,10 @@ serve(async (req) => {
   }
 
   try {
-    const { signatureId, status } = await req.json();
+    const { signatureId, status, signature_url, supervisor_id } = await req.json();
 
-    if (!signatureId || !status) {
+    // Validate required parameters
+    if ((!signatureId && !supervisor_id) || !status) {
       throw new Error("Missing required parameters");
     }
 
@@ -27,17 +28,60 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
-
-    // Update the digital signature status
-    const { error } = await supabaseAdmin
-      .from('digital_signatures')
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', signatureId);
+    
+    let updateData = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+    
+    // If signature_url is provided, add it to the updateData
+    if (signature_url) {
+      updateData.signature_url = signature_url;
+    }
+    
+    let error;
+    
+    // If signatureId is provided, update existing record
+    if (signatureId) {
+      const { error: updateError } = await supabaseAdmin
+        .from('digital_signatures')
+        .update(updateData)
+        .eq('id', signatureId);
+        
+      error = updateError;
+    } 
+    // If supervisor_id is provided but no signatureId, we need to insert or update
+    else if (supervisor_id) {
+      // First check if a record exists for this supervisor
+      const { data: existingRecord } = await supabaseAdmin
+        .from('digital_signatures')
+        .select('id')
+        .eq('supervisor_id', supervisor_id)
+        .maybeSingle();
+        
+      if (existingRecord) {
+        // Update existing record
+        const { error: updateError } = await supabaseAdmin
+          .from('digital_signatures')
+          .update(updateData)
+          .eq('supervisor_id', supervisor_id);
+          
+        error = updateError;
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabaseAdmin
+          .from('digital_signatures')
+          .insert({
+            supervisor_id,
+            ...updateData
+          });
+          
+        error = insertError;
+      }
+    }
 
     if (error) {
+      console.error("Database operation error:", error);
       throw error;
     }
 
