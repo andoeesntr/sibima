@@ -90,15 +90,14 @@ export const useProposals = () => {
             console.error(`Error fetching documents for proposal ${proposal.id}:`, documentError);
           }
 
-          // Fetch feedback
+          // For feedback, join with profiles separately
           const { data: feedbackData, error: feedbackError } = await supabase
             .from('proposal_feedback')
             .select(`
               id, 
               content, 
               created_at, 
-              supervisor_id,
-              supervisor:profiles!supervisor_id (full_name)
+              supervisor_id
             `)
             .eq('proposal_id', proposal.id);
           
@@ -106,21 +105,44 @@ export const useProposals = () => {
             console.error(`Error fetching feedback for proposal ${proposal.id}:`, feedbackError);
           }
 
+          // Fetch supervisor names for feedback
+          let feedbackWithNames = [];
+          if (feedbackData && feedbackData.length > 0) {
+            feedbackWithNames = await Promise.all(
+              feedbackData.map(async (feedback) => {
+                const { data: supervisorData } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', feedback.supervisor_id)
+                  .single();
+                
+                return {
+                  ...feedback,
+                  supervisor_name: supervisorData?.full_name
+                };
+              })
+            );
+          }
+
           // Fetch all supervisors for this proposal if it's a team proposal
           let supervisors = [];
           if (proposal.team_id) {
             const { data: teamSupervisors, error: supervisorsError } = await supabase
               .from('team_supervisors')
-              .select(`
-                supervisor_id,
-                supervisor:profiles!supervisor_id (id, full_name, profile_image)
-              `)
+              .select(`supervisor_id`)
               .eq('team_id', proposal.team_id);
             
             if (supervisorsError) {
               console.error(`Error fetching supervisors for team ${proposal.team_id}:`, supervisorsError);
             } else if (teamSupervisors && teamSupervisors.length > 0) {
-              supervisors = teamSupervisors.map(s => s.supervisor);
+              // Fetch supervisor details
+              const supervisorIds = teamSupervisors.map(s => s.supervisor_id);
+              const { data: supervisorProfiles } = await supabase
+                .from('profiles')
+                .select('id, full_name, profile_image')
+                .in('id', supervisorIds);
+              
+              supervisors = supervisorProfiles || [];
             }
           }
           
@@ -157,13 +179,7 @@ export const useProposals = () => {
               fileUrl: doc.file_url,
               fileType: doc.file_type
             })) || [],
-            feedback: feedbackData?.map(feedback => ({
-              id: feedback.id,
-              content: feedback.content,
-              created_at: feedback.created_at,
-              supervisor_id: feedback.supervisor_id,
-              supervisor_name: feedback.supervisor?.full_name
-            })) || []
+            feedback: feedbackWithNames || []
           };
         })
       );
