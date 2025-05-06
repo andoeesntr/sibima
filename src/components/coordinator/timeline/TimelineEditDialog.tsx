@@ -18,6 +18,7 @@ interface TimelineEditDialogProps {
   currentStep: TimelineStep | null;
   onStepChange: (step: TimelineStep) => void;
   onSave: () => void;
+  updating?: boolean;
 }
 
 const TimelineEditDialog = ({
@@ -25,7 +26,8 @@ const TimelineEditDialog = ({
   onOpenChange,
   currentStep,
   onStepChange,
-  onSave
+  onSave,
+  updating = false
 }: TimelineEditDialogProps) => {
   if (!currentStep) return null;
 
@@ -43,6 +45,7 @@ const TimelineEditDialog = ({
               id="title"
               value={currentStep.title}
               onChange={(e) => onStepChange({...currentStep, title: e.target.value})}
+              disabled={updating}
             />
           </div>
           
@@ -52,6 +55,7 @@ const TimelineEditDialog = ({
               id="period"
               value={currentStep.period}
               onChange={(e) => onStepChange({...currentStep, period: e.target.value})}
+              disabled={updating}
             />
           </div>
           
@@ -62,12 +66,17 @@ const TimelineEditDialog = ({
               value={currentStep.description || ''}
               onChange={(e) => onStepChange({...currentStep, description: e.target.value})}
               rows={3}
+              disabled={updating}
             />
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={onSave}>Save Changes</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={updating}>
+              Cancel
+            </Button>
+            <Button onClick={onSave} disabled={updating}>
+              {updating ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
         </div>
       </DialogContent>

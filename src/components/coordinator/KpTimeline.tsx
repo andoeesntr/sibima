@@ -14,6 +14,7 @@ const KpTimeline = () => {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentStep, setCurrentStep] = useState<TimelineStep | null>(null);
+  const [updating, setUpdating] = useState(false);
   
   const isMobile = useIsMobile();
 
@@ -41,16 +42,19 @@ const KpTimeline = () => {
 
   const handleSaveStep = async () => {
     if (!currentStep) return;
-
+    
     try {
+      setUpdating(true);
       const updatedStep = await updateTimelineStep(currentStep);
+      
       if (updatedStep) {
         setSteps(steps.map(step => step.id === updatedStep.id ? updatedStep : step));
         setOpenDialog(false);
       }
     } catch (error) {
       console.error("Failed to update timeline step:", error);
-      toast.error("Failed to update timeline step");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -86,6 +90,7 @@ const KpTimeline = () => {
         currentStep={currentStep}
         onStepChange={setCurrentStep}
         onSave={handleSaveStep}
+        updating={updating}
       />
     </Card>
   );

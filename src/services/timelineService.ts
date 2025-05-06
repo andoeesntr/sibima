@@ -70,13 +70,18 @@ export const fetchTimelineSteps = async (): Promise<TimelineStep[]> => {
 
 export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineStep | null> => {
   try {
+    // Deep clone the step object to prevent any unexpected mutations
+    const stepToUpdate = { ...step };
+    
     const { data, error } = await supabase
       .from('kp_timeline')
-      .upsert(step)
+      .update(stepToUpdate)
+      .eq('id', stepToUpdate.id)
       .select()
       .single();
 
     if (error) {
+      console.error('Error updating timeline step:', error);
       toast.error('Failed to update timeline step');
       throw error;
     }
@@ -85,6 +90,7 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
     return data as TimelineStep;
   } catch (error) {
     console.error('Error updating timeline step:', error);
+    toast.error('Failed to update timeline step');
     return null;
   }
 };

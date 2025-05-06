@@ -19,7 +19,7 @@ const DesktopTimeline = ({ steps, onEditStep }: TimelineDisplayProps) => {
             </div>
             
             {/* Content - alternating top/bottom */}
-            <div className={`mt-8 ${index % 2 === 0 ? '' : 'md:-mt-32'}`}>
+            <div className={`${index % 2 === 0 ? 'mt-8' : '-mt-32'}`}>
               <div className="bg-white rounded-lg border border-gray-200 shadow p-4 mx-auto relative group">
                 <Button 
                   variant="ghost" 
