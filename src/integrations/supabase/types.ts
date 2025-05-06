@@ -165,12 +165,48 @@ export type Database = {
           },
         ]
       }
+      proposal_feedback: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          proposal_id: string
+          supervisor_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          proposal_id: string
+          supervisor_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          proposal_id?: string
+          supervisor_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_feedback_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       proposals: {
         Row: {
           company_name: string | null
           created_at: string | null
           description: string | null
           id: string
+          rejection_reason: string | null
           status: string | null
           student_id: string
           supervisor_id: string | null
@@ -183,6 +219,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          rejection_reason?: string | null
           status?: string | null
           student_id: string
           supervisor_id?: string | null
@@ -195,6 +232,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          rejection_reason?: string | null
           status?: string | null
           student_id?: string
           supervisor_id?: string | null
@@ -264,6 +302,38 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_supervisors: {
+        Row: {
+          created_at: string | null
+          id: string
+          supervisor_id: string
+          team_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          supervisor_id: string
+          team_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          supervisor_id?: string
+          team_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_supervisors_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
