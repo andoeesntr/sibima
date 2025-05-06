@@ -173,12 +173,13 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
       {role === 'supervisor' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="nid">NID</Label> {/* Changed from nip to nid */}
+            {/* Changed from nip to nid */}
+            <Label htmlFor="nid">NID</Label>
             <Input
-              id="nid" // Changed from nip to nid
-              value={nid} // Changed from nip to nid
-              onChange={(e) => setNid(e.target.value)} // Changed from setNip to setNid
-              placeholder="Masukkan NID" // Changed from NIP to NID
+              id="nid"
+              value={nid}
+              onChange={(e) => setNid(e.target.value)}
+              placeholder="Masukkan NID"
             />
           </div>
           
