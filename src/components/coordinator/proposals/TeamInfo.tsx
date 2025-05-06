@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil, User, Users } from "lucide-react";
+import { Supervisor } from "@/services/supervisorService";
 
 interface TeamMember {
   id: string;
@@ -13,12 +14,6 @@ interface Team {
   id: string;
   name: string;
   members: TeamMember[];
-}
-
-export interface Supervisor {
-  id: string;
-  full_name: string;
-  profile_image?: string;
 }
 
 interface TeamInfoProps {

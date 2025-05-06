@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Supervisor } from './TeamInfo';
+import { Supervisor } from '@/services/supervisorService';
 
 interface ProposalDocument {
   id: string;

@@ -1,8 +1,10 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useProposalData } from '@/components/coordinator/proposals/ProposalDataLoader';
+import ProposalLoading from '@/components/coordinator/proposals/ProposalLoading';
+import NotFoundMessage from '@/components/coordinator/proposals/NotFoundMessage';
 import ProposalHeader from '@/components/coordinator/proposals/ProposalHeader';
 import ProposalDetails from '@/components/coordinator/proposals/ProposalDetails';
 import TeamInfo from '@/components/coordinator/proposals/TeamInfo';
@@ -10,8 +12,7 @@ import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
 import SupervisorEditDialog from '@/components/coordinator/proposals/SupervisorEditDialog';
-import { Button } from '@/components/ui/button';
-import { useProposalData } from '@/components/coordinator/proposals/ProposalDataLoader';
+import { Supervisor } from '@/services/supervisorService';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -30,7 +31,6 @@ const statusLabels = {
 };
 
 const ProposalDetail = () => {
-  const navigate = useNavigate();
   const { proposal, loading, supervisors, handleUpdateSupervisors } = useProposalData();
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
@@ -61,7 +61,6 @@ const ProposalDetail = () => {
       
       toast.success('Proposal berhasil disetujui');
       setIsApproveDialogOpen(false);
-      navigate('/coordinator/proposal-review');
     } catch (error: any) {
       console.error("Error approving proposal:", error);
       toast.error(`Failed to approve proposal: ${error.message}`);
@@ -94,7 +93,6 @@ const ProposalDetail = () => {
       
       toast.success('Proposal berhasil ditolak');
       setIsRejectDialogOpen(false);
-      navigate('/coordinator/proposal-review');
     } catch (error: any) {
       console.error("Error rejecting proposal:", error);
       toast.error(`Failed to reject proposal: ${error.message}`);
@@ -115,26 +113,11 @@ const ProposalDetail = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <ProposalLoading />;
   }
 
   if (!proposal) {
-    return (
-      <div className="text-center py-10">
-        <h1 className="text-2xl font-bold mb-4">Proposal tidak ditemukan</h1>
-        <Button 
-          onClick={() => navigate('/coordinator/proposal-review')}
-          variant="outline"
-          className="flex items-center"
-        >
-          Kembali ke Daftar
-        </Button>
-      </div>
-    );
+    return <NotFoundMessage />;
   }
 
   return (

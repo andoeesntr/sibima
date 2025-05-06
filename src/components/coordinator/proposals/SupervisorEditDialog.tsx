@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Supervisor } from '@/types';
+import { Supervisor } from '@/services/supervisorService';
 
 interface SupervisorEditDialogProps {
   isOpen: boolean;
@@ -37,7 +37,7 @@ const SupervisorEditDialog = ({
   currentSupervisors,
   onSupervisorsUpdated
 }: SupervisorEditDialogProps) => {
-  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
+  const [availableSupervisors, setAvailableSupervisors] = useState<Supervisor[]>([]);
   const [selectedSupervisorIds, setSelectedSupervisorIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -57,7 +57,7 @@ const SupervisorEditDialog = ({
         .eq('role', 'supervisor');
         
       if (error) throw error;
-      setSupervisors(data || []);
+      setAvailableSupervisors(data || []);
     } catch (error) {
       console.error("Error fetching supervisors:", error);
       toast.error("Gagal memuat daftar dosen pembimbing");
@@ -126,7 +126,11 @@ const SupervisorEditDialog = ({
         }
         
         if (supervisorData) {
-          updatedSupervisors.push(supervisorData as Supervisor);
+          updatedSupervisors.push({
+            id: supervisorData.id,
+            full_name: supervisorData.full_name,
+            profile_image: supervisorData.profile_image
+          });
         }
       }
       
@@ -169,7 +173,7 @@ const SupervisorEditDialog = ({
                 <SelectValue placeholder="Pilih dosen pembimbing" />
               </SelectTrigger>
               <SelectContent>
-                {supervisors.map((supervisor) => (
+                {availableSupervisors.map((supervisor) => (
                   <SelectItem key={supervisor.id} value={supervisor.id}>
                     {supervisor.full_name}
                   </SelectItem>
@@ -189,7 +193,7 @@ const SupervisorEditDialog = ({
                 <SelectValue placeholder="Pilih dosen pembimbing" />
               </SelectTrigger>
               <SelectContent>
-                {supervisors.map((supervisor) => (
+                {availableSupervisors.map((supervisor) => (
                   <SelectItem key={supervisor.id} value={supervisor.id}>
                     {supervisor.full_name}
                   </SelectItem>

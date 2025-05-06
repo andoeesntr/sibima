@@ -1,11 +1,6 @@
 
 import { User } from 'lucide-react';
-
-interface Supervisor {
-  id: string;
-  full_name: string;
-  profile_image?: string;
-}
+import { Supervisor } from '@/services/supervisorService';
 
 interface ProposalInfoProps {
   companyName: string | null;
