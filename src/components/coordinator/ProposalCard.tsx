@@ -41,6 +41,14 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
           {proposal.description.substring(0, 100)}
           {proposal.description.length > 100 ? '...' : ''}
         </div>
+        
+        {/* Show rejection reason for rejected proposals */}
+        {proposal.status === 'rejected' && proposal.rejectionReason && (
+          <div className="bg-red-50 border border-red-100 rounded p-2 mb-4">
+            <p className="text-xs font-medium text-red-800">Alasan ditolak: {proposal.rejectionReason.substring(0, 70)}{proposal.rejectionReason.length > 70 ? '...' : ''}</p>
+          </div>
+        )}
+        
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
           <div className="flex items-center">
             <User size={14} className="mr-1" />

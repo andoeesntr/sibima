@@ -45,6 +45,7 @@ interface Proposal {
   company_name: string | null;
   created_at: string;
   updated_at: string | null;
+  rejection_reason?: string; // Add rejection_reason property
   supervisor: {
     id: string;
     full_name: string;
@@ -87,7 +88,8 @@ const ProposalDetail = () => {
             company_name,
             created_at,
             updated_at,
-            supervisor_id
+            supervisor_id,
+            rejection_reason
           `)
           .eq('id', id)
           .eq('student_id', user.id)
@@ -196,6 +198,14 @@ const ProposalDetail = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Display rejection reason if the proposal was rejected */}
+          {proposal.status === 'rejected' && proposal.rejection_reason && (
+            <div className="bg-red-50 border border-red-100 rounded-md p-4">
+              <h3 className="font-medium text-red-800 mb-1">Alasan Penolakan</h3>
+              <p className="text-red-700 whitespace-pre-line">{proposal.rejection_reason}</p>
+            </div>
+          )}
+
           {proposal.company_name && (
             <div>
               <h3 className="font-medium mb-2">Nama Perusahaan</h3>

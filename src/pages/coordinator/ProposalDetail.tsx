@@ -231,7 +231,8 @@ const ProposalDetail = () => {
         .from('proposals')
         .update({ 
           status: 'rejected',
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          rejection_reason: rejectionReason // Save the rejection reason
         })
         .eq('id', proposal.id);
         
