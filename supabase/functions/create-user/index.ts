@@ -53,7 +53,7 @@ serve(async (req) => {
       full_name,
       role,
       nim: role === 'student' ? nim : null,
-      nid: role === 'supervisor' ? nid : null, // Changed from nip to nid
+      nid: role === 'supervisor' ? nid : null, // Using nid instead of nip
       faculty: role === 'student' ? faculty : null,
       department: role === 'student' || role === 'supervisor' ? department : null
     };

@@ -35,20 +35,21 @@ const UserManagement = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, role, nim, nip, faculty, department');
+        .select('id, full_name, email, role, nim, nid, faculty, department');
       
       if (error) {
         throw error;
       }
 
       // Transform data to match our UserData interface
+      // Here we map nid to nip for backward compatibility
       const transformedUsers = data.map(profile => ({
         id: profile.id,
         name: profile.full_name || 'Unnamed User',
         email: profile.email,
         role: profile.role as UserRole,
         nim: profile.nim,
-        nip: profile.nip,
+        nip: profile.nid, // Map nid from database to nip for interface compatibility
         faculty: profile.faculty,
         department: profile.department
       }));

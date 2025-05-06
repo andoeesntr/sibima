@@ -137,7 +137,7 @@ const SupervisorProfile = () => {
         <ProfileImageUploader initialImage={profile?.profile_image} />
         <div>
           <h1 className="text-2xl font-bold">{profile?.full_name || 'Dosen Pembimbing'}</h1>
-          <p className="text-gray-600">{profile?.nip || 'No NIP'} - Dosen Pembimbing KP</p>
+          <p className="text-gray-600">{profile?.nid || 'No NID'} - Dosen Pembimbing KP</p>
         </div>
       </div>
       
@@ -157,10 +157,10 @@ const SupervisorProfile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="nip">NIP</Label>
-                <Input id="nip" value={profile?.nip || ''} disabled />
+                <Label htmlFor="nid">NID</Label>
+                <Input id="nid" value={profile?.nid || ''} disabled />
                 <p className="text-sm text-gray-500">
-                  NIP tidak dapat diubah
+                  NID tidak dapat diubah
                 </p>
               </div>
               

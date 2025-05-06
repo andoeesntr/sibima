@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('student');
   const [nim, setNim] = useState('');
-  const [nip, setNip] = useState('');
+  const [nid, setNid] = useState(''); // Changed from nip to nid
   const [faculty, setFaculty] = useState('');
   const [department, setDepartment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,8 +38,8 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
     }
     
     // Validate supervisor specific fields
-    if (role === 'supervisor' && !nip) {
-      toast.error('NIP diperlukan untuk dosen');
+    if (role === 'supervisor' && !nid) { // Changed from nip to nid
+      toast.error('NID diperlukan untuk dosen'); // Changed from NIP to NID
       return;
     }
     
@@ -55,7 +56,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
           full_name: name,
           role,
           nim: role === 'student' ? nim : null,
-          nip: role === 'supervisor' ? nip : null,
+          nid: role === 'supervisor' ? nid : null, // Changed from nip to nid
           faculty: role === 'student' ? faculty : null,
           department: role === 'student' || role === 'supervisor' ? department : null
         }
@@ -172,12 +173,12 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
       {role === 'supervisor' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="nip">NIP</Label>
+            <Label htmlFor="nid">NID</Label> {/* Changed from nip to nid */}
             <Input
-              id="nip"
-              value={nip}
-              onChange={(e) => setNip(e.target.value)}
-              placeholder="Masukkan NIP"
+              id="nid" // Changed from nip to nid
+              value={nid} // Changed from nip to nid
+              onChange={(e) => setNid(e.target.value)} // Changed from setNip to setNid
+              placeholder="Masukkan NID" // Changed from NIP to NID
             />
           </div>
           
