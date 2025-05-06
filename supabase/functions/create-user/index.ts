@@ -17,7 +17,7 @@ serve(async (req) => {
 
   try {
     // Get the request body
-    const { email, password, full_name, role, nim, nip, faculty, department } = await req.json();
+    const { email, password, full_name, role, nim, nid, faculty, department } = await req.json();
 
     // Create a Supabase client with the service role key (to bypass RLS)
     const supabaseAdmin = createClient(
@@ -53,7 +53,7 @@ serve(async (req) => {
       full_name,
       role,
       nim: role === 'student' ? nim : null,
-      nip: role === 'supervisor' ? nip : null,
+      nid: role === 'supervisor' ? nid : null, // Changed from nip to nid
       faculty: role === 'student' ? faculty : null,
       department: role === 'student' || role === 'supervisor' ? department : null
     };

@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/contexts/AuthContext';
+import { loginUser } from '@/utils/auth';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useAuth();
@@ -20,18 +21,24 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      if (!email || !password) {
+      if (!identifier || !password) {
         toast.error('Silahkan isi semua field');
         setIsLoading(false);
         return;
       }
       
-      console.log('Attempting login with:', email);
-      await signIn(email, password);
+      console.log('Attempting login with:', identifier);
+      // Use our new loginUser function to handle email/NIM/NID login
+      const { data, error } = await loginUser(identifier, password);
+      
+      if (error) {
+        throw error;
+      }
+      
       console.log('Login successful, navigation should happen via auth state change');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      // Error is already handled in the signIn function
+      toast.error(error.message || 'Gagal login. Periksa kredensial Anda.');
     } finally {
       setIsLoading(false);
     }
@@ -56,13 +63,13 @@ const Login = () => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="identifier">Email / NIM / NID</Label>
               <Input 
-                id="email" 
-                type="email" 
-                placeholder="Masukkan email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="identifier" 
+                type="text" 
+                placeholder="Masukkan email, NIM, atau NID" 
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required 
               />
             </div>

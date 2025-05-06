@@ -3,13 +3,14 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { loginUser } from '@/utils/auth';
 
 interface Profile {
   id: string;
   full_name?: string;
   role: 'student' | 'supervisor' | 'coordinator' | 'admin';
   nim?: string;
-  nip?: string;
+  nid?: string;  // Changed from nip to nid
   faculty?: string;
   department?: string;
   profile_image?: string;
@@ -20,7 +21,7 @@ interface AuthContextType {
   user: any;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (identifier: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -152,13 +153,10 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
     try {
-      console.log('Signing in with:', email);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      console.log('Signing in with:', identifier);
+      const { data, error } = await loginUser(identifier, password);
 
       if (error) {
         console.error('Sign in error:', error);
@@ -168,7 +166,6 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       if (data && data.user) {
         console.log('Sign in successful:', data.user.id);
         setUser(data.user);
-        
         // Since onAuthStateChange will handle the redirect, we don't need to duplicate that logic here
       }
     } catch (error: any) {
