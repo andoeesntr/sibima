@@ -11,6 +11,11 @@ export interface Proposal {
   submissionDate: string;
   reviewDate?: string;
   supervisorIds: string[];
+  supervisors?: {
+    id: string;
+    full_name: string;
+    profile_image?: string;
+  }[];
   studentName?: string;
   companyName?: string;
   documentUrl?: string;
@@ -22,6 +27,14 @@ export interface Proposal {
     fileUrl: string;
     fileType?: string;
   }[];
+  feedback?: {
+    id: string;
+    content: string;
+    created_at: string;
+    supervisor_id: string;
+    supervisor_name?: string;
+  }[];
+  rejectionReason?: string;
 }
 
 export type ProposalStatus = 'submitted' | 'approved' | 'rejected' | 'all';
@@ -47,6 +60,7 @@ export const useProposals = () => {
           supervisor_id,
           student_id,
           team_id,
+          rejection_reason,
           student:profiles!student_id (full_name),
           team:teams (id, name)
         `);
@@ -63,9 +77,10 @@ export const useProposals = () => {
         return;
       }
 
-      // Fetch documents for each proposal
-      const proposalsWithDocuments = await Promise.all(
+      // Fetch documents and feedback for each proposal
+      const proposalsWithDetails = await Promise.all(
         data.map(async (proposal) => {
+          // Fetch documents
           const { data: documentData, error: documentError } = await supabase
             .from('proposal_documents')
             .select('id, file_name, file_url, file_type')
@@ -73,6 +88,53 @@ export const useProposals = () => {
           
           if (documentError) {
             console.error(`Error fetching documents for proposal ${proposal.id}:`, documentError);
+          }
+
+          // Fetch feedback
+          const { data: feedbackData, error: feedbackError } = await supabase
+            .from('proposal_feedback')
+            .select(`
+              id, 
+              content, 
+              created_at, 
+              supervisor_id,
+              supervisor:profiles!supervisor_id (full_name)
+            `)
+            .eq('proposal_id', proposal.id);
+          
+          if (feedbackError) {
+            console.error(`Error fetching feedback for proposal ${proposal.id}:`, feedbackError);
+          }
+
+          // Fetch all supervisors for this proposal if it's a team proposal
+          let supervisors = [];
+          if (proposal.team_id) {
+            const { data: teamSupervisors, error: supervisorsError } = await supabase
+              .from('team_supervisors')
+              .select(`
+                supervisor_id,
+                supervisor:profiles!supervisor_id (id, full_name, profile_image)
+              `)
+              .eq('team_id', proposal.team_id);
+            
+            if (supervisorsError) {
+              console.error(`Error fetching supervisors for team ${proposal.team_id}:`, supervisorsError);
+            } else if (teamSupervisors && teamSupervisors.length > 0) {
+              supervisors = teamSupervisors.map(s => s.supervisor);
+            }
+          }
+          
+          // If no team supervisors found, use the main supervisor
+          if (supervisors.length === 0 && proposal.supervisor_id) {
+            const { data: mainSupervisor, error: supervisorError } = await supabase
+              .from('profiles')
+              .select('id, full_name, profile_image')
+              .eq('id', proposal.supervisor_id)
+              .single();
+            
+            if (!supervisorError && mainSupervisor) {
+              supervisors = [mainSupervisor];
+            }
           }
 
           // Transform data for our component
@@ -84,26 +146,62 @@ export const useProposals = () => {
             submissionDate: proposal.created_at,
             studentName: proposal.student?.full_name || 'Unknown Student',
             supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
+            supervisors: supervisors,
             companyName: proposal.company_name,
             teamId: proposal.team_id,
             teamName: proposal.team?.name,
+            rejectionReason: proposal.rejection_reason,
             documents: documentData?.map(doc => ({
               id: doc.id,
               fileName: doc.file_name,
               fileUrl: doc.file_url,
               fileType: doc.file_type
+            })) || [],
+            feedback: feedbackData?.map(feedback => ({
+              id: feedback.id,
+              content: feedback.content,
+              created_at: feedback.created_at,
+              supervisor_id: feedback.supervisor_id,
+              supervisor_name: feedback.supervisor?.full_name
             })) || []
           };
         })
       );
       
-      setProposals(proposalsWithDocuments);
-      console.log("Fetched proposals with documents:", proposalsWithDocuments);
+      setProposals(proposalsWithDetails);
+      console.log("Fetched proposals with details:", proposalsWithDetails);
     } catch (error: any) {
       console.error("Error fetching proposals:", error);
       toast.error("Failed to load proposals");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to save feedback to the database
+  const saveFeedback = async (proposalId: string, supervisorId: string, content: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('proposal_feedback')
+        .insert({
+          proposal_id: proposalId,
+          supervisor_id: supervisorId,
+          content: content
+        })
+        .select();
+      
+      if (error) {
+        console.error("Error saving feedback:", error);
+        throw error;
+      }
+
+      // Refresh proposals after adding feedback
+      await fetchProposals();
+      return data;
+    } catch (error: any) {
+      console.error("Error saving feedback:", error);
+      toast.error("Failed to save feedback");
+      throw error;
     }
   };
 
@@ -114,6 +212,7 @@ export const useProposals = () => {
   return {
     proposals,
     loading,
-    fetchProposals
+    fetchProposals,
+    saveFeedback
   };
 };

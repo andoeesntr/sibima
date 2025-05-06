@@ -104,6 +104,22 @@ const SupervisorDashboard = () => {
             console.error(`Error fetching documents for proposal ${proposal.id}:`, documentError);
           }
           
+          // Also fetch team members if this is a team proposal
+          let teamMembers = [];
+          if (proposal.team_id) {
+            const { data: membersData, error: membersError } = await supabase
+              .from('team_members')
+              .select(`
+                user_id,
+                profiles!user_id (id, full_name, nim)
+              `)
+              .eq('team_id', proposal.team_id);
+              
+            if (!membersError && membersData) {
+              teamMembers = membersData.map(m => m.profiles);
+            }
+          }
+          
           return {
             id: proposal.id,
             title: proposal.title,
@@ -115,6 +131,7 @@ const SupervisorDashboard = () => {
             },
             teamId: proposal.team_id,
             teamName: proposal.team?.name || null,
+            teamMembers: teamMembers,
             documents: documentData?.map(doc => ({
               id: doc.id,
               fileName: doc.file_name,

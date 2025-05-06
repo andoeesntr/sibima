@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { TabsContent, Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProposals, Proposal } from '@/hooks/useProposals';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -28,118 +29,29 @@ const statusLabels = {
   rejected: "Ditolak",
 };
 
-// Define proper interfaces
-interface Student {
-  id: string;
-  full_name: string;
-  nim?: string;
-}
-
-interface Attachment {
-  id: string;
-  name: string;
-  fileUrl: string;
-}
-
-interface Proposal {
-  id: string;
-  title: string;
-  status: string;
-  submissionDate: string;
-  description?: string;
-  student: Student;
-  teamId?: string;
-  teamName?: string;
-  teamMembers?: Student[];
-  feedback?: string[];
-  attachments: Attachment[];
-}
-
 const SupervisorFeedback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const proposalId = searchParams.get('id');
   const { user } = useAuth();
   
-  const [supervisedProposals, setSupervisedProposals] = useState<Proposal[]>([]);
+  const { proposals, loading: proposalsLoading, saveFeedback } = useProposals();
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('detail');
-  const [isLoading, setIsLoading] = useState(true);
   
-  // Fetch proposals on component mount
   useEffect(() => {
-    if (user?.id) {
-      fetchSupervisorProposals();
+    if (proposalId && proposals.length > 0) {
+      const selected = proposals.find(p => p.id === proposalId);
+      if (selected) {
+        setSelectedProposal(selected);
+      }
+    } else if (proposals.length > 0 && !selectedProposal) {
+      setSelectedProposal(proposals[0]);
     }
-  }, [user]);
-
-  // Fetch proposals supervised by this supervisor
-  const fetchSupervisorProposals = async () => {
-    setIsLoading(true);
-    try {
-      if (!user?.id) {
-        return;
-      }
-
-      // Get proposals supervised by this supervisor with explicit column specification
-      const { data: proposalsData, error: proposalsError } = await supabase
-        .from('proposals')
-        .select(`
-          id,
-          title,
-          status,
-          description,
-          created_at,
-          team_id,
-          student:profiles!student_id (id, full_name, nim)
-        `)
-        .eq('supervisor_id', user.id);
-
-      if (proposalsError) {
-        throw proposalsError;
-      }
-
-      console.log('Fetched proposals:', proposalsData);
-
-      // Transform the data to match our Proposal interface
-      const formattedProposals: Proposal[] = proposalsData.map(proposal => ({
-        id: proposal.id,
-        title: proposal.title,
-        status: proposal.status || 'submitted',
-        submissionDate: proposal.created_at,
-        description: proposal.description,
-        student: {
-          id: proposal.student.id,
-          full_name: proposal.student.full_name,
-          nim: proposal.student.nim
-        },
-        teamId: proposal.team_id,
-        attachments: [], // Will be populated later if needed
-        feedback: [] // Will be populated later if needed
-      }));
-
-      setSupervisedProposals(formattedProposals);
-
-      // If a proposal ID is provided in the URL, select that one
-      if (proposalId) {
-        const selected = formattedProposals.find(p => p.id === proposalId);
-        if (selected) {
-          setSelectedProposal(selected);
-        }
-      } else if (formattedProposals.length > 0) {
-        // Otherwise, select the first one
-        setSelectedProposal(formattedProposals[0]);
-      }
-    } catch (error) {
-      console.error('Error fetching supervisor proposals:', error);
-      toast.error('Failed to load proposals');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [proposalId, proposals, selectedProposal]);
 
   const handleSelectProposal = (proposal: Proposal) => {
     setSelectedProposal(proposal);
@@ -151,56 +63,33 @@ const SupervisorFeedback = () => {
       return;
     }
 
-    if (!selectedProposal?.id) {
-      toast.error('No proposal selected');
+    if (!selectedProposal?.id || !user?.id) {
+      toast.error('Tidak dapat mengirim feedback');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // In a real application, you would update the proposal feedback in the database
-      // For now, just simulate the API call with a timeout
-      setTimeout(() => {
-        // Update the local state with the new feedback
-        const updatedProposals = supervisedProposals.map(p => {
-          if (p.id === selectedProposal.id) {
-            return {
-              ...p,
-              feedback: [...(p.feedback || []), feedback]
-            };
-          }
-          return p;
-        });
-
-        setSupervisedProposals(updatedProposals);
-        
-        // Also update the selected proposal
-        if (selectedProposal) {
-          setSelectedProposal({
-            ...selectedProposal,
-            feedback: [...(selectedProposal.feedback || []), feedback]
-          });
-        }
-
-        setIsSubmitting(false);
-        setIsFeedbackDialogOpen(false);
-        setFeedback('');
-        toast.success('Feedback berhasil dikirim');
-      }, 1000);
+      await saveFeedback(selectedProposal.id, user.id, feedback);
+      setIsFeedbackDialogOpen(false);
+      setFeedback('');
+      toast.success('Feedback berhasil dikirim');
     } catch (error) {
       console.error('Error sending feedback:', error);
-      toast.error('Failed to send feedback');
+      toast.error('Gagal mengirim feedback');
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDownloadFile = (fileName: string) => {
+  const handleDownloadFile = (url: string, fileName: string) => {
+    window.open(url, '_blank');
     toast.success(`Downloading ${fileName}`);
   };
 
   const handlePreviewFile = (fileUrl: string) => {
-    toast.info(`Preview not available for ${fileUrl}`);
+    window.open(fileUrl, '_blank');
   };
 
   // Format date function
@@ -237,14 +126,14 @@ const SupervisorFeedback = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {proposalsLoading ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
               <div className="space-y-3">
-                {supervisedProposals.length > 0 ? (
-                  supervisedProposals.map(proposal => (
+                {proposals.length > 0 ? (
+                  proposals.map(proposal => (
                     <div 
                       key={proposal.id}
                       className={`p-3 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -262,7 +151,7 @@ const SupervisorFeedback = () => {
                         {formatDate(proposal.submissionDate)}
                       </div>
                       <div className="text-xs text-gray-500">
-                        Student: {proposal.student?.full_name || 'Unknown'}
+                        Mahasiswa: {proposal.studentName || 'Unknown'}
                       </div>
                     </div>
                   ))
@@ -304,58 +193,67 @@ const SupervisorFeedback = () => {
                     <p className="text-gray-600">{selectedProposal.description || 'Tidak ada deskripsi'}</p>
                   </div>
                   
+                  {selectedProposal.rejectionReason && selectedProposal.status === 'rejected' && (
+                    <div className="bg-red-50 border border-red-100 rounded-md p-4">
+                      <h3 className="font-medium text-red-800 mb-1">Alasan Penolakan</h3>
+                      <p className="text-red-700">{selectedProposal.rejectionReason}</p>
+                    </div>
+                  )}
+                  
                   {selectedProposal.teamId && (
                     <div>
                       <h3 className="font-medium mb-2">Tim KP</h3>
-                      <div className="space-y-2">
-                        <p className="text-gray-600">{selectedProposal.teamName || 'Tim KP'}</p>
-                        
-                        <h4 className="text-sm text-gray-500">Anggota Tim:</h4>
-                        <div className="space-y-1">
-                          {selectedProposal.teamMembers && selectedProposal.teamMembers.length > 0 ? (
-                            selectedProposal.teamMembers.map(member => (
-                              <div 
-                                key={member.id}
-                                className="text-sm bg-gray-50 p-2 rounded"
-                              >
-                                {member.full_name} ({member.nim || 'No NIM'})
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-sm bg-gray-50 p-2 rounded">
-                              {selectedProposal.student?.full_name || 'Unknown'} ({selectedProposal.student?.nim || 'No NIM'})
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <p className="text-gray-600">{selectedProposal.teamName || 'Tim KP'}</p>
                     </div>
                   )}
                   
                   <div>
-                    <h3 className="font-medium mb-2">Attachment</h3>
-                    {selectedProposal.attachments && selectedProposal.attachments.length > 0 ? (
+                    <h3 className="font-medium mb-2">Pembimbing</h3>
+                    {selectedProposal.supervisors && selectedProposal.supervisors.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedProposal.supervisors.map((supervisor, index) => (
+                          <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
+                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-3">
+                              {supervisor.profile_image ? (
+                                <img src={supervisor.profile_image} alt={supervisor.full_name} className="w-8 h-8 rounded-full" />
+                              ) : (
+                                <span className="text-xs">{supervisor.full_name.charAt(0)}</span>
+                              )}
+                            </div>
+                            <span>{supervisor.full_name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500">Belum ada pembimbing</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-medium mb-2">Dokumen</h3>
+                    {selectedProposal.documents && selectedProposal.documents.length > 0 ? (
                       <div className="space-y-3">
-                        {selectedProposal.attachments.map((attachment, index) => (
+                        {selectedProposal.documents.map((doc) => (
                           <div 
-                            key={attachment.id || index}
+                            key={doc.id}
                             className="flex items-center justify-between p-3 border rounded-md"
                           >
                             <div className="flex items-center">
                               <FileText size={16} className="mr-2 text-blue-500" />
-                              <span>{attachment.name}</span>
+                              <span>{doc.fileName}</span>
                             </div>
                             <div className="flex gap-2">
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => handlePreviewFile(attachment.fileUrl)}
+                                onClick={() => handlePreviewFile(doc.fileUrl)}
                               >
-                                <Eye size={14} className="mr-1" /> Buka
+                                <Eye size={14} className="mr-1" /> Preview
                               </Button>
                               <Button 
                                 size="sm" 
                                 className="bg-primary hover:bg-primary/90"
-                                onClick={() => handleDownloadFile(attachment.name)}
+                                onClick={() => handleDownloadFile(doc.fileUrl, doc.fileName)}
                               >
                                 <Download size={14} className="mr-1" /> Download
                               </Button>
@@ -364,7 +262,7 @@ const SupervisorFeedback = () => {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-500">Tidak ada attachment</p>
+                      <p className="text-gray-500">Tidak ada dokumen</p>
                     )}
                   </div>
                 </CardContent>
@@ -378,16 +276,18 @@ const SupervisorFeedback = () => {
                       
                       {selectedProposal.feedback.map((item, index) => (
                         <div 
-                          key={index}
+                          key={item.id}
                           className="bg-gray-50 p-4 rounded-lg border"
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Feedback #{index + 1}</span>
+                            <span className="text-sm font-medium">
+                              {item.supervisor_name || 'Dosen Pembimbing'}
+                            </span>
                             <span className="text-xs text-gray-500">
-                              {formatDate(new Date().toISOString())}
+                              {formatDate(item.created_at)}
                             </span>
                           </div>
-                          <p className="text-gray-700">{item}</p>
+                          <p className="text-gray-700">{item.content}</p>
                         </div>
                       ))}
                     </div>
