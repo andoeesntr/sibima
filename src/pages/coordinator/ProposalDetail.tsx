@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -9,6 +8,7 @@ import TeamInfo from '@/components/coordinator/proposals/TeamInfo';
 import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
+import { Button } from '@/components/ui/button';
 
 const statusColors = {
   draft: "bg-gray-500",

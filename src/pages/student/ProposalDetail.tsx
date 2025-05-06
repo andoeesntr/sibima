@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,8 @@ import AttachmentList from '@/components/student/proposals/AttachmentList';
 import ProposalFooter from '@/components/student/proposals/ProposalFooter';
 import DocumentPreviewDialog from '@/components/student/proposals/DocumentPreviewDialog';
 import { formatDate } from '@/utils/dateUtils';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 interface Proposal {
   id: string;
