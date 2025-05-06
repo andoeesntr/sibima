@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Supervisor } from '@/services/supervisorService';
+import { Supervisor, fetchTeamSupervisors, fetchMainSupervisor } from '@/services/supervisorService';
 
 interface ProposalDocument {
   id: string;
@@ -136,21 +136,11 @@ export const useProposalData = (): UseProposalDataResult => {
               }))
             };
 
-            // Fetch team supervisors
-            const { data: teamSupervisors, error: teamSupervisorsError } = await supabase
-              .from('team_supervisors')
-              .select(`
-                supervisor_id,
-                profiles:supervisor_id(id, full_name, profile_image)
-              `)
-              .eq('team_id', team.id);
-
-            if (!teamSupervisorsError && teamSupervisors && teamSupervisors.length > 0) {
-              supervisorsList = teamSupervisors.map(ts => ({
-                id: ts.profiles.id,
-                full_name: ts.profiles.full_name,
-                profile_image: ts.profiles.profile_image
-              }));
+            // Fetch team supervisors using the service function
+            try {
+              supervisorsList = await fetchTeamSupervisors(team.id);
+            } catch (error) {
+              console.error("Error fetching team supervisors:", error);
             }
           }
         }
@@ -158,16 +148,13 @@ export const useProposalData = (): UseProposalDataResult => {
 
       // If no team supervisors found but proposal has main supervisor, fetch it
       if (supervisorsList.length === 0 && proposalData.supervisor_id) {
-        const { data: supervisorData, error: supervisorError } = await supabase
-          .from('profiles')
-          .select('id, full_name, profile_image')
-          .eq('id', proposalData.supervisor_id)
-          .single();
-
-        if (!supervisorError && supervisorData) {
-          supervisorsList = [supervisorData];
-        } else {
-          console.error("Error fetching supervisor:", supervisorError);
+        try {
+          const mainSupervisor = await fetchMainSupervisor(proposalData.supervisor_id);
+          if (mainSupervisor.length > 0) {
+            supervisorsList = mainSupervisor;
+          }
+        } catch (error) {
+          console.error("Error fetching main supervisor:", error);
         }
       }
 

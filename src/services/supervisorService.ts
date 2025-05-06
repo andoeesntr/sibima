@@ -9,26 +9,34 @@ export interface Supervisor {
 
 export async function fetchTeamSupervisors(teamId: string): Promise<Supervisor[]> {
   try {
+    // First get the supervisor_ids from team_supervisors table
     const { data: teamSupervisors, error: supervisorsError } = await supabase
       .from('team_supervisors')
-      .select(`
-        supervisor_id,
-        profiles:supervisor_id(id, full_name, profile_image)
-      `)
+      .select('supervisor_id')
       .eq('team_id', teamId);
     
     if (supervisorsError) {
-      console.error(`Error fetching supervisors for team ${teamId}:`, supervisorsError);
+      console.error(`Error fetching supervisor ids for team ${teamId}:`, supervisorsError);
       return [];
     }
 
+    // If we have supervisor ids, fetch their profile details
     if (teamSupervisors && teamSupervisors.length > 0) {
-      // Map to the proper format
-      return teamSupervisors.map(ts => ({
-        id: ts.profiles.id,
-        full_name: ts.profiles.full_name,
-        profile_image: ts.profiles.profile_image
-      }));
+      // Extract supervisor IDs
+      const supervisorIds = teamSupervisors.map(s => s.supervisor_id);
+      
+      // Fetch the profile details for these supervisors
+      const { data: supervisorProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, profile_image')
+        .in('id', supervisorIds);
+        
+      if (profilesError) {
+        console.error(`Error fetching supervisor profiles:`, profilesError);
+        return [];
+      }
+      
+      return supervisorProfiles || [];
     }
 
     return [];
