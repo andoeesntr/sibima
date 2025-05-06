@@ -40,12 +40,14 @@ const SupervisorEditDialog = ({
   const [availableSupervisors, setAvailableSupervisors] = useState<Supervisor[]>([]);
   const [selectedSupervisorIds, setSelectedSupervisorIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchSupervisors();
       // Initialize selected supervisors from current
       setSelectedSupervisorIds(currentSupervisors.map(s => s.id));
+      setError(null);
     }
   }, [isOpen, currentSupervisors]);
 
@@ -53,7 +55,7 @@ const SupervisorEditDialog = ({
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, profile_image')
         .eq('role', 'supervisor');
         
       if (error) throw error;
@@ -68,6 +70,7 @@ const SupervisorEditDialog = ({
     if (!proposalId) return;
     
     setIsSubmitting(true);
+    setError(null);
     
     try {
       // First update the proposal with the first supervisor
@@ -104,7 +107,10 @@ const SupervisorEditDialog = ({
             .from('team_supervisors')
             .insert(teamSupervisorsToInsert);
             
-          if (insertError) throw insertError;
+          if (insertError) {
+            console.error("Error inserting team supervisors:", insertError);
+            throw insertError;
+          }
         }
       }
       
@@ -139,6 +145,7 @@ const SupervisorEditDialog = ({
       setIsOpen(false);
     } catch (error: any) {
       console.error("Error updating supervisors:", error);
+      setError(error.message || 'Gagal memperbarui dosen pembimbing');
       toast.error(`Gagal memperbarui dosen pembimbing: ${error.message}`);
     } finally {
       setIsSubmitting(false);
@@ -162,6 +169,12 @@ const SupervisorEditDialog = ({
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <span className="block sm:inline">{error}</span>
+            </div>
+          )}
+          
           {/* First Supervisor */}
           <div className="space-y-2">
             <Label htmlFor="supervisor-select-1">Dosen Pembimbing 1</Label>
