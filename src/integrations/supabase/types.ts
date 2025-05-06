@@ -85,6 +85,33 @@ export type Database = {
           },
         ]
       }
+      kp_timeline: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          period: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          period: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          period?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
