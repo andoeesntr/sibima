@@ -6,6 +6,7 @@ import KpTimeline from '@/components/coordinator/KpTimeline';
 import StatsCards from '@/components/coordinator/dashboard/StatsCards';
 import PendingProposals from '@/components/coordinator/dashboard/PendingProposals';
 import RecentActivity from '@/components/coordinator/dashboard/RecentActivity';
+import { initializeTimeline } from '@/services/timelineService';
 
 interface Proposal {
   id: string;
@@ -20,6 +21,8 @@ const CoordinatorDashboard = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
+    // Initialize timeline data when component mounts
+    initializeTimeline();
     fetchProposals();
   }, []);
   
