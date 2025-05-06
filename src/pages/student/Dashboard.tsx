@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { fetchTeamSupervisors } from '@/services/supervisorService';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -54,6 +55,7 @@ interface ProposalType {
     id: string;
     name: string;
   } | null;
+  team_id?: string | null;
 }
 
 interface TeamMember {
@@ -157,7 +159,8 @@ const StudentDashboard = () => {
             created_at: proposal.created_at,
             supervisor: supervisorData,
             company_name: proposal.company_name,
-            team: teamData
+            team: teamData,
+            team_id: proposal.team_id
           });
         }
         
@@ -202,8 +205,29 @@ const StudentDashboard = () => {
             });
           }
           
-          const supervisors = [];
-          if (proposalToUseForTeam.supervisor) {
+          // Fetch all team supervisors using team_supervisors service
+          let supervisors = [];
+          if (proposalToUseForTeam.team_id) {
+            try {
+              const teamSupervisors = await fetchTeamSupervisors(proposalToUseForTeam.team_id);
+              supervisors = teamSupervisors.map(supervisor => ({
+                id: supervisor.id,
+                name: supervisor.full_name,
+                profile_image: supervisor.profile_image
+              }));
+            } catch (error) {
+              console.error("Error fetching team supervisors:", error);
+              // Fallback to main supervisor if team supervisors fetch fails
+              if (proposalToUseForTeam.supervisor) {
+                supervisors.push({
+                  id: proposalToUseForTeam.supervisor.id,
+                  name: proposalToUseForTeam.supervisor.full_name,
+                  profile_image: proposalToUseForTeam.supervisor.profile_image
+                });
+              }
+            }
+          } else if (proposalToUseForTeam.supervisor) {
+            // Fallback if no team_id
             supervisors.push({
               id: proposalToUseForTeam.supervisor.id,
               name: proposalToUseForTeam.supervisor.full_name,
