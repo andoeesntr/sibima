@@ -1,7 +1,6 @@
 
-import { Button } from '@/components/ui/button';
-import { Edit } from 'lucide-react';
 import { TimelineStep } from '@/types/timeline';
+import TimelineCard from './TimelineCard';
 
 interface DesktopTimelineProps {
   steps: TimelineStep[];
@@ -23,7 +22,7 @@ const DesktopTimeline = ({ steps, onEditStep }: DesktopTimelineProps) => {
             </div>
             
             {/* Period (above the line) */}
-            <div className={`text-center mb-6 ${index % 2 === 0 ? 'absolute -top-14' : 'absolute -top-14'} left-1/2 transform -translate-x-1/2 w-full px-2`}>
+            <div className="text-center mb-6 absolute -top-14 left-1/2 transform -translate-x-1/2 w-full px-2">
               <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium inline-block">
                 {step.period}
               </div>
@@ -31,20 +30,12 @@ const DesktopTimeline = ({ steps, onEditStep }: DesktopTimelineProps) => {
             
             {/* Title and description (alternating above/below) */}
             <div className={`${index % 2 === 0 ? 'mt-8' : '-mt-24'} transition-all duration-300`}>
-              <div className="bg-white rounded-lg border border-gray-200 shadow p-4 mx-auto relative group">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => onEditStep(step)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <h3 className="font-semibold text-gray-900">{step.title}</h3>
-                {step.description && (
-                  <p className="text-gray-600 text-sm mt-2">{step.description}</p>
-                )}
-              </div>
+              <TimelineCard 
+                step={step} 
+                index={index} 
+                onEditStep={onEditStep} 
+                variant="desktop" 
+              />
             </div>
           </div>
         ))}

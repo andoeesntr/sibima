@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import MobileTimeline from './timeline/MobileTimeline';
 import DesktopTimeline from './timeline/DesktopTimeline';
 import TimelineEditDialog from './timeline/TimelineEditDialog';
+import TimelineSkeleton from './timeline/TimelineSkeleton';
 
 const KpTimeline = () => {
   const [steps, setSteps] = useState<TimelineStep[]>([]);
@@ -19,21 +20,21 @@ const KpTimeline = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    const loadTimelineSteps = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchTimelineSteps();
-        setSteps(data);
-      } catch (error) {
-        console.error("Failed to fetch timeline steps:", error);
-        toast.error("Failed to load timeline data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadTimelineSteps();
   }, []);
+
+  const loadTimelineSteps = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchTimelineSteps();
+      setSteps(data);
+    } catch (error) {
+      console.error("Failed to fetch timeline steps:", error);
+      toast.error("Failed to load timeline data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEditClick = (step: TimelineStep) => {
     setCurrentStep({...step});
@@ -57,33 +58,23 @@ const KpTimeline = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Timeline Kerja Praktik</CardTitle>
-        </CardHeader>
-        <CardContent className="h-64 flex items-center justify-center">
-          <div className="animate-pulse text-center">Loading timeline...</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Timeline Kerja Praktik</CardTitle>
       </CardHeader>
       <CardContent>
-        {isMobile ? (
-          <MobileTimeline steps={steps} onEditStep={handleEditClick} />
+        {loading ? (
+          <TimelineSkeleton isMobile={isMobile} />
         ) : (
-          <DesktopTimeline steps={steps} onEditStep={handleEditClick} />
+          isMobile ? (
+            <MobileTimeline steps={steps} onEditStep={handleEditClick} />
+          ) : (
+            <DesktopTimeline steps={steps} onEditStep={handleEditClick} />
+          )
         )}
       </CardContent>
 
-      {/* Edit Dialog */}
       <TimelineEditDialog
         open={openDialog}
         onOpenChange={setOpenDialog}
