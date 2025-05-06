@@ -83,25 +83,47 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
       description: step.description || '',
     };
 
-    const { data, error } = await supabase
+    // First check if the step exists
+    const { data: existingStep, error: checkError } = await supabase
       .from('kp_timeline')
-      .upsert(stepToUpdate)
-      .select()
+      .select('id')
+      .eq('id', step.id)
       .single();
-
-    if (error) {
-      console.error('Supabase error:', error);
-      throw new Error(`Failed to update timeline step: ${error.message}`);
+    
+    let result;
+    
+    if (checkError || !existingStep) {
+      // Insert if it doesn't exist
+      const { data, error } = await supabase
+        .from('kp_timeline')
+        .insert(stepToUpdate)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      result = data;
+    } else {
+      // Update if it exists
+      const { data, error } = await supabase
+        .from('kp_timeline')
+        .update(stepToUpdate)
+        .eq('id', step.id)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      result = data;
     }
 
-    if (!data) {
+    if (!result) {
       throw new Error('No data returned after update');
     }
 
-    return data as TimelineStep;
+    return result as TimelineStep;
   } catch (error: any) {
     console.error('Error updating timeline step:', error);
-    throw error;
+    toast.error(`Failed to update timeline step: ${error.message}`);
+    return null;
   }
 };
 

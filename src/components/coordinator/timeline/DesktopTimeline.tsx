@@ -16,13 +16,13 @@ const DesktopTimeline = ({ steps, onEditStep }: DesktopTimelineProps) => {
       <div className="grid grid-cols-6 gap-2 relative">
         {steps.map((step, index) => (
           <div key={step.id} className="relative px-2">
-            {/* Circle marker */}
+            {/* Circle marker - centered on the timeline */}
             <div className="absolute left-1/2 top-40 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-4 border-orange-500 z-20 flex items-center justify-center">
               <span className="text-xs font-bold">{index + 1}</span>
             </div>
             
             {/* Period (above the line) */}
-            <div className="text-center mb-6 absolute top-28 left-1/2 transform -translate-x-1/2 w-full px-2">
+            <div className="text-center mb-6 absolute top-24 left-1/2 transform -translate-x-1/2 w-full px-2">
               <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium inline-block">
                 {step.period}
               </div>
