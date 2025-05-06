@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Proposal, ProposalStatus } from '@/types/proposals';
@@ -13,7 +12,8 @@ import {
 } from '@/services/proposalService';
 import { transformProposalData } from '@/utils/proposalUtils';
 
-export { Proposal, ProposalStatus } from '@/types/proposals';
+// Change from 'export' to 'export type' for type re-exports
+export type { Proposal, ProposalStatus } from '@/types/proposals';
 
 export const useProposals = () => {
   const [proposals, setProposals] = useState<Proposal[]>([]);
