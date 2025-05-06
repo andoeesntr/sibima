@@ -85,6 +85,137 @@ export type Database = {
           },
         ]
       }
+      evaluations: {
+        Row: {
+          comments: string | null
+          created_at: string | null
+          document_url: string | null
+          evaluation_date: string | null
+          evaluator_id: string
+          evaluator_type: string
+          id: string
+          score: number
+          student_id: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string | null
+          document_url?: string | null
+          evaluation_date?: string | null
+          evaluator_id: string
+          evaluator_type: string
+          id?: string
+          score: number
+          student_id: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string | null
+          document_url?: string | null
+          evaluation_date?: string | null
+          evaluator_id?: string
+          evaluator_type?: string
+          id?: string
+          score?: number
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_evaluator_id_fkey"
+            columns: ["evaluator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guidance_reports: {
+        Row: {
+          id: string
+          notes: string | null
+          report_url: string | null
+          session_id: string
+          submitted_at: string | null
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          report_url?: string | null
+          session_id: string
+          submitted_at?: string | null
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          report_url?: string | null
+          session_id?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guidance_reports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "guidance_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guidance_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          session_date: string
+          session_type: string
+          status: string
+          student_id: string
+          supervisor_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          session_date: string
+          session_type: string
+          status?: string
+          student_id: string
+          supervisor_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          session_date?: string
+          session_type?: string
+          status?: string
+          student_id?: string
+          supervisor_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guidance_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guidance_sessions_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kp_timeline: {
         Row: {
           created_at: string | null
@@ -290,6 +421,50 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_timesheets: {
+        Row: {
+          activity_description: string
+          approved_by_supervisor: boolean | null
+          created_at: string | null
+          entry_date: string
+          evidence_url: string | null
+          hours_worked: number
+          id: string
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          activity_description: string
+          approved_by_supervisor?: boolean | null
+          created_at?: string | null
+          entry_date: string
+          evidence_url?: string | null
+          hours_worked: number
+          id?: string
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          activity_description?: string
+          approved_by_supervisor?: boolean | null
+          created_at?: string | null
+          entry_date?: string
+          evidence_url?: string | null
+          hours_worked?: number
+          id?: string
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_timesheets_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

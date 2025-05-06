@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +26,7 @@ import CoordinatorDashboard from "./pages/coordinator/Dashboard";
 import CoordinatorProfile from "./pages/coordinator/Profile";
 import ProposalReview from "./pages/coordinator/ProposalReview";
 import CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
+import GuidanceManagement from "./pages/coordinator/GuidanceManagement";
 
 // SuperAdmin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -102,6 +104,7 @@ const AppRoutes = () => {
         <Route path="profile" element={<CoordinatorProfile />} />
         <Route path="proposal-review" element={<ProposalReview />} />
         <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
+        <Route path="guidance-management" element={<GuidanceManagement />} />
       </Route>
       
       {/* SuperAdmin Routes */}
