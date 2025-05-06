@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -9,6 +10,21 @@ import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
 import { Button } from '@/components/ui/button';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -81,6 +97,11 @@ const ProposalDetail = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewName, setPreviewName] = useState('');
+  
+  // New states for supervisor editing
+  const [isEditSupervisorDialogOpen, setIsEditSupervisorDialogOpen] = useState(false);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState<string>('');
   
   useEffect(() => {
     const fetchProposalData = async () => {
@@ -181,6 +202,76 @@ const ProposalDetail = () => {
     
     fetchProposalData();
   }, [id, navigate]);
+
+  // Add new function to fetch supervisors
+  const fetchSupervisors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('role', 'supervisor');
+        
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching supervisors:", error);
+      return [];
+    }
+  };
+
+  const handleOpenEditSupervisor = async () => {
+    const fetchedSupervisors = await fetchSupervisors();
+    setSupervisors(fetchedSupervisors);
+    
+    if (proposal?.supervisor) {
+      setSelectedSupervisorId(proposal.supervisor.id);
+    } else {
+      setSelectedSupervisorId('');
+    }
+    
+    setIsEditSupervisorDialogOpen(true);
+  };
+
+  const handleUpdateSupervisor = async () => {
+    if (!proposal || !selectedSupervisorId) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('proposals')
+        .update({ 
+          supervisor_id: selectedSupervisorId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposal.id);
+        
+      if (error) throw error;
+      
+      // Get the supervisor details for the updated proposal
+      const { data: supervisorData, error: supervisorError } = await supabase
+        .from('profiles')
+        .select('id, full_name, profile_image')
+        .eq('id', selectedSupervisorId)
+        .single();
+        
+      if (supervisorError) throw supervisorError;
+      
+      // Update local state
+      setProposal({
+        ...proposal,
+        supervisor: supervisorData
+      });
+      
+      toast.success('Dosen pembimbing berhasil diperbarui');
+      setIsEditSupervisorDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error updating supervisor:", error);
+      toast.error(`Failed to update supervisor: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleApprove = async () => {
     if (!proposal) return;
@@ -312,6 +403,8 @@ const ProposalDetail = () => {
           team={proposal.team}
           student={proposal.student}
           supervisor={proposal.supervisor}
+          onEditSupervisor={handleOpenEditSupervisor}
+          isCoordinator={true}
         />
       </div>
       
@@ -334,6 +427,55 @@ const ProposalDetail = () => {
         name={previewName}
         onDownload={handleDownloadFile}
       />
+      
+      {/* Supervisor Edit Dialog */}
+      <Dialog open={isEditSupervisorDialogOpen} onOpenChange={setIsEditSupervisorDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Dosen Pembimbing</DialogTitle>
+            <DialogDescription>
+              Pilih dosen pembimbing untuk proposal ini.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="supervisor-select">Dosen Pembimbing</Label>
+              <Select 
+                value={selectedSupervisorId} 
+                onValueChange={setSelectedSupervisorId}
+              >
+                <SelectTrigger id="supervisor-select">
+                  <SelectValue placeholder="Pilih dosen pembimbing" />
+                </SelectTrigger>
+                <SelectContent>
+                  {supervisors.map((supervisor) => (
+                    <SelectItem key={supervisor.id} value={supervisor.id}>
+                      {supervisor.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditSupervisorDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              Batal
+            </Button>
+            <Button 
+              onClick={handleUpdateSupervisor}
+              disabled={isSubmitting || !selectedSupervisorId}
+            >
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
