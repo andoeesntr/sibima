@@ -70,30 +70,21 @@ export const fetchTimelineSteps = async (): Promise<TimelineStep[]> => {
 
 export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineStep | null> => {
   try {
-    // Deep clone the step object to prevent any unexpected mutations
-    const stepToUpdate = { ...step };
-    
-    // Use upsert with onConflict to handle both insert and update cases
     const { data, error } = await supabase
       .from('kp_timeline')
-      .upsert(stepToUpdate, { 
-        onConflict: 'id',
-        ignoreDuplicates: false
-      })
+      .upsert(step)
       .select()
       .single();
 
     if (error) {
-      console.error('Error updating timeline step:', error);
-      toast.error(`Failed to update timeline step: ${error.message}`);
-      return null;
+      toast.error('Failed to update timeline step');
+      throw error;
     }
 
     toast.success('Timeline step updated successfully');
     return data as TimelineStep;
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating timeline step:', error);
-    toast.error(`Failed to update timeline step: ${error.message || 'Unknown error'}`);
     return null;
   }
 };
