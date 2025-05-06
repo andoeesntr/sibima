@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import ProposalHeader from '@/components/coordinator/proposals/ProposalHeader';
@@ -9,22 +9,9 @@ import TeamInfo from '@/components/coordinator/proposals/TeamInfo';
 import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
+import SupervisorEditDialog from '@/components/coordinator/proposals/SupervisorEditDialog';
 import { Button } from '@/components/ui/button';
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription
-} from '@/components/ui/dialog';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { useProposalData } from '@/components/coordinator/proposals/ProposalDataLoader';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -42,54 +29,9 @@ const statusLabels = {
   rejected: "Ditolak",
 };
 
-interface ProposalDocument {
-  id: string;
-  file_name: string;
-  file_url: string;
-  file_type?: string;
-}
-
-interface Supervisor {
-  id: string;
-  full_name: string;
-  profile_image?: string;
-}
-
-interface TeamMember {
-  id: string;
-  full_name: string;
-  nim?: string;
-}
-
-interface Team {
-  id: string;
-  name: string;
-  members: TeamMember[];
-}
-
-interface Proposal {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  created_at: string;
-  updated_at?: string;
-  student: {
-    id: string;
-    full_name: string;
-  };
-  supervisor?: Supervisor;
-  company_name?: string;
-  team?: Team;
-  documents: ProposalDocument[];
-  rejectionReason?: string;
-}
-
 const ProposalDetail = () => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { proposal, loading, supervisors, handleUpdateSupervisors } = useProposalData();
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -98,181 +40,9 @@ const ProposalDetail = () => {
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewName, setPreviewName] = useState('');
   
-  // New states for supervisor editing
+  // State for supervisor editing
   const [isEditSupervisorDialogOpen, setIsEditSupervisorDialogOpen] = useState(false);
-  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
-  const [selectedSupervisorId, setSelectedSupervisorId] = useState<string>('');
   
-  useEffect(() => {
-    const fetchProposalData = async () => {
-      if (!id) return;
-      
-      setLoading(true);
-      try {
-        // Fetch proposal data
-        const { data: proposalData, error: proposalError } = await supabase
-          .from('proposals')
-          .select(`
-            id, 
-            title,
-            description,
-            status,
-            created_at,
-            updated_at,
-            company_name,
-            team_id,
-            supervisor_id,
-            rejection_reason,
-            supervisor:profiles!supervisor_id(id, full_name, profile_image),
-            student:profiles!student_id(id, full_name)
-          `)
-          .eq('id', id)
-          .single();
-          
-        if (proposalError) {
-          console.error("Error fetching proposal:", proposalError);
-          throw proposalError;
-        }
-        
-        // Fetch documents
-        const { data: documentsData, error: documentsError } = await supabase
-          .from('proposal_documents')
-          .select('id, file_name, file_url, file_type')
-          .eq('proposal_id', id);
-        
-        if (documentsError) {
-          console.error("Error fetching documents:", documentsError);
-          throw documentsError;
-        }
-
-        // Fetch team data if available
-        let teamData = null;
-        if (proposalData.team_id) {
-          const { data: team, error: teamError } = await supabase
-            .from('teams')
-            .select('id, name')
-            .eq('id', proposalData.team_id)
-            .single();
-            
-          if (teamError) {
-            console.error("Error fetching team:", teamError);
-          } else if (team) {
-            // Fetch team members
-            const { data: membersData, error: membersError } = await supabase
-              .from('team_members')
-              .select(`
-                user_id,
-                profiles:user_id(id, full_name, nim)
-              `)
-              .eq('team_id', team.id);
-              
-            if (membersError) {
-              console.error("Error fetching team members:", membersError);
-            } else {
-              teamData = {
-                id: team.id,
-                name: team.name,
-                members: membersData.map(member => ({
-                  id: member.profiles.id,
-                  full_name: member.profiles.full_name,
-                  nim: member.profiles.nim
-                }))
-              };
-            }
-          }
-        }
-
-        const fullProposal = {
-          ...proposalData,
-          team: teamData,
-          documents: documentsData || [],
-          rejectionReason: proposalData.rejection_reason
-        };
-        
-        setProposal(fullProposal);
-        console.log("Fetched proposal data:", fullProposal);
-      } catch (error) {
-        console.error("Error fetching proposal data:", error);
-        toast.error("Failed to load proposal data");
-        navigate('/coordinator/proposal-review');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchProposalData();
-  }, [id, navigate]);
-
-  // Add new function to fetch supervisors
-  const fetchSupervisors = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'supervisor');
-        
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error("Error fetching supervisors:", error);
-      return [];
-    }
-  };
-
-  const handleOpenEditSupervisor = async () => {
-    const fetchedSupervisors = await fetchSupervisors();
-    setSupervisors(fetchedSupervisors);
-    
-    if (proposal?.supervisor) {
-      setSelectedSupervisorId(proposal.supervisor.id);
-    } else {
-      setSelectedSupervisorId('');
-    }
-    
-    setIsEditSupervisorDialogOpen(true);
-  };
-
-  const handleUpdateSupervisor = async () => {
-    if (!proposal || !selectedSupervisorId) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      const { error } = await supabase
-        .from('proposals')
-        .update({ 
-          supervisor_id: selectedSupervisorId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposal.id);
-        
-      if (error) throw error;
-      
-      // Get the supervisor details for the updated proposal
-      const { data: supervisorData, error: supervisorError } = await supabase
-        .from('profiles')
-        .select('id, full_name, profile_image')
-        .eq('id', selectedSupervisorId)
-        .single();
-        
-      if (supervisorError) throw supervisorError;
-      
-      // Update local state
-      setProposal({
-        ...proposal,
-        supervisor: supervisorData
-      });
-      
-      toast.success('Dosen pembimbing berhasil diperbarui');
-      setIsEditSupervisorDialogOpen(false);
-    } catch (error: any) {
-      console.error("Error updating supervisor:", error);
-      toast.error(`Failed to update supervisor: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleApprove = async () => {
     if (!proposal) return;
     
@@ -402,8 +172,8 @@ const ProposalDetail = () => {
         <TeamInfo 
           team={proposal.team}
           student={proposal.student}
-          supervisor={proposal.supervisor}
-          onEditSupervisor={handleOpenEditSupervisor}
+          supervisors={supervisors}
+          onEditSupervisor={() => setIsEditSupervisorDialogOpen(true)}
           isCoordinator={true}
         />
       </div>
@@ -429,53 +199,14 @@ const ProposalDetail = () => {
       />
       
       {/* Supervisor Edit Dialog */}
-      <Dialog open={isEditSupervisorDialogOpen} onOpenChange={setIsEditSupervisorDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Dosen Pembimbing</DialogTitle>
-            <DialogDescription>
-              Pilih dosen pembimbing untuk proposal ini.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="supervisor-select">Dosen Pembimbing</Label>
-              <Select 
-                value={selectedSupervisorId} 
-                onValueChange={setSelectedSupervisorId}
-              >
-                <SelectTrigger id="supervisor-select">
-                  <SelectValue placeholder="Pilih dosen pembimbing" />
-                </SelectTrigger>
-                <SelectContent>
-                  {supervisors.map((supervisor) => (
-                    <SelectItem key={supervisor.id} value={supervisor.id}>
-                      {supervisor.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="flex justify-end gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsEditSupervisorDialogOpen(false)}
-              disabled={isSubmitting}
-            >
-              Batal
-            </Button>
-            <Button 
-              onClick={handleUpdateSupervisor}
-              disabled={isSubmitting || !selectedSupervisorId}
-            >
-              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SupervisorEditDialog
+        isOpen={isEditSupervisorDialogOpen}
+        setIsOpen={setIsEditSupervisorDialogOpen}
+        proposalId={proposal.id}
+        teamId={proposal.team_id}
+        currentSupervisors={supervisors}
+        onSupervisorsUpdated={handleUpdateSupervisors}
+      />
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import DocumentPreviewDialog from '@/components/student/proposals/DocumentPrevie
 import { formatDate } from '@/utils/dateUtils';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { fetchTeamSupervisors, fetchMainSupervisor, Supervisor } from '@/services/supervisorService';
 
 interface Proposal {
   id: string;
@@ -23,11 +25,8 @@ interface Proposal {
   created_at: string;
   updated_at: string | null;
   rejection_reason?: string;
-  supervisor: {
-    id: string;
-    full_name: string;
-    profile_image?: string;
-  } | null;
+  supervisor_id?: string | null;
+  team_id?: string | null;
 }
 
 interface Attachment {
@@ -45,6 +44,7 @@ const ProposalDetail = () => {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(true);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewName, setPreviewName] = useState('');
@@ -66,6 +66,7 @@ const ProposalDetail = () => {
             created_at,
             updated_at,
             supervisor_id,
+            team_id,
             rejection_reason
           `)
           .eq('id', id)
@@ -79,18 +80,18 @@ const ProposalDetail = () => {
           return;
         }
 
-        let supervisorData = null;
-        if (proposalData.supervisor_id) {
-          const { data: supervisor, error: supervisorError } = await supabase
-            .from('profiles')
-            .select('id, full_name, profile_image')
-            .eq('id', proposalData.supervisor_id)
-            .single();
-            
-          if (!supervisorError) {
-            supervisorData = supervisor;
-          }
+        // Fetch supervisors - either from team or main supervisor
+        let fetchedSupervisors: Supervisor[] = [];
+        if (proposalData.team_id) {
+          fetchedSupervisors = await fetchTeamSupervisors(proposalData.team_id);
         }
+        
+        // If no team supervisors found, use the main supervisor
+        if (fetchedSupervisors.length === 0 && proposalData.supervisor_id) {
+          fetchedSupervisors = await fetchMainSupervisor(proposalData.supervisor_id);
+        }
+
+        setSupervisors(fetchedSupervisors);
 
         // Fetch documents
         const { data: documentData, error: documentError } = await supabase
@@ -102,11 +103,7 @@ const ProposalDetail = () => {
           console.error('Error fetching documents:', documentError);
         }
 
-        setProposal({
-          ...proposalData,
-          supervisor: supervisorData
-        });
-
+        setProposal(proposalData);
         setAttachments(documentData || []);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -169,7 +166,7 @@ const ProposalDetail = () => {
             description={proposal.description}
             createdAt={proposal.created_at}
             updatedAt={proposal.updated_at}
-            supervisor={proposal.supervisor}
+            supervisors={supervisors}
             formatDate={formatDate}
           />
 

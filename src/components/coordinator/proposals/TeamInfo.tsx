@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pencil, User } from "lucide-react";
+import { Pencil, User, Users } from "lucide-react";
 
 interface TeamMember {
   id: string;
@@ -15,22 +15,24 @@ interface Team {
   members: TeamMember[];
 }
 
+export interface Supervisor {
+  id: string;
+  full_name: string;
+  profile_image?: string;
+}
+
 interface TeamInfoProps {
   team?: Team | null;
   student: {
     id: string;
     full_name: string;
   };
-  supervisor?: {
-    id: string;
-    full_name: string;
-    profile_image?: string;
-  } | null;
+  supervisors: Supervisor[];
   onEditSupervisor?: () => void;
   isCoordinator?: boolean;
 }
 
-const TeamInfo = ({ team, student, supervisor, onEditSupervisor, isCoordinator = false }: TeamInfoProps) => {
+const TeamInfo = ({ team, student, supervisors, onEditSupervisor, isCoordinator = false }: TeamInfoProps) => {
   return (
     <Card>
       <CardHeader>
@@ -72,45 +74,51 @@ const TeamInfo = ({ team, student, supervisor, onEditSupervisor, isCoordinator =
           </div>
         </div>
         
-        {supervisor && (
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">Dosen Pembimbing</h3>
-              {isCoordinator && onEditSupervisor && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={onEditSupervisor}
-                  className="h-8 w-8 p-0"
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-medium">Dosen Pembimbing</h3>
+            {isCoordinator && onEditSupervisor && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onEditSupervisor}
+                className="h-8 w-8 p-0"
+              >
+                <Pencil size={16} />
+                <span className="sr-only">Edit Dosen Pembimbing</span>
+              </Button>
+            )}
+          </div>
+          
+          {supervisors.length > 0 ? (
+            <div className="space-y-2">
+              {supervisors.map((supervisor, index) => (
+                <div 
+                  key={supervisor.id}
+                  className="flex items-center p-2 bg-gray-50 rounded"
                 >
-                  <Pencil size={16} />
-                  <span className="sr-only">Edit Dosen Pembimbing</span>
-                </Button>
-              )}
+                  <User size={16} className="mr-2" />
+                  <div className="font-medium">{supervisor.full_name}</div>
+                  <div className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</div>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center p-2 bg-gray-50 rounded">
-              <User size={16} className="mr-2" />
-              <div className="font-medium">{supervisor.full_name}</div>
-            </div>
-          </div>
-        )}
-        
-        {!supervisor && isCoordinator && onEditSupervisor && (
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">Dosen Pembimbing</h3>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onEditSupervisor}
-              className="flex items-center"
-            >
-              <Pencil size={16} className="mr-2" />
-              Tambah Dosen Pembimbing
-            </Button>
-          </div>
-        )}
+          ) : (
+            isCoordinator && onEditSupervisor ? (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onEditSupervisor}
+                className="flex items-center"
+              >
+                <Pencil size={16} className="mr-2" />
+                Tambah Dosen Pembimbing
+              </Button>
+            ) : (
+              <p className="text-gray-500">Belum ada dosen pembimbing</p>
+            )
+          )}
+        </div>
       </CardContent>
     </Card>
   );

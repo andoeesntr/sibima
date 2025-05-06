@@ -1,18 +1,19 @@
 
-import { Calendar, Clock, User } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { User } from 'lucide-react';
+
+interface Supervisor {
+  id: string;
+  full_name: string;
+  profile_image?: string;
+}
 
 interface ProposalInfoProps {
-  companyName?: string | null;
-  description?: string | null;
+  companyName: string | null;
+  description: string | null;
   createdAt: string;
   updatedAt?: string | null;
-  supervisor: {
-    id: string;
-    full_name: string;
-    profile_image?: string;
-  } | null;
-  formatDate: (dateString: string) => string;
+  supervisors?: Supervisor[];
+  formatDate: (date: string | Date) => string;
 }
 
 const ProposalInfo = ({ 
@@ -20,64 +21,52 @@ const ProposalInfo = ({
   description, 
   createdAt, 
   updatedAt, 
-  supervisor, 
+  supervisors,
   formatDate 
 }: ProposalInfoProps) => {
   return (
     <div className="space-y-6">
+      <div>
+        <h3 className="font-medium mb-2">Deskripsi</h3>
+        <p className="text-gray-700">{description || '-'}</p>
+      </div>
+
       {companyName && (
         <div>
-          <h3 className="font-medium mb-2">Nama Perusahaan</h3>
+          <h3 className="font-medium mb-2">Perusahaan/Instansi</h3>
           <p className="text-gray-700">{companyName}</p>
         </div>
       )}
 
-      {description && (
+      <div>
+        <h3 className="font-medium mb-2">Tanggal Pengajuan</h3>
+        <p className="text-gray-700">{formatDate(createdAt)}</p>
+      </div>
+
+      {updatedAt && (
         <div>
-          <h3 className="font-medium mb-2">Deskripsi Kerja Praktik</h3>
-          <p className="text-gray-700 whitespace-pre-line">{description}</p>
+          <h3 className="font-medium mb-2">Terakhir Diperbarui</h3>
+          <p className="text-gray-700">{formatDate(updatedAt)}</p>
         </div>
       )}
 
-      <div>
-        <h3 className="font-medium mb-2">Informasi Proposal</h3>
-        <dl className="space-y-2">
-          <div className="flex items-center">
-            <dt className="w-40 flex items-center text-gray-600">
-              <Calendar size={16} className="mr-2" /> Tanggal Pengajuan
-            </dt>
-            <dd>{formatDate(createdAt)}</dd>
+      {supervisors && supervisors.length > 0 && (
+        <div>
+          <h3 className="font-medium mb-2">Dosen Pembimbing</h3>
+          <div className="space-y-2">
+            {supervisors.map((supervisor, index) => (
+              <div 
+                key={supervisor.id}
+                className="flex items-center p-2 bg-gray-50 rounded"
+              >
+                <User size={16} className="mr-2" />
+                <div className="font-medium">{supervisor.full_name}</div>
+                <div className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</div>
+              </div>
+            ))}
           </div>
-          
-          {updatedAt && updatedAt !== createdAt && (
-            <div className="flex items-center">
-              <dt className="w-40 flex items-center text-gray-600">
-                <Clock size={16} className="mr-2" /> Terakhir Diperbarui
-              </dt>
-              <dd>{formatDate(updatedAt)}</dd>
-            </div>
-          )}
-          
-          <div className="flex items-center">
-            <dt className="w-40 flex items-center text-gray-600">
-              <User size={16} className="mr-2" /> Dosen Pembimbing
-            </dt>
-            <dd className="flex items-center">
-              {supervisor ? (
-                <>
-                  <Avatar className="h-6 w-6 mr-2">
-                    <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.full_name} />
-                    <AvatarFallback>{supervisor.full_name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  {supervisor.full_name}
-                </>
-              ) : (
-                <span className="text-gray-500">Belum ditentukan</span>
-              )}
-            </dd>
-          </div>
-        </dl>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
