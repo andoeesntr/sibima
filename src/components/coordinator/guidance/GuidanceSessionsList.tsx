@@ -113,7 +113,7 @@ const GuidanceSessionsList = ({ onAddSession, onViewReport }: GuidanceSessionsLi
                 <TableCell>
                   <div className="flex items-center space-x-1">
                     <Calendar className="h-4 w-4 text-gray-500" />
-                    <span>{formatDate(new Date(session.session_date))}</span>
+                    <span>{formatDate(session.session_date)}</span>
                   </div>
                 </TableCell>
                 <TableCell>{session.session_type}</TableCell>
