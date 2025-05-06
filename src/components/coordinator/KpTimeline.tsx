@@ -36,8 +36,12 @@ const KpTimeline = () => {
   }, []);
 
   const handleEditClick = (step: TimelineStep) => {
-    setCurrentStep(step);
+    setCurrentStep({...step});
     setOpenDialog(true);
+  };
+
+  const handleStepChange = (step: TimelineStep) => {
+    setCurrentStep(step);
   };
 
   const handleSaveStep = async () => {
@@ -50,6 +54,7 @@ const KpTimeline = () => {
       if (updatedStep) {
         setSteps(steps.map(step => step.id === updatedStep.id ? updatedStep : step));
         setOpenDialog(false);
+        setCurrentStep(null);
       }
     } catch (error) {
       console.error("Failed to update timeline step:", error);
@@ -88,7 +93,7 @@ const KpTimeline = () => {
         open={openDialog}
         onOpenChange={setOpenDialog}
         currentStep={currentStep}
-        onStepChange={setCurrentStep}
+        onStepChange={handleStepChange}
         onSave={handleSaveStep}
         updating={updating}
       />

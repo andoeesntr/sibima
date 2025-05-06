@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { TimelineStep } from '@/types/timeline';
+import { TimelineEditDialogProps } from './types';
 import {
   Dialog,
   DialogContent,
@@ -12,15 +13,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
-interface TimelineEditDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  currentStep: TimelineStep | null;
-  onStepChange: (step: TimelineStep) => void;
-  onSave: () => void;
-  updating?: boolean;
-}
-
 const TimelineEditDialog = ({
   open,
   onOpenChange,
@@ -30,6 +22,13 @@ const TimelineEditDialog = ({
   updating = false
 }: TimelineEditDialogProps) => {
   if (!currentStep) return null;
+
+  const handleChange = (field: keyof TimelineStep, value: string) => {
+    onStepChange({
+      ...currentStep,
+      [field]: value
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,8 +42,8 @@ const TimelineEditDialog = ({
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
-              value={currentStep.title}
-              onChange={(e) => onStepChange({...currentStep, title: e.target.value})}
+              value={currentStep.title || ''}
+              onChange={(e) => handleChange('title', e.target.value)}
               disabled={updating}
             />
           </div>
@@ -53,8 +52,8 @@ const TimelineEditDialog = ({
             <Label htmlFor="period">Period</Label>
             <Input
               id="period"
-              value={currentStep.period}
-              onChange={(e) => onStepChange({...currentStep, period: e.target.value})}
+              value={currentStep.period || ''}
+              onChange={(e) => handleChange('period', e.target.value)}
               disabled={updating}
             />
           </div>
@@ -64,7 +63,7 @@ const TimelineEditDialog = ({
             <Textarea
               id="description"
               value={currentStep.description || ''}
-              onChange={(e) => onStepChange({...currentStep, description: e.target.value})}
+              onChange={(e) => handleChange('description', e.target.value)}
               rows={3}
               disabled={updating}
             />
