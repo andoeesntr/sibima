@@ -73,23 +73,13 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
     // Deep clone the step object to prevent any unexpected mutations
     const stepToUpdate = { ...step };
     
-    // Check if the step exists in the database
-    const { data: existingStep, error: checkError } = await supabase
-      .from('kp_timeline')
-      .select('id')
-      .eq('id', stepToUpdate.id)
-      .single();
-      
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking timeline step:', checkError);
-      toast.error('Failed to update timeline step: Step not found');
-      return null;
-    }
-    
-    // Update existing step or insert if it doesn't exist
+    // Use upsert with onConflict to handle both insert and update cases
     const { data, error } = await supabase
       .from('kp_timeline')
-      .upsert(stepToUpdate)
+      .upsert(stepToUpdate, { 
+        onConflict: 'id',
+        ignoreDuplicates: false
+      })
       .select()
       .single();
 

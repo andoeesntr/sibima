@@ -31,7 +31,11 @@ const TimelineEditDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!updating) {
+        onOpenChange(isOpen);
+      }
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Timeline Step</DialogTitle>
@@ -70,10 +74,17 @@ const TimelineEditDialog = ({
           </div>
           
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={updating}>
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)} 
+              disabled={updating}
+            >
               Cancel
             </Button>
-            <Button onClick={onSave} disabled={updating}>
+            <Button 
+              onClick={onSave} 
+              disabled={updating || !currentStep.title || !currentStep.period}
+            >
               {updating ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
