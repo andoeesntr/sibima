@@ -93,6 +93,7 @@ export type Database = {
           faculty: string | null
           full_name: string | null
           id: string
+          nid: string | null
           nim: string | null
           nip: string | null
           profile_image: string | null
@@ -106,6 +107,7 @@ export type Database = {
           faculty?: string | null
           full_name?: string | null
           id: string
+          nid?: string | null
           nim?: string | null
           nip?: string | null
           profile_image?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           faculty?: string | null
           full_name?: string | null
           id?: string
+          nid?: string | null
           nim?: string | null
           nip?: string | null
           profile_image?: string | null

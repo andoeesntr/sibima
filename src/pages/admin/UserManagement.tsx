@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -41,20 +40,24 @@ const UserManagement = () => {
         throw error;
       }
 
-      // Transform data to match our UserData interface
-      // Here we map nid to nip for backward compatibility
-      const transformedUsers = data.map(profile => ({
-        id: profile.id,
-        name: profile.full_name || 'Unnamed User',
-        email: profile.email,
-        role: profile.role as UserRole,
-        nim: profile.nim,
-        nip: profile.nid, // Map nid from database to nip for interface compatibility
-        faculty: profile.faculty,
-        department: profile.department
-      }));
-      
-      setUsers(transformedUsers);
+      if (data) {
+        // Transform data to match our UserData interface
+        // Here we map nid to nip for backward compatibility
+        const transformedUsers = data.map(profile => ({
+          id: profile.id,
+          name: profile.full_name || 'Unnamed User',
+          email: profile.email,
+          role: profile.role as UserRole,
+          nim: profile.nim,
+          nip: profile.nid, // Map nid from database to nip for interface compatibility
+          faculty: profile.faculty,
+          department: profile.department
+        }));
+        
+        setUsers(transformedUsers);
+      } else {
+        setUsers([]);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to load users');
