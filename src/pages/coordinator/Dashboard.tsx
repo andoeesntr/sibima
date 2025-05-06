@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { activityLogs, formatDate } from '@/services/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import KpTimeline from '@/components/coordinator/KpTimeline';
 
 interface Proposal {
   id: string;
@@ -45,17 +45,21 @@ const CoordinatorDashboard = () => {
         throw error;
       }
 
-      // Transform data for our component
-      const formattedProposals = data.map(proposal => ({
-        id: proposal.id,
-        title: proposal.title,
-        status: proposal.status || 'submitted',
-        submissionDate: proposal.created_at,
-        studentName: proposal.student?.full_name || 'Unknown Student'
-      }));
-      
-      setProposals(formattedProposals);
-      console.log("Fetched proposals:", formattedProposals);
+      if (data) {
+        // Transform data for our component
+        const formattedProposals = data.map(proposal => ({
+          id: proposal.id,
+          title: proposal.title,
+          status: proposal.status || 'submitted',
+          submissionDate: proposal.created_at,
+          studentName: proposal.student?.full_name || 'Unknown Student'
+        }));
+        
+        setProposals(formattedProposals);
+        console.log("Fetched proposals:", formattedProposals);
+      } else {
+        setProposals([]);
+      }
     } catch (error: any) {
       console.error("Error fetching proposals:", error);
       toast.error("Failed to load proposals");
@@ -77,6 +81,9 @@ const CoordinatorDashboard = () => {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Dashboard Koordinator KP</h1>
+      
+      {/* KP Timeline */}
+      <KpTimeline />
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
