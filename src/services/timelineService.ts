@@ -69,23 +69,39 @@ export const fetchTimelineSteps = async (): Promise<TimelineStep[]> => {
 };
 
 export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineStep | null> => {
+  if (!step || !step.id || !step.title || !step.period) {
+    toast.error('Invalid timeline step data');
+    return null;
+  }
+
   try {
+    // Make sure we have a valid step object with all required fields
+    const stepToUpdate = {
+      id: step.id,
+      title: step.title.trim(),
+      period: step.period.trim(),
+      description: step.description || '',
+    };
+
     const { data, error } = await supabase
       .from('kp_timeline')
-      .upsert(step)
+      .upsert(stepToUpdate)
       .select()
       .single();
 
     if (error) {
-      toast.error('Failed to update timeline step');
-      throw error;
+      console.error('Supabase error:', error);
+      throw new Error(`Failed to update timeline step: ${error.message}`);
     }
 
-    toast.success('Timeline step updated successfully');
+    if (!data) {
+      throw new Error('No data returned after update');
+    }
+
     return data as TimelineStep;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating timeline step:', error);
-    return null;
+    throw error;
   }
 };
 

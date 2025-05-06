@@ -18,6 +18,7 @@ const KpTimeline = () => {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentStep, setCurrentStep] = useState<TimelineStep | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const isMobile = useIsMobile();
 
@@ -39,22 +40,29 @@ const KpTimeline = () => {
   }, []);
 
   const handleEditClick = (step: TimelineStep) => {
-    setCurrentStep(step);
+    setCurrentStep({...step});
     setOpenDialog(true);
   };
 
   const handleSaveStep = async () => {
-    if (!currentStep) return;
-
+    if (!currentStep || !currentStep.title || !currentStep.period) {
+      toast.error("Title and period are required");
+      return;
+    }
+    
+    setIsSubmitting(true);
     try {
       const updatedStep = await updateTimelineStep(currentStep);
       if (updatedStep) {
         setSteps(steps.map(step => step.id === updatedStep.id ? updatedStep : step));
         setOpenDialog(false);
+        toast.success("Timeline step updated successfully");
       }
     } catch (error) {
       console.error("Failed to update timeline step:", error);
       toast.error("Failed to update timeline step");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -122,8 +130,19 @@ const KpTimeline = () => {
               </div>
               
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancel</Button>
-                <Button onClick={handleSaveStep}>Save Changes</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setOpenDialog(false)} 
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveStep} 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </Button>
               </div>
             </div>
           )}
@@ -140,20 +159,27 @@ interface TimelineDisplayProps {
 
 const DesktopTimeline = ({ steps, onEditStep }: TimelineDisplayProps) => {
   return (
-    <div className="relative py-8 px-4">
+    <div className="relative py-16 px-4">
       {/* Main horizontal line */}
-      <div className="absolute h-2 bg-gradient-to-r from-orange-400 to-orange-600 top-1/2 left-0 right-0 transform -translate-y-1/2 rounded-full"></div>
+      <div className="absolute h-1 bg-gradient-to-r from-orange-400 to-orange-600 top-1/2 left-0 right-0 transform -translate-y-1/2 rounded-full"></div>
       
-      <div className="grid grid-cols-6 relative">
+      <div className="grid grid-cols-6 gap-2 relative">
         {steps.map((step, index) => (
           <div key={step.id} className="relative px-2">
             {/* Circle marker */}
-            <div className="absolute left-1/2 top-0 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-4 border-orange-500 z-10 flex items-center justify-center">
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-4 border-orange-500 z-20 flex items-center justify-center">
               <span className="text-xs font-bold">{index + 1}</span>
             </div>
             
-            {/* Content - alternating top/bottom */}
-            <div className={`mt-8 ${index % 2 === 0 ? '' : 'md:-mt-32'}`}>
+            {/* Period (above the line) */}
+            <div className={`text-center mb-6 ${index % 2 === 0 ? 'absolute -top-14' : 'absolute -top-14'} left-1/2 transform -translate-x-1/2 w-full px-2`}>
+              <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium inline-block">
+                {step.period}
+              </div>
+            </div>
+            
+            {/* Title and description (alternating above/below) */}
+            <div className={`${index % 2 === 0 ? 'mt-8' : '-mt-24'} transition-all duration-300`}>
               <div className="bg-white rounded-lg border border-gray-200 shadow p-4 mx-auto relative group">
                 <Button 
                   variant="ghost" 
@@ -163,7 +189,6 @@ const DesktopTimeline = ({ steps, onEditStep }: TimelineDisplayProps) => {
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
-                <span className="text-orange-500 font-bold text-sm block mb-1">{step.period}</span>
                 <h3 className="font-semibold text-gray-900">{step.title}</h3>
                 {step.description && (
                   <p className="text-gray-600 text-sm mt-2">{step.description}</p>
@@ -197,8 +222,8 @@ const MobileTimeline = ({ steps, onEditStep }: TimelineDisplayProps) => {
                   <span className="text-orange-600 font-bold">{index + 1}</span>
                 </div>
                 <div className="ml-4">
+                  <span className="text-orange-500 font-medium text-sm block mb-1">{step.period}</span>
                   <h3 className="font-semibold text-lg">{step.title}</h3>
-                  <span className="text-orange-500 font-medium text-sm">{step.period}</span>
                 </div>
               </div>
               {step.description && (
