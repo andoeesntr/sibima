@@ -35,6 +35,13 @@ interface Proposal {
     full_name: string;
   };
   teamId?: string;
+  teamName?: string;
+  documents: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+    fileType?: string;
+  }[];
 }
 
 interface Student {
@@ -74,7 +81,8 @@ const SupervisorDashboard = () => {
           created_at,
           student_id,
           team_id,
-          student:profiles!student_id (id, full_name)
+          student:profiles!student_id (id, full_name),
+          team:teams (id, name)
         `)
         .eq('supervisor_id', user.id);
       
@@ -84,20 +92,40 @@ const SupervisorDashboard = () => {
       
       console.log("Retrieved proposals:", proposalsData);
       
-      // Transform the data to match our expected Proposal interface
-      const formattedProposals: Proposal[] = proposalsData.map(proposal => ({
-        id: proposal.id,
-        title: proposal.title,
-        status: proposal.status || 'submitted',
-        submissionDate: proposal.created_at,
-        student: {
-          id: proposal.student.id,
-          full_name: proposal.student.full_name
-        },
-        teamId: proposal.team_id,
-      }));
+      // Fetch documents for each proposal
+      const proposalsWithDocuments = await Promise.all(
+        proposalsData.map(async (proposal) => {
+          const { data: documentData, error: documentError } = await supabase
+            .from('proposal_documents')
+            .select('id, file_name, file_url, file_type')
+            .eq('proposal_id', proposal.id);
+          
+          if (documentError) {
+            console.error(`Error fetching documents for proposal ${proposal.id}:`, documentError);
+          }
+          
+          return {
+            id: proposal.id,
+            title: proposal.title,
+            status: proposal.status || 'submitted',
+            submissionDate: proposal.created_at,
+            student: {
+              id: proposal.student.id,
+              full_name: proposal.student.full_name
+            },
+            teamId: proposal.team_id,
+            teamName: proposal.team?.name || null,
+            documents: documentData?.map(doc => ({
+              id: doc.id,
+              fileName: doc.file_name,
+              fileUrl: doc.file_url,
+              fileType: doc.file_type
+            })) || []
+          };
+        })
+      );
       
-      setSupervisedProposals(formattedProposals);
+      setSupervisedProposals(proposalsWithDocuments);
       
       // Fetch all students from teams with proposals supervised by this supervisor
       // First get all team IDs
@@ -231,22 +259,15 @@ const SupervisorDashboard = () => {
             supervisedProposals.map(proposal => (
               <div 
                 key={proposal.id}
-                className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex flex-col p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <div className="flex flex-col">
-                  <span className="font-medium">{proposal.title}</span>
-                  <span className="text-sm text-gray-500">
-                    Submitted: {formatDate(proposal.submissionDate)}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    Student: {proposal.student?.full_name || 'Unknown'}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Badge className={statusColors[proposal.status as keyof typeof statusColors]}>
-                    {statusLabels[proposal.status as keyof typeof statusLabels] || proposal.status}
-                  </Badge>
+                <div className="flex justify-between items-center mb-3">
+                  <div>
+                    <span className="font-medium">{proposal.title}</span>
+                    <Badge className={`ml-3 ${statusColors[proposal.status as keyof typeof statusColors]}`}>
+                      {statusLabels[proposal.status as keyof typeof statusLabels] || proposal.status}
+                    </Badge>
+                  </div>
                   <Button 
                     variant="ghost" 
                     size="icon"
@@ -255,6 +276,41 @@ const SupervisorDashboard = () => {
                     <ArrowRight size={16} />
                   </Button>
                 </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-gray-500">Tanggal Pengajuan:</p>
+                    <p>{formatDate(proposal.submissionDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Mahasiswa:</p>
+                    <p>{proposal.student?.full_name || 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Tim KP:</p>
+                    <p>{proposal.teamName || 'Individual'}</p>
+                  </div>
+                </div>
+                
+                {/* Display documents if available */}
+                {proposal.documents && proposal.documents.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-gray-500 text-sm mb-2">Lampiran:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {proposal.documents.map(doc => (
+                        <a 
+                          key={doc.id} 
+                          href={doc.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center px-3 py-1 bg-gray-100 text-xs rounded-full hover:bg-gray-200"
+                        >
+                          <FileText className="mr-1 h-3 w-3" /> {doc.fileName}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           ) : (

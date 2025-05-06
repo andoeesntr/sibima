@@ -14,6 +14,8 @@ export interface Proposal {
   studentName?: string;
   companyName?: string;
   documentUrl?: string;
+  teamId?: string;
+  teamName?: string;
   documents?: {
     id: string;
     fileName: string;
@@ -32,7 +34,7 @@ export const useProposals = () => {
     try {
       setLoading(true);
       
-      // Fetch proposals with student information
+      // Fetch proposals with student information and team data
       const { data, error } = await supabase
         .from('proposals')
         .select(`
@@ -44,7 +46,9 @@ export const useProposals = () => {
           company_name,
           supervisor_id,
           student_id,
-          student:profiles!student_id (full_name)
+          team_id,
+          student:profiles!student_id (full_name),
+          team:teams (id, name)
         `);
       
       if (error) {
@@ -81,6 +85,8 @@ export const useProposals = () => {
             studentName: proposal.student?.full_name || 'Unknown Student',
             supervisorIds: proposal.supervisor_id ? [proposal.supervisor_id] : [],
             companyName: proposal.company_name,
+            teamId: proposal.team_id,
+            teamName: proposal.team?.name,
             documents: documentData?.map(doc => ({
               id: doc.id,
               fileName: doc.file_name,
