@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useProposalData } from '@/components/coordinator/proposals/ProposalDataLoader';
+import { useProposalData } from '@/hooks/useCoordinatorProposal';
 import ProposalLoading from '@/components/coordinator/proposals/ProposalLoading';
 import NotFoundMessage from '@/components/coordinator/proposals/NotFoundMessage';
 import ProposalHeader from '@/components/coordinator/proposals/ProposalHeader';
