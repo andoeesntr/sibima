@@ -52,11 +52,11 @@ export const uploadGuideDocument = async (
       }
       
       // Create public access policy for the bucket
-      // Fix for the TypeScript error - The rpc call was using incorrect parameter types
+      // We need to fix the type mismatch for the definition parameter
       const { error: policyError } = await supabase.rpc('create_storage_policy', {
         bucket_name: 'guide_documents',
         policy_name: 'public_access',
-        definition: true,  // Changed from JSON.stringify(true) to boolean true
+        definition: true,  // Changed from string to boolean true
         operation: 'SELECT'
       });
       
