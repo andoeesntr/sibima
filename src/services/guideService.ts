@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { GuideDocument } from '@/types';
 import { toast } from 'sonner';
@@ -37,23 +38,31 @@ export const uploadGuideDocument = async (
     const { data: buckets } = await supabase.storage.listBuckets();
     const bucketExists = buckets?.some(bucket => bucket.name === 'guide_documents');
     
-    // If bucket doesn't exist, try to use edge function to create it
-    // instead of direct creation which causes RLS issues
+    // If bucket doesn't exist, try to create it
     if (!bucketExists) {
       try {
-        // Try to create bucket directly first (might fail due to RLS)
+        // Try direct bucket creation first
         const { error: createBucketError } = await supabase.storage.createBucket('guide_documents', {
           public: true,
           fileSizeLimit: 10485760 // 10MB limit
         });
         
         if (createBucketError) {
-          console.log('Could not create bucket directly, attempting to use edge function or continuing...');
+          console.log('Direct bucket creation failed, trying via edge function');
+          
+          // Try using edge function as fallback
+          const { error: functionError } = await supabase.functions.invoke('create-storage-bucket', {
+            body: { bucketName: 'guide_documents' }
+          });
+          
+          if (functionError) {
+            console.error('Edge function error:', functionError);
+            // Continue anyway - we'll attempt the upload
+          }
         }
       } catch (bucketError) {
-        console.warn('Error creating bucket directly:', bucketError);
+        console.warn('Error creating bucket:', bucketError);
         // Continue anyway - we'll attempt to upload to the bucket
-        // even if it might fail
       }
     }
 
@@ -65,7 +74,11 @@ export const uploadGuideDocument = async (
     // Upload the file
     const { error: uploadError } = await supabase.storage
       .from('guide_documents')
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false
+      });
 
     if (uploadError) {
       console.error('Error uploading file:', uploadError);

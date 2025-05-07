@@ -16,142 +16,86 @@ serve(async (req) => {
   }
 
   try {
-    const { name, public: isPublic = true } = await req.json();
-    
-    // Validate bucket name
-    if (!name) {
-      throw new Error("Bucket name is required");
+    if (req.method !== "POST") {
+      throw new Error("This endpoint only supports POST requests");
     }
-    
-    console.log(`Creating storage bucket: ${name}, public: ${isPublic}`);
-    
-    // Create a Supabase client with the service role key
+
+    // Create a Supabase client with the service role key (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    const { bucketName } = await req.json();
+
+    if (!bucketName) {
+      throw new Error("No bucket name provided");
+    }
+
+    // Check if bucket exists
+    const { data: buckets, error: bucketsError } = await supabaseAdmin
+      .storage
+      .listBuckets();
     
-    try {
-      // Create the storage bucket
-      const { data: createBucketData, error: createBucketError } = await supabaseAdmin
+    if (bucketsError) {
+      console.error("Error listing buckets:", bucketsError);
+      throw bucketsError;
+    }
+
+    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+    
+    // If bucket doesn't exist, create it
+    if (!bucketExists) {
+      console.log(`Creating bucket: ${bucketName}`);
+      const { error: createBucketError } = await supabaseAdmin
         .storage
-        .createBucket(name, {
-          public: isPublic,
+        .createBucket(bucketName, { 
+          public: true,
+          fileSizeLimit: 10485760 // 10MB limit
         });
-        
+      
       if (createBucketError) {
         console.error("Error creating bucket:", createBucketError);
         throw createBucketError;
       }
       
-      console.log("Bucket created successfully:", createBucketData);
-      
-      // Create appropriate RLS policies for the bucket
-      if (isPublic) {
-        // Allow public read access
-        const { error: policyError1 } = await supabaseAdmin.rpc('create_storage_policy', {
-          bucket_name: name,
-          policy_name: `${name}_public_select`,
-          definition: `bucket_id = '${name}'`,
+      // Create policies for the bucket to allow public access
+      try {
+        await supabaseAdmin.rpc('create_storage_policy', {
+          bucket_name: bucketName,
+          policy_name: `${bucketName}_public_select`,
+          definition: `bucket_id = '${bucketName}'`,
           operation: 'SELECT',
           role_name: 'anon'
         });
         
-        if (policyError1) {
-          console.error("Error creating public SELECT policy:", policyError1);
-        }
-        
-        // Allow authenticated users to insert objects
-        const { error: policyError2 } = await supabaseAdmin.rpc('create_storage_policy', {
-          bucket_name: name,
-          policy_name: `${name}_auth_insert`,
-          definition: `bucket_id = '${name}' AND auth.role() = 'authenticated'`,
+        await supabaseAdmin.rpc('create_storage_policy', {
+          bucket_name: bucketName,
+          policy_name: `${bucketName}_auth_insert`,
+          definition: `bucket_id = '${bucketName}' AND auth.role() = 'authenticated'`,
           operation: 'INSERT',
           role_name: 'authenticated'
         });
-        
-        if (policyError2) {
-          console.error("Error creating auth INSERT policy:", policyError2);
-        }
-        
-        // Allow users to update their own objects
-        const { error: policyError3 } = await supabaseAdmin.rpc('create_storage_policy', {
-          bucket_name: name,
-          policy_name: `${name}_auth_update`,
-          definition: `bucket_id = '${name}' AND auth.uid() = owner`,
-          operation: 'UPDATE',
-          role_name: 'authenticated'
-        });
-        
-        if (policyError3) {
-          console.error("Error creating auth UPDATE policy:", policyError3);
-        }
-        
-        // Allow users to delete their own objects
-        const { error: policyError4 } = await supabaseAdmin.rpc('create_storage_policy', {
-          bucket_name: name,
-          policy_name: `${name}_auth_delete`,
-          definition: `bucket_id = '${name}' AND auth.uid() = owner`,
-          operation: 'DELETE',
-          role_name: 'authenticated'
-        });
-        
-        if (policyError4) {
-          console.error("Error creating auth DELETE policy:", policyError4);
-        }
+      } catch (policyError) {
+        console.error("Policy creation error:", policyError);
+        // Continue even if policy creation fails
       }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: `Storage bucket '${name}' created with public=${isPublic}`,
-          bucket: createBucketData
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
-    } catch (error) {
-      // Check if the error is because the bucket already exists
-      if (error.message && error.message.includes("already exists")) {
-        console.log(`Bucket ${name} already exists, skipping creation`);
-        
-        // Try to update the bucket's public/private setting
-        try {
-          const { data: updateData, error: updateError } = await supabaseAdmin
-            .storage
-            .updateBucket(name, {
-              public: isPublic,
-            });
-            
-          if (updateError) {
-            console.error("Error updating bucket:", updateError);
-            throw updateError;
-          }
-          
-          return new Response(
-            JSON.stringify({
-              success: true,
-              message: `Storage bucket '${name}' already exists, updated public setting to ${isPublic}`,
-              bucket: updateData
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 200,
-            }
-          );
-        } catch (updateError) {
-          console.error("Error updating bucket:", updateError);
-          throw updateError;
-        }
-      } else {
-        console.error("Error creating storage bucket:", error);
-        throw error;
-      }
+    } else {
+      console.log(`Bucket ${bucketName} already exists`);
     }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: bucketExists ? "Bucket already exists" : "Bucket created successfully"
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
   } catch (error) {
-    console.error("Error creating storage bucket:", error);
+    console.error("Error:", error);
     
     return new Response(
       JSON.stringify({
