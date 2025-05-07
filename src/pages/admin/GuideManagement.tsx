@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,21 +8,37 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Eye, FileText, MoreHorizontal, PlusCircle, Trash, UploadCloud } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { guideDocuments, formatDate } from '@/services/mockData';
+import { formatDate } from '@/services/mockData';
 import { toast } from 'sonner';
+import { fetchGuideDocuments, uploadGuideDocument, deleteGuideDocument } from '@/services/guideService';
+import { GuideDocument } from '@/types';
 
 const GuideManagement = () => {
-  const [documents, setDocuments] = useState(guideDocuments);
+  const [documents, setDocuments] = useState<GuideDocument[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = async () => {
+    setIsLoading(true);
+    const docs = await fetchGuideDocuments();
+    setDocuments(docs);
+    setIsLoading(false);
+  };
 
   const handlePreview = (fileUrl: string) => {
     setPreviewUrl(fileUrl);
   };
 
-  const handleDelete = (docId: string) => {
-    toast.success('Dokumen berhasil dihapus');
-    setDocuments(documents.filter(doc => doc.id !== docId));
+  const handleDelete = async (docId: string) => {
+    const success = await deleteGuideDocument(docId);
+    if (success) {
+      setDocuments(documents.filter(doc => doc.id !== docId));
+    }
   };
 
   return (
@@ -48,7 +64,13 @@ const GuideManagement = () => {
                 Upload dokumen panduan kerja praktik dalam format PDF
               </DialogDescription>
             </DialogHeader>
-            <UploadDocumentForm onClose={() => setIsUploadDialogOpen(false)} />
+            <UploadDocumentForm 
+              onClose={() => setIsUploadDialogOpen(false)} 
+              onSuccess={(newDoc) => {
+                setDocuments([newDoc, ...documents]);
+                setIsUploadDialogOpen(false);
+              }}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -61,63 +83,69 @@ const GuideManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {documents.length > 0 ? (
-              documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex items-start gap-4">
-                    <FileText className="h-10 w-10 text-blue-500" />
-                    <div>
-                      <h3 className="font-medium">{doc.title}</h3>
-                      <p className="text-sm text-gray-500">
-                        Upload: {formatDate(doc.uploadDate)}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1 max-w-md">
-                        {doc.description}
-                      </p>
+          {isLoading ? (
+            <div className="flex justify-center py-10">
+              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {documents.length > 0 ? (
+                documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50"
+                  >
+                    <div className="flex items-start gap-4">
+                      <FileText className="h-10 w-10 text-blue-500" />
+                      <div>
+                        <h3 className="font-medium">{doc.title}</h3>
+                        <p className="text-sm text-gray-500">
+                          Upload: {formatDate(doc.uploadDate)}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1 max-w-md">
+                          {doc.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePreview(doc.fileUrl)}
+                      >
+                        <Eye size={14} className="mr-1" /> Preview
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal size={16} />
+                            <span className="sr-only">Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleDelete(doc.id)}
+                          >
+                            <Trash size={14} className="mr-2" /> Hapus
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePreview(doc.fileUrl)}
-                    >
-                      <Eye size={14} className="mr-1" /> Preview
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal size={16} />
-                          <span className="sr-only">Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          className="text-red-600"
-                          onClick={() => handleDelete(doc.id)}
-                        >
-                          <Trash size={14} className="mr-2" /> Hapus
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10">
+                  <FileText className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+                  <h3 className="text-lg font-medium text-gray-900">Tidak ada dokumen</h3>
+                  <p className="text-gray-500">
+                    Belum ada dokumen panduan yang diupload
+                  </p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-10">
-                <FileText className="mx-auto h-10 w-10 text-gray-400 mb-2" />
-                <h3 className="text-lg font-medium text-gray-900">Tidak ada dokumen</h3>
-                <p className="text-gray-500">
-                  Belum ada dokumen panduan yang diupload
-                </p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -153,7 +181,13 @@ const GuideManagement = () => {
 };
 
 // Upload Document Form Component
-const UploadDocumentForm = ({ onClose }: { onClose: () => void }) => {
+const UploadDocumentForm = ({ 
+  onClose, 
+  onSuccess 
+}: { 
+  onClose: () => void;
+  onSuccess: (doc: GuideDocument) => void;
+}) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -165,7 +199,7 @@ const UploadDocumentForm = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title || !file) {
       toast.error('Harap isi judul dan pilih file untuk diupload');
       return;
@@ -173,12 +207,19 @@ const UploadDocumentForm = ({ onClose }: { onClose: () => void }) => {
 
     setIsUploading(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const result = await uploadGuideDocument(
+        title,
+        description || null,
+        file
+      );
+      
+      if (result) {
+        onSuccess(result);
+      }
+    } finally {
       setIsUploading(false);
-      toast.success('Dokumen panduan berhasil diupload');
-      onClose();
-    }, 1500);
+    }
   };
 
   return (

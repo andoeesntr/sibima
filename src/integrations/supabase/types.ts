@@ -216,6 +216,39 @@ export type Database = {
           },
         ]
       }
+      guide_documents: {
+        Row: {
+          description: string | null
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          title: string
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          title: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          title?: string
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       kp_timeline: {
         Row: {
           created_at: string | null
