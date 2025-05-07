@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -221,6 +220,7 @@ const SupervisorFeedback = () => {
                               )}
                             </div>
                             <span>{supervisor.full_name}</span>
+                            <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
                           </div>
                         ))}
                       </div>
