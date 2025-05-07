@@ -3,8 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter, CardTitle, CardDescription } from "@/components/ui/card";
 import { TabsContent, Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Download, Eye, MessageSquare, User } from "lucide-react";
+import { FileText, Download, Eye, MessageSquare } from "lucide-react";
 import { Proposal } from '@/hooks/useProposals';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -102,13 +103,10 @@ const ProposalDetailCard = ({
                 <div className="space-y-2">
                   {proposal.supervisors.map((supervisor, index) => (
                     <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
-                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-3">
-                        {supervisor.profile_image ? (
-                          <img src={supervisor.profile_image} alt={supervisor.full_name} className="w-8 h-8 rounded-full" />
-                        ) : (
-                          <span className="text-xs">{supervisor.full_name.charAt(0)}</span>
-                        )}
-                      </div>
+                      <Avatar className="h-8 w-8 mr-2">
+                        <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.full_name} />
+                        <AvatarFallback>{supervisor.full_name.charAt(0)}</AvatarFallback>
+                      </Avatar>
                       <span>{supervisor.full_name}</span>
                       <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
                     </div>

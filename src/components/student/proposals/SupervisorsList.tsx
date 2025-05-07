@@ -1,5 +1,5 @@
 
-import { User } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Supervisor } from '@/services/supervisorService';
 
 interface SupervisorsListProps {
@@ -25,7 +25,10 @@ const SupervisorsList = ({ supervisors }: SupervisorsListProps) => {
             key={supervisor.id}
             className="flex items-center p-2 bg-gray-50 rounded"
           >
-            <User size={16} className="mr-2" />
+            <Avatar className="h-8 w-8 mr-2">
+              <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.full_name} />
+              <AvatarFallback>{supervisor.full_name.charAt(0)}</AvatarFallback>
+            </Avatar>
             <div className="font-medium">{supervisor.full_name}</div>
             <div className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</div>
           </div>

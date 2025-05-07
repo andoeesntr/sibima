@@ -93,7 +93,7 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
           supervisors.push({
             id: proposal.supervisor.id,
             name: proposal.supervisor.full_name,
-            profile_image: proposal.supervisor.profile_image
+            profile_image: supervisor.profile_image
           });
         }
         
