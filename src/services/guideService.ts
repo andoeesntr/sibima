@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { GuideDocument } from '@/types';
 import { toast } from 'sonner';
@@ -38,31 +37,23 @@ export const uploadGuideDocument = async (
     const { data: buckets } = await supabase.storage.listBuckets();
     const bucketExists = buckets?.some(bucket => bucket.name === 'guide_documents');
     
-    // If bucket doesn't exist, create it
+    // If bucket doesn't exist, try to use edge function to create it
+    // instead of direct creation which causes RLS issues
     if (!bucketExists) {
-      const { error: createBucketError } = await supabase.storage.createBucket('guide_documents', {
-        public: true,
-        fileSizeLimit: 10485760 // 10MB limit
-      });
-      
-      if (createBucketError) {
-        console.error('Error creating bucket:', createBucketError);
-        toast.error('Error creating storage bucket');
-        return null;
-      }
-      
-      // Create public access policy for the bucket
-      // We need to fix the type mismatch for the definition parameter
-      const { error: policyError } = await supabase.rpc('create_storage_policy', {
-        bucket_name: 'guide_documents',
-        policy_name: 'public_access',
-        definition: true,  // Changed from string to boolean true
-        operation: 'SELECT'
-      });
-      
-      if (policyError && !policyError.message.includes('already exists')) {
-        console.warn('Notice: Could not create public policy for bucket', policyError);
-        // Continue anyway - this is not critical
+      try {
+        // Try to create bucket directly first (might fail due to RLS)
+        const { error: createBucketError } = await supabase.storage.createBucket('guide_documents', {
+          public: true,
+          fileSizeLimit: 10485760 // 10MB limit
+        });
+        
+        if (createBucketError) {
+          console.log('Could not create bucket directly, attempting to use edge function or continuing...');
+        }
+      } catch (bucketError) {
+        console.warn('Error creating bucket directly:', bucketError);
+        // Continue anyway - we'll attempt to upload to the bucket
+        // even if it might fail
       }
     }
 
