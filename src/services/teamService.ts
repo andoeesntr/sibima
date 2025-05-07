@@ -43,9 +43,9 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
       
       // Fetch all team supervisors using team_supervisors service
       let supervisors = [];
-      if (proposal.team_id) {
+      if (proposal.team.id) {
         try {
-          const teamSupervisors = await fetchTeamSupervisors(proposal.team_id);
+          const teamSupervisors = await fetchTeamSupervisors(proposal.team.id);
           console.log('fetchTeamData - Team supervisors:', teamSupervisors);
           supervisors = teamSupervisors.map(supervisor => ({
             id: supervisor.id,
@@ -57,7 +57,7 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
         }
       }
       
-      // If we have supervisors in the proposal object, use them instead
+      // If we have supervisors in the proposal object, use them instead (for backward compatibility)
       if (proposal.supervisors && proposal.supervisors.length > 0) {
         console.log('Using supervisors from proposal object:', proposal.supervisors);
         supervisors = proposal.supervisors.map(supervisor => ({
