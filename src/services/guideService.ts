@@ -56,7 +56,7 @@ export const uploadGuideDocument = async (
       const { error: policyError } = await supabase.rpc('create_storage_policy', {
         bucket_name: 'guide_documents',
         policy_name: 'public_access',
-        definition: JSON.stringify(true),  // Changed from 'true' to JSON.stringify(true)
+        definition: true,  // Changed from JSON.stringify(true) to boolean true
         operation: 'SELECT'
       });
       
