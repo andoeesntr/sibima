@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { fetchTeamSupervisors } from '@/services/supervisorService';
+import { fetchTeamSupervisors, fetchMainSupervisor } from '@/services/supervisorService';
 import { ProposalType, TeamType, TeamMember } from '@/types/student';
 
 export const useStudentDashboard = () => {
@@ -32,7 +32,8 @@ export const useStudentDashboard = () => {
           created_at,
           supervisor_id,
           company_name,
-          team_id
+          team_id,
+          rejection_reason
         `)
         .eq('student_id', user.id)
         .order('created_at', { ascending: false });
@@ -56,6 +57,7 @@ export const useStudentDashboard = () => {
       for (const proposal of proposalsData) {
         let supervisorData = null;
         let teamData = null;
+        let supervisors = [];
         
         // Fetch supervisor data if exists
         if (proposal.supervisor_id) {
@@ -67,6 +69,14 @@ export const useStudentDashboard = () => {
             
           if (!supervisorError) {
             supervisorData = supervisor;
+            // Add to supervisors array if found
+            if (supervisor) {
+              supervisors.push({
+                id: supervisor.id,
+                full_name: supervisor.full_name,
+                profile_image: supervisor.profile_image
+              });
+            }
           }
         }
         
@@ -80,6 +90,17 @@ export const useStudentDashboard = () => {
             
           if (!teamError) {
             teamData = team;
+            
+            // Fetch team supervisors if team exists
+            try {
+              const teamSupervisors = await fetchTeamSupervisors(proposal.team_id);
+              // Add team supervisors to the supervisors array
+              if (teamSupervisors && teamSupervisors.length > 0) {
+                supervisors = teamSupervisors;
+              }
+            } catch (error) {
+              console.error("Error fetching team supervisors:", error);
+            }
           }
         }
         
@@ -90,9 +111,11 @@ export const useStudentDashboard = () => {
           submissionDate: proposal.created_at,
           created_at: proposal.created_at,
           supervisor: supervisorData,
+          supervisors: supervisors,
           company_name: proposal.company_name,
           team: teamData,
-          team_id: proposal.team_id
+          team_id: proposal.team_id,
+          rejectionReason: proposal.rejection_reason
         });
       }
       
@@ -178,6 +201,15 @@ export const useStudentDashboard = () => {
           });
         }
         
+        // If we have supervisors in the proposal object, use them instead
+        if (proposal.supervisors && proposal.supervisors.length > 0) {
+          supervisors = proposal.supervisors.map(supervisor => ({
+            id: supervisor.id,
+            name: supervisor.full_name,
+            profile_image: supervisor.profile_image
+          }));
+        }
+        
         setTeam({
           id: proposal.team.id,
           name: proposal.team.name,
@@ -188,7 +220,16 @@ export const useStudentDashboard = () => {
         // Create a temporary team based on the user
         if (profile && user) {
           const supervisors = [];
-          if (proposal.supervisor) {
+          if (proposal.supervisors && proposal.supervisors.length > 0) {
+            // Use supervisors from the proposal object
+            proposal.supervisors.forEach(supervisor => {
+              supervisors.push({
+                id: supervisor.id,
+                name: supervisor.full_name,
+                profile_image: supervisor.profile_image
+              });
+            });
+          } else if (proposal.supervisor) {
             supervisors.push({
               id: proposal.supervisor.id,
               name: proposal.supervisor.full_name,

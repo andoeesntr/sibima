@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,11 +84,13 @@ const ProposalDetail = () => {
         let fetchedSupervisors: Supervisor[] = [];
         if (proposalData.team_id) {
           fetchedSupervisors = await fetchTeamSupervisors(proposalData.team_id);
+          console.log('Team supervisors:', fetchedSupervisors);
         }
         
         // If no team supervisors found, use the main supervisor
         if (fetchedSupervisors.length === 0 && proposalData.supervisor_id) {
           fetchedSupervisors = await fetchMainSupervisor(proposalData.supervisor_id);
+          console.log('Main supervisor:', fetchedSupervisors);
         }
 
         setSupervisors(fetchedSupervisors);

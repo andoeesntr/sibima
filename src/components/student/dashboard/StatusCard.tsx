@@ -44,8 +44,8 @@ export const StatusCard = ({
                     if (selected) onSelectProposal(selected);
                   }}
                 >
-                  <TabsList className="grid grid-cols-2 w-full">
-                    {proposals.slice(0, 2).map((proposal, index) => (
+                  <TabsList className="grid" style={{ gridTemplateColumns: `repeat(${Math.min(proposals.length, 3)}, 1fr)` }}>
+                    {proposals.slice(0, 3).map((proposal, index) => (
                       <TabsTrigger key={proposal.id} value={proposal.id}>
                         Proposal {index + 1}
                       </TabsTrigger>

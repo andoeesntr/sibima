@@ -32,6 +32,11 @@ export interface ProposalType {
     full_name: string;
     profile_image?: string;
   } | null;
+  supervisors?: {
+    id: string;
+    full_name: string;
+    profile_image?: string;
+  }[];
   company_name?: string | null;
   team?: {
     id: string;
