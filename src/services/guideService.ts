@@ -34,63 +34,33 @@ export const uploadGuideDocument = async (
   file: File
 ): Promise<GuideDocument | null> => {
   try {
-    // First, check if the guide_documents bucket exists
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketExists = buckets?.some(bucket => bucket.name === 'guide_documents');
-    
-    // If bucket doesn't exist, try to create it
-    if (!bucketExists) {
-      try {
-        // Try direct bucket creation first
-        const { error: createBucketError } = await supabase.storage.createBucket('guide_documents', {
-          public: true,
-          fileSizeLimit: 10485760 // 10MB limit
-        });
-        
-        if (createBucketError) {
-          console.log('Direct bucket creation failed, trying via edge function');
-          
-          // Try using edge function as fallback
-          const { error: functionError } = await supabase.functions.invoke('create-storage-bucket', {
-            body: { bucketName: 'guide_documents' }
-          });
-          
-          if (functionError) {
-            console.error('Edge function error:', functionError);
-            // Continue anyway - we'll attempt the upload
-          }
-        }
-      } catch (bucketError) {
-        console.warn('Error creating bucket:', bucketError);
-        // Continue anyway - we'll attempt to upload to the bucket
-      }
-    }
+    // First, ensure the bucket exists
+    await ensureGuideBucketExists();
 
+    // Now proceed with file upload
     // Upload file to storage
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
     const filePath = fileName;
 
-    // Upload the file
-    const { error: uploadError } = await supabase.storage
-      .from('guide_documents')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        contentType: file.type,
-        upsert: false
-      });
-
-    if (uploadError) {
-      console.error('Error uploading file:', uploadError);
-      toast.error('Error uploading file');
-      return null;
+    console.log('Attempting to upload file to guide_documents bucket:', filePath);
+    
+    // Try direct upload first
+    let uploadResult = await attemptDirectUpload(filePath, file);
+    
+    // If direct upload fails, try using the edge function
+    if (!uploadResult.success) {
+      console.log('Direct upload failed, trying via edge function');
+      uploadResult = await attemptFunctionUpload(filePath, file);
+      
+      if (!uploadResult.success) {
+        toast.error('Error uploading file');
+        return null;
+      }
     }
 
-    // Get public URL for the file
-    const { data: { publicUrl } } = supabase.storage
-      .from('guide_documents')
-      .getPublicUrl(filePath);
-
+    const publicUrl = uploadResult.publicUrl;
+    
     // Save document metadata to database
     const { data: docData, error: dbError } = await supabase
       .from('guide_documents')
@@ -125,6 +95,116 @@ export const uploadGuideDocument = async (
     return null;
   }
 };
+
+// Helper function to attempt direct upload
+async function attemptDirectUpload(filePath: string, file: File) {
+  try {
+    const { error, data } = await supabase.storage
+      .from('guide_documents')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        contentType: file.type,
+        upsert: false
+      });
+    
+    if (error) {
+      console.error('Direct upload error:', error);
+      return { success: false, error };
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('guide_documents')
+      .getPublicUrl(filePath);
+    
+    return { success: true, publicUrl };
+  } catch (error) {
+    console.error('Exception during direct upload:', error);
+    return { success: false, error };
+  }
+}
+
+// Helper function to attempt upload via edge function
+async function attemptFunctionUpload(filePath: string, file: File) {
+  try {
+    // Get current session token
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    
+    if (!accessToken) {
+      throw new Error('No authentication token available');
+    }
+    
+    // Create a form for the file and metadata
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', filePath);
+    formData.append('bucket', 'guide_documents');
+    
+    // Call the upload-file edge function
+    const { data, error } = await supabase.functions.invoke('upload-file', {
+      body: formData
+    });
+    
+    if (error) {
+      console.error('Function upload error:', error);
+      return { success: false, error };
+    }
+    
+    return { success: true, publicUrl: data.publicUrl };
+  } catch (error) {
+    console.error('Exception during function upload:', error);
+    return { success: false, error };
+  }
+}
+
+// Helper function to ensure the guide documents bucket exists
+async function ensureGuideBucketExists() {
+  try {
+    // Check if the bucket exists
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    
+    if (bucketsError) {
+      console.error('Error listing buckets:', bucketsError);
+      // Continue anyway, we'll try to create the bucket
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === 'guide_documents');
+    
+    if (!bucketExists) {
+      console.log('Guide documents bucket not found, creating it...');
+      
+      // Try direct creation first
+      const { error: createError } = await supabase.storage
+        .createBucket('guide_documents', {
+          public: true,
+          fileSizeLimit: 10485760 // 10MB limit
+        });
+      
+      if (createError) {
+        console.log('Direct bucket creation failed, trying via edge function');
+        
+        // Try using edge function instead
+        const { error: funcError } = await supabase.functions.invoke('create-storage-bucket', {
+          body: { bucketName: 'guide_documents' }
+        });
+        
+        if (funcError) {
+          console.error('Edge function error:', funcError);
+          // Continue anyway, bucket may exist already or be created in another way
+        } else {
+          console.log('Bucket created via edge function');
+        }
+      } else {
+        console.log('Bucket created directly');
+      }
+    } else {
+      console.log('Guide documents bucket already exists');
+    }
+  } catch (error) {
+    console.error('Error ensuring bucket exists:', error);
+    // Continue anyway, bucket may already exist
+  }
+}
 
 export const deleteGuideDocument = async (id: string): Promise<boolean> => {
   try {

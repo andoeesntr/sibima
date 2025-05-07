@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { UploadCloud } from 'lucide-react';
+import { DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { UploadCloud, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadGuideDocument } from '@/services/guideService';
 import { GuideDocument } from '@/types';
@@ -21,9 +21,12 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
+    setUploadMessage(null);
+    
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
@@ -41,6 +44,7 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
       }
       
       setFile(selectedFile);
+      setUploadMessage(`File ${selectedFile.name} siap untuk diupload`);
     }
   };
 
@@ -56,6 +60,7 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
     }
 
     setIsUploading(true);
+    setUploadMessage('Mengupload dokumen, mohon tunggu...');
 
     try {
       const result = await uploadGuideDocument(
@@ -65,10 +70,16 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
       );
       
       if (result) {
+        setUploadMessage('Upload berhasil!');
         onSuccess(result);
+      } else {
+        setUploadMessage(null);
+        setFileError('Gagal mengupload dokumen. Silahkan coba lagi.');
       }
     } catch (error) {
       console.error('Upload error:', error);
+      setUploadMessage(null);
+      setFileError('Terjadi kesalahan saat mengupload dokumen. Silahkan coba lagi.');
       toast.error('Gagal mengupload dokumen. Silakan coba lagi.');
     } finally {
       setIsUploading(false);
@@ -79,6 +90,9 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
     <div className="space-y-4 py-2">
       <DialogHeader>
         <DialogTitle>Upload Dokumen Panduan</DialogTitle>
+        <DialogDescription>
+          Upload dokumen panduan untuk mahasiswa dan dosen
+        </DialogDescription>
       </DialogHeader>
       
       <div className="space-y-2">
@@ -88,6 +102,7 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Masukkan judul dokumen"
+          disabled={isUploading}
         />
       </div>
 
@@ -99,15 +114,16 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Masukkan deskripsi dokumen (opsional)"
           rows={3}
+          disabled={isUploading}
         />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="file">File</Label>
-        <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center">
-          <UploadCloud size={32} className="text-gray-400 mb-2" />
+        <div className={`border ${fileError ? 'border-red-300 bg-red-50' : 'border-dashed'} rounded-lg p-6 flex flex-col items-center justify-center`}>
+          <UploadCloud size={32} className={`${fileError ? 'text-red-400' : 'text-gray-400'} mb-2`} />
           <p className="text-sm text-gray-600 text-center mb-3">
-            Drag & drop file atau klik tombol di bawah
+            {isUploading ? 'Mengupload file...' : 'Drag & drop file atau klik tombol di bawah'}
           </p>
           <Input
             id="file"
@@ -115,13 +131,20 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
             accept=".pdf,.doc,.docx"
             onChange={handleFileChange}
             className="max-w-xs"
+            disabled={isUploading}
           />
           {fileError && (
-            <div className="mt-3 text-sm text-red-500">
+            <div className="mt-3 text-sm text-red-500 flex items-center">
+              <AlertCircle size={16} className="mr-1" />
               {fileError}
             </div>
           )}
-          {file && !fileError && (
+          {uploadMessage && !fileError && (
+            <div className="mt-3 text-sm text-green-600">
+              {uploadMessage}
+            </div>
+          )}
+          {file && !fileError && !uploadMessage && (
             <div className="mt-3 text-sm text-gray-600">
               File dipilih: <span className="font-medium">{file.name}</span>
             </div>
