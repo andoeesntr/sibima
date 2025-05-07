@@ -80,16 +80,17 @@ const ProposalDetail = () => {
           return;
         }
 
-        // Fetch supervisors - either from team or main supervisor
+        // Fetch supervisors - prioritize team supervisors
         let fetchedSupervisors: Supervisor[] = [];
         if (proposalData.team_id) {
           fetchedSupervisors = await fetchTeamSupervisors(proposalData.team_id);
           console.log('Team supervisors:', fetchedSupervisors);
         }
         
-        // If no team supervisors found, use the main supervisor
+        // If no team supervisors found, use the main supervisor as fallback
         if (fetchedSupervisors.length === 0 && proposalData.supervisor_id) {
-          fetchedSupervisors = await fetchMainSupervisor(proposalData.supervisor_id);
+          const mainSupervisor = await fetchMainSupervisor(proposalData.supervisor_id);
+          fetchedSupervisors = mainSupervisor;
           console.log('Main supervisor:', fetchedSupervisors);
         }
 

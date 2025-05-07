@@ -5,6 +5,7 @@ import { fetchTeamSupervisors } from './supervisorService';
 
 export const fetchTeamData = async (proposal: any, profile: any, user: any): Promise<TeamType | null> => {
   try {
+    console.log('Fetching team data for proposal:', proposal);
     // Fetch team members if we have team data
     if (proposal.team) {
       const teamMembers: TeamMember[] = [];
@@ -45,6 +46,7 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
       if (proposal.team_id) {
         try {
           const teamSupervisors = await fetchTeamSupervisors(proposal.team_id);
+          console.log('fetchTeamData - Team supervisors:', teamSupervisors);
           supervisors = teamSupervisors.map(supervisor => ({
             id: supervisor.id,
             name: supervisor.full_name,
@@ -52,32 +54,20 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
           }));
         } catch (error) {
           console.error("Error fetching team supervisors:", error);
-          // Fallback to main supervisor if team supervisors fetch fails
-          if (proposal.supervisor) {
-            supervisors.push({
-              id: proposal.supervisor.id,
-              name: proposal.supervisor.full_name,
-              profile_image: proposal.supervisor.profile_image
-            });
-          }
         }
-      } else if (proposal.supervisor) {
-        // Fallback if no team_id
-        supervisors.push({
-          id: proposal.supervisor.id,
-          name: proposal.supervisor.full_name,
-          profile_image: proposal.supervisor.profile_image
-        });
       }
       
       // If we have supervisors in the proposal object, use them instead
       if (proposal.supervisors && proposal.supervisors.length > 0) {
+        console.log('Using supervisors from proposal object:', proposal.supervisors);
         supervisors = proposal.supervisors.map(supervisor => ({
           id: supervisor.id,
           name: supervisor.full_name,
           profile_image: supervisor.profile_image
         }));
       }
+      
+      console.log('Final supervisors for team card:', supervisors);
       
       return {
         id: proposal.team.id,
@@ -91,6 +81,7 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
         const supervisors = [];
         if (proposal.supervisors && proposal.supervisors.length > 0) {
           // Use supervisors from the proposal object
+          console.log('Using supervisors from proposal object for temp team:', proposal.supervisors);
           proposal.supervisors.forEach(supervisor => {
             supervisors.push({
               id: supervisor.id,

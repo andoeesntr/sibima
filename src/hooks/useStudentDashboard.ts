@@ -20,6 +20,7 @@ export const useStudentDashboard = () => {
     try {
       // Fetch all proposals
       const proposalsList = await fetchStudentProposals(user.id);
+      console.log('Fetched proposals:', proposalsList);
       
       setProposals(proposalsList);
       
@@ -29,6 +30,7 @@ export const useStudentDashboard = () => {
         
         // Fetch team data for the selected proposal
         const teamData = await fetchTeamData(proposalsList[0], profile, user);
+        console.log('Fetched team data:', teamData);
         setTeam(teamData);
       } else {
         setSelectedProposal(null);
