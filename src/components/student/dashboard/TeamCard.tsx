@@ -55,6 +55,9 @@ export const TeamCard = ({ team }: TeamCardProps) => {
                     <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
                   </div>
                 ))}
+                {(!team.supervisors || team.supervisors.length === 0) && (
+                  <div className="p-2 text-gray-500 text-sm">Belum ada pembimbing</div>
+                )}
               </div>
             </div>
           </>
