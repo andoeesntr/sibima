@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { DialogFooter } from "@/components/ui/dialog";
+import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadGuideDocument } from '@/services/guideService';
@@ -20,16 +20,38 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      
+      // Check file size (10MB max)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        setFileError('File terlalu besar. Ukuran maksimum adalah 10MB.');
+        return;
+      }
+      
+      // Check file type
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        setFileError('Format file tidak didukung. Gunakan PDF atau DOC/DOCX.');
+        return;
+      }
+      
+      setFile(selectedFile);
     }
   };
 
   const handleSubmit = async () => {
-    if (!title || !file) {
-      toast.error('Harap isi judul dan pilih file untuk diupload');
+    if (!title) {
+      toast.error('Harap isi judul dokumen');
+      return;
+    }
+    
+    if (!file) {
+      toast.error('Harap pilih file untuk diupload');
       return;
     }
 
@@ -45,6 +67,9 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
       if (result) {
         onSuccess(result);
       }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Gagal mengupload dokumen. Silakan coba lagi.');
     } finally {
       setIsUploading(false);
     }
@@ -52,6 +77,10 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
 
   return (
     <div className="space-y-4 py-2">
+      <DialogHeader>
+        <DialogTitle>Upload Dokumen Panduan</DialogTitle>
+      </DialogHeader>
+      
       <div className="space-y-2">
         <Label htmlFor="title">Judul Dokumen</Label>
         <Input
@@ -87,14 +116,19 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
             onChange={handleFileChange}
             className="max-w-xs"
           />
-          {file && (
+          {fileError && (
+            <div className="mt-3 text-sm text-red-500">
+              {fileError}
+            </div>
+          )}
+          {file && !fileError && (
             <div className="mt-3 text-sm text-gray-600">
               File dipilih: <span className="font-medium">{file.name}</span>
             </div>
           )}
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          Format yang didukung: PDF, DOC, DOCX (max 10MB)
+          Format yang didukung: PDF, DOC, DOCX (maks 10MB)
         </p>
       </div>
 
@@ -105,7 +139,7 @@ const UploadDocumentForm = ({ onClose, onSuccess }: UploadDocumentFormProps) => 
         <Button
           className="bg-primary hover:bg-primary/90"
           onClick={handleSubmit}
-          disabled={isUploading}
+          disabled={isUploading || !!fileError}
         >
           {isUploading ? (
             <>

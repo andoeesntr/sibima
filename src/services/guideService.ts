@@ -34,21 +34,44 @@ export const uploadGuideDocument = async (
   file: File
 ): Promise<GuideDocument | null> => {
   try {
+    // First, check if the guide_documents bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const bucketExists = buckets?.some(bucket => bucket.name === 'guide_documents');
+    
+    // If bucket doesn't exist, create it
+    if (!bucketExists) {
+      const { error: createBucketError } = await supabase.storage.createBucket('guide_documents', {
+        public: true,
+        fileSizeLimit: 10485760 // 10MB limit
+      });
+      
+      if (createBucketError) {
+        console.error('Error creating bucket:', createBucketError);
+        toast.error('Error creating storage bucket');
+        return null;
+      }
+      
+      // Create public access policy for the bucket
+      const { error: policyError } = await supabase.rpc('create_storage_policy', {
+        bucket_name: 'guide_documents',
+        policy_name: 'public_access',
+        definition: 'true',
+        operation: 'SELECT'
+      });
+      
+      if (policyError && !policyError.message.includes('already exists')) {
+        console.warn('Notice: Could not create public policy for bucket', policyError);
+        // Continue anyway - this is not critical
+      }
+    }
+
     // Upload file to storage
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-    const filePath = `guide_documents/${fileName}`;
-
-    // Check if storage bucket exists, if not create it
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const bucketExists = buckets?.find(bucket => bucket.name === 'guide_documents');
-    
-    if (!bucketExists) {
-      await supabase.storage.createBucket('guide_documents', { public: true });
-    }
+    const filePath = fileName;
 
     // Upload the file
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('guide_documents')
       .upload(filePath, file);
 
