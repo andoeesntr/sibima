@@ -69,7 +69,7 @@ export const fetchTimelineSteps = async (): Promise<TimelineStep[]> => {
 };
 
 export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineStep | null> => {
-  if (!step || !step.title || !step.period) {
+  if (!step || !step.id || !step.title || !step.period) {
     toast.error('Invalid timeline step data');
     return null;
   }
@@ -77,16 +77,23 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
   try {
     // Make sure we have a valid step object with all required fields
     const stepToUpdate = {
+      id: step.id,
       title: step.title.trim(),
       period: step.period.trim(),
       description: step.description || '',
     };
 
+    // First check if the step exists
+    const { data: existingStep, error: checkError } = await supabase
+      .from('kp_timeline')
+      .select('id')
+      .eq('id', step.id)
+      .single();
+    
     let result;
     
-    // Check if we're dealing with a numeric ID (from default steps)
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(step.id)) {
-      // For non-UUID IDs, create a new record
+    if (checkError || !existingStep) {
+      // Insert if it doesn't exist
       const { data, error } = await supabase
         .from('kp_timeline')
         .insert(stepToUpdate)
@@ -96,7 +103,7 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
       if (error) throw error;
       result = data;
     } else {
-      // For valid UUIDs, update the existing record
+      // Update if it exists
       const { data, error } = await supabase
         .from('kp_timeline')
         .update(stepToUpdate)
@@ -120,7 +127,6 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
   }
 };
 
-// Helper function to initialize the timeline with default data
 export const initializeTimeline = async (): Promise<void> => {
   try {
     // Check if timeline data already exists
@@ -135,15 +141,9 @@ export const initializeTimeline = async (): Promise<void> => {
 
     // If no timeline data exists, insert the default steps
     if (!data || data.length === 0) {
-      const stepsToInsert = defaultTimelineSteps.map(step => ({
-        title: step.title,
-        period: step.period,
-        description: step.description || ''
-      }));
-      
       const { error: insertError } = await supabase
         .from('kp_timeline')
-        .insert(stepsToInsert);
+        .insert(defaultTimelineSteps);
 
       if (insertError) {
         throw insertError;
