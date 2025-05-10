@@ -26,6 +26,17 @@ import {
 import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface Student {
   id: string;
@@ -41,6 +52,17 @@ interface AddEvaluationDialogProps {
   existingStudentIds: string[];
 }
 
+const formSchema = z.object({
+  studentId: z.string({
+    required_error: "Pilih mahasiswa terlebih dahulu",
+  }),
+  score: z.string().refine((val) => {
+    const num = parseFloat(val);
+    return !isNaN(num) && num >= 0 && num <= 100;
+  }, { message: "Nilai harus antara 0-100" }),
+  comments: z.string().optional(),
+});
+
 const AddEvaluationDialog = ({
   open,
   onClose,
@@ -53,13 +75,16 @@ const AddEvaluationDialog = ({
   const [submitting, setSubmitting] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    studentId: '',
-    academicScore: '',
-    fieldScore: '',
-    comments: '',
-  });
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      studentId: "",
+      score: "",
+      comments: "",
+    },
+  });
 
   // Get available students for dropdown
   useEffect(() => {
@@ -92,12 +117,11 @@ const AddEvaluationDialog = ({
     if (evaluation) {
       // In edit mode, show all students but disable selection
       setAvailableStudents(students);
-      setFormData({
-        studentId: evaluation.student_id,
-        academicScore: evaluation.evaluator_type === 'supervisor' ? String(evaluation.score) : '',
-        fieldScore: evaluation.evaluator_type === 'field_supervisor' ? String(evaluation.score) : '',
-        comments: evaluation.comments || '',
-      });
+      form.setValue("studentId", evaluation.student_id);
+      form.setValue("score", evaluation.evaluator_type === 'supervisor' ? 
+        String(evaluation.score) : (evaluation.evaluator_type === 'field_supervisor' ? 
+        String(evaluation.score) : ""));
+      form.setValue("comments", evaluation.comments || "");
       setActiveTab(evaluation.evaluator_type === 'supervisor' ? 'academic' : 'field');
     } else {
       // Filter out students with existing evaluations only in add mode
@@ -107,45 +131,15 @@ const AddEvaluationDialog = ({
       setAvailableStudents(filtered);
       
       // Reset form data in add mode
-      setFormData({
-        studentId: '',
-        academicScore: '',
-        fieldScore: '',
-        comments: '',
+      form.reset({
+        studentId: "",
+        score: "",
+        comments: "",
       });
     }
-  }, [students, evaluation, existingStudentIds]);
+  }, [students, evaluation, existingStudentIds, form]);
 
-  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
-  };
-
-  const handleSelectChange = (field: string) => (value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const validateScore = (score: string): boolean => {
-    const numScore = parseFloat(score);
-    return !isNaN(numScore) && numScore >= 0 && numScore <= 100;
-  };
-
-  const handleSubmit = async () => {
-    // Validate form
-    if (!formData.studentId) {
-      toast.error('Pilih mahasiswa terlebih dahulu');
-      return;
-    }
-
-    if (activeTab === 'academic' && (!formData.academicScore || !validateScore(formData.academicScore))) {
-      toast.error('Masukkan nilai pembimbing akademik yang valid (0-100)');
-      return;
-    }
-
-    if (activeTab === 'field' && (!formData.fieldScore || !validateScore(formData.fieldScore))) {
-      toast.error('Masukkan nilai pembimbing lapangan yang valid (0-100)');
-      return;
-    }
-
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setSubmitting(true);
 
     try {
@@ -155,10 +149,8 @@ const AddEvaluationDialog = ({
         // Update existing evaluation
         const updatedEvaluation = {
           id: evaluation.id,
-          score: activeTab === 'academic' 
-            ? parseFloat(formData.academicScore) 
-            : parseFloat(formData.fieldScore),
-          comments: formData.comments,
+          score: parseFloat(values.score),
+          comments: values.comments || null,
           document_url: evaluation.document_url,
         };
         
@@ -168,22 +160,22 @@ const AddEvaluationDialog = ({
         // Create new evaluation
         if (activeTab === 'academic') {
           await createEvaluation({
-            student_id: formData.studentId,
+            student_id: values.studentId,
             evaluator_id: evaluatorId,
             evaluator_type: 'supervisor',
-            score: parseFloat(formData.academicScore),
-            comments: formData.comments,
+            score: parseFloat(values.score),
+            comments: values.comments || null,
             document_url: null,
             evaluation_date: new Date().toISOString(),
           });
           toast.success('Nilai pembimbing akademik berhasil ditambahkan');
         } else {
           await createEvaluation({
-            student_id: formData.studentId,
+            student_id: values.studentId,
             evaluator_id: evaluatorId,
             evaluator_type: 'field_supervisor',
-            score: parseFloat(formData.fieldScore),
-            comments: formData.comments,
+            score: parseFloat(values.score),
+            comments: values.comments || null,
             document_url: null,
             evaluation_date: new Date().toISOString(),
           });
@@ -209,108 +201,137 @@ const AddEvaluationDialog = ({
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="student">Mahasiswa</Label>
-            <Select
-              disabled={!!evaluation || submitting}
-              value={formData.studentId}
-              onValueChange={handleSelectChange('studentId')}
-            >
-              <SelectTrigger id="student">
-                <SelectValue placeholder="Pilih mahasiswa" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableStudents.length === 0 ? (
-                  <SelectItem value="empty" disabled>
-                    {loading ? 'Loading...' : 'Tidak ada mahasiswa tersedia'}
-                  </SelectItem>
-                ) : (
-                  availableStudents.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.nim} - {student.full_name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="academic">
-                Pembimbing Akademik
-              </TabsTrigger>
-              <TabsTrigger value="field">
-                Pembimbing Lapangan
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="academic" className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="academicScore">Nilai (0-100)</Label>
-                <Input
-                  id="academicScore"
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="Masukkan nilai"
-                  value={formData.academicScore}
-                  onChange={handleInputChange('academicScore')}
-                  disabled={submitting}
-                  className="w-full"
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="field" className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="fieldScore">Nilai (0-100)</Label>
-                <Input
-                  id="fieldScore"
-                  type="number"
-                  min="0"
-                  max="100"
-                  placeholder="Masukkan nilai"
-                  value={formData.fieldScore}
-                  onChange={handleInputChange('fieldScore')}
-                  disabled={submitting}
-                  className="w-full"
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
-          
-          <div className="space-y-2">
-            <Label htmlFor="comments">Komentar</Label>
-            <Textarea
-              id="comments"
-              rows={3}
-              placeholder="Tambahkan komentar (opsional)"
-              value={formData.comments}
-              onChange={handleInputChange('comments')}
-              disabled={submitting}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+            <FormField
+              control={form.control}
+              name="studentId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mahasiswa</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={!!evaluation || submitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih mahasiswa" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableStudents.length === 0 ? (
+                        <SelectItem value="empty" disabled>
+                          {loading ? 'Loading...' : 'Tidak ada mahasiswa tersedia'}
+                        </SelectItem>
+                      ) : (
+                        availableStudents.map((student) => (
+                          <SelectItem key={student.id} value={student.id}>
+                            {student.nim} - {student.full_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={submitting}
-              type="button"
-            >
-              Batal
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={submitting}
-              type="button"
-            >
-              {submitting ? 'Menyimpan...' : evaluation ? 'Perbarui' : 'Simpan'}
-            </Button>
-          </div>
-        </div>
+            
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="academic">
+                  Pembimbing Akademik
+                </TabsTrigger>
+                <TabsTrigger value="field">
+                  Pembimbing Lapangan
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="academic" className="space-y-4 pt-4">
+                <FormField
+                  control={form.control}
+                  name="score"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nilai (0-100)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          min="0"
+                          max="100"
+                          placeholder="Masukkan nilai"
+                          disabled={submitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+              
+              <TabsContent value="field" className="space-y-4 pt-4">
+                <FormField
+                  control={form.control}
+                  name="score"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nilai (0-100)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          min="0"
+                          max="100"
+                          placeholder="Masukkan nilai"
+                          disabled={submitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+            </Tabs>
+            
+            <FormField
+              control={form.control}
+              name="comments"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Komentar</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      rows={3}
+                      placeholder="Tambahkan komentar (opsional)"
+                      disabled={submitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={submitting}
+                type="button"
+              >
+                Batal
+              </Button>
+              <Button
+                disabled={submitting}
+                type="submit"
+              >
+                {submitting ? 'Menyimpan...' : evaluation ? 'Perbarui' : 'Simpan'}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
