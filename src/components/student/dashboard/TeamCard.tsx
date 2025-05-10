@@ -30,7 +30,7 @@ export const TeamCard = ({ team }: TeamCardProps) => {
             <div>
               <span className="font-medium text-gray-700 block mb-2">Anggota:</span>
               <div className="space-y-2">
-                {team.members && team.members.length > 0 ? team.members.map(member => (
+                {team.members && team.members.length > 2 ? team.members.map(member => (
                   <div key={member.id} className="flex items-center p-2 bg-gray-50 rounded">
                     <Avatar className="h-8 w-8 mr-2">
                       <AvatarImage src={member.profile_image || "/placeholder.svg"} alt={member.full_name} />
