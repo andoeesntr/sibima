@@ -25,6 +25,7 @@ import ProposalDetail from "./pages/student/ProposalDetail";
 import CoordinatorDashboard from "./pages/coordinator/Dashboard";
 import CoordinatorProfile from "./pages/coordinator/Profile";
 import ProposalReview from "./pages/coordinator/ProposalReview";
+import ProposalList from "./pages/coordinator/ProposalList";
 import CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
 import GuidanceManagement from "./pages/coordinator/GuidanceManagement";
 import StudentEvaluation from "./pages/coordinator/StudentEvaluation";
@@ -103,6 +104,7 @@ const AppRoutes = () => {
       >
         <Route index element={<CoordinatorDashboard />} />
         <Route path="profile" element={<CoordinatorProfile />} />
+        <Route path="proposal-list" element={<ProposalList />} />
         <Route path="proposal-review" element={<ProposalReview />} />
         <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
         <Route path="guidance-management" element={<GuidanceManagement />} />

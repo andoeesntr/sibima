@@ -1,12 +1,14 @@
+
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   User, LogOut, FileText, Home, Users, Settings, 
-  FileSignature, BookOpen, Layout, Award, FileCheck, GraduationCap
+  FileSignature, BookOpen, Layout, Award, FileCheck, GraduationCap,
+  ClipboardList
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
 
 type NavItem = {
@@ -24,6 +26,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   coordinator: [
     { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} /> },
+    { title: 'Daftar Proposal', href: '/coordinator/proposal-list', icon: <ClipboardList size={18} /> },
     { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} /> },
     { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} /> },
   ],

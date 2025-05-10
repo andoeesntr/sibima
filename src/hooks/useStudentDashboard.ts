@@ -22,14 +22,20 @@ export const useStudentDashboard = () => {
       const proposalsList = await fetchStudentProposals(user.id);
       console.log('Fetched proposals:', proposalsList);
       
-      setProposals(proposalsList);
+      // Add studentId to each proposal for use with the evaluation system
+      const proposalsWithStudentId = proposalsList.map(proposal => ({
+        ...proposal,
+        studentId: user.id
+      }));
       
-      if (proposalsList.length > 0) {
+      setProposals(proposalsWithStudentId);
+      
+      if (proposalsWithStudentId.length > 0) {
         // Use the first proposal as default selection
-        setSelectedProposal(proposalsList[0]);
+        setSelectedProposal(proposalsWithStudentId[0]);
         
         // Fetch team data for the selected proposal
-        const teamData = await fetchTeamData(proposalsList[0], profile, user);
+        const teamData = await fetchTeamData(proposalsWithStudentId[0], profile, user);
         console.log('Fetched team data:', teamData);
         setTeam(teamData);
       } else {
