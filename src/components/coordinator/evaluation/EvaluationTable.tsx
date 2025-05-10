@@ -17,8 +17,7 @@ import {
   AlertDialogHeader, AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
 import { 
-  Evaluation, calculateFinalGrade, 
-  deleteEvaluation 
+  Evaluation, deleteEvaluation 
 } from '@/services/evaluationService';
 import { formatDate } from '@/utils/dateUtils';
 
@@ -42,9 +41,11 @@ const EvaluationTable = ({
     if (!evaluationToDelete) return;
     
     try {
-      await deleteEvaluation(evaluationToDelete.id);
-      toast.success('Penilaian berhasil dihapus');
-      onRefresh();
+      const success = await deleteEvaluation(evaluationToDelete.id);
+      if (success) {
+        toast.success('Penilaian berhasil dihapus');
+        onRefresh();
+      }
     } catch (error) {
       console.error('Error deleting evaluation:', error);
       toast.error('Gagal menghapus penilaian');
@@ -73,7 +74,7 @@ const EvaluationTable = ({
     const studentEvals = groupedEvaluations[studentId];
     const student = studentEvals[0]?.student;
     
-    // Get supervisor score
+    // Get supervisor score (academic supervisor)
     const supervisorEval = studentEvals.find(e => e.evaluator_type === 'supervisor');
     const supervisorScore = supervisorEval?.score || 0;
     
@@ -123,7 +124,7 @@ const EvaluationTable = ({
             <TableHead className="text-center">Nilai Pembimbing Akademik (60%)</TableHead>
             <TableHead className="text-center">Nilai Pembimbing Lapangan (40%)</TableHead>
             <TableHead className="text-center">Nilai Akhir</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
+            <TableHead className="w-[100px] text-right">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -134,11 +135,12 @@ const EvaluationTable = ({
               <TableCell className="text-center">{score.supervisorScore || '-'}</TableCell>
               <TableCell className="text-center">{score.fieldSupervisorScore || '-'}</TableCell>
               <TableCell className="text-center font-bold">{score.finalScore}</TableCell>
-              <TableCell>
+              <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="sm">
                       <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -152,12 +154,14 @@ const EvaluationTable = ({
                         <Edit className="mr-2 h-4 w-4" /> Edit Nilai Lapangan
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem 
-                      onClick={() => openDeleteDialog(score.supervisorEval || score.fieldSupervisorEval!)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Hapus Nilai
-                    </DropdownMenuItem>
+                    {(score.supervisorEval || score.fieldSupervisorEval) && (
+                      <DropdownMenuItem 
+                        onClick={() => openDeleteDialog(score.supervisorEval || score.fieldSupervisorEval!)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Hapus Nilai
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -166,7 +170,10 @@ const EvaluationTable = ({
         </TableBody>
       </Table>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog 
+        open={deleteDialogOpen} 
+        onOpenChange={(open) => !open && setDeleteDialogOpen(false)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Konfirmasi Hapus</AlertDialogTitle>
@@ -176,7 +183,10 @@ const EvaluationTable = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              className="bg-destructive text-destructive-foreground"
+            >
               Hapus
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -52,6 +52,29 @@ const StudentEvaluation = () => {
   const handleEvaluationAdded = () => {
     loadEvaluations();
     setOpenAddDialog(false);
+    setEditingEvaluation(null);
+  };
+  
+  // Get unique student IDs that already have evaluations
+  const getExistingStudentIds = () => {
+    const uniqueIds = new Set<string>();
+    
+    // Group evaluations by student and evaluator type to identify students with both evaluation types
+    const studentEvaluationTypes: Record<string, Set<string>> = {};
+    
+    evaluations.forEach(eval => {
+      if (!studentEvaluationTypes[eval.student_id]) {
+        studentEvaluationTypes[eval.student_id] = new Set();
+      }
+      studentEvaluationTypes[eval.student_id].add(eval.evaluator_type);
+      
+      // If a student already has both types of evaluations, add them to uniqueIds
+      if (studentEvaluationTypes[eval.student_id].size === 2) {
+        uniqueIds.add(eval.student_id);
+      }
+    });
+    
+    return Array.from(uniqueIds);
   };
   
   return (
@@ -86,7 +109,7 @@ const StudentEvaluation = () => {
         onClose={handleDialogClose}
         onEvaluationAdded={handleEvaluationAdded}
         evaluation={editingEvaluation}
-        existingStudentIds={evaluations.map(e => e.student_id)}
+        existingStudentIds={getExistingStudentIds()}
       />
     </div>
   );

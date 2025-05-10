@@ -70,7 +70,7 @@ export const fetchStudentEvaluations = async (studentId: string): Promise<Evalua
 };
 
 // Create a new evaluation
-export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'created_at' | 'evaluation_date'>): Promise<Evaluation | null> => {
+export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'created_at'>): Promise<Evaluation | null> => {
   try {
     const { data, error } = await supabase
       .from('evaluations')

@@ -87,12 +87,11 @@ const AddEvaluationDialog = ({
     }
   }, [open]);
 
-  // Filter available students (those without evaluations already)
+  // Filter available students based on editing state
   useEffect(() => {
     if (evaluation) {
-      // In edit mode, don't filter out the current student
-      const filtered = students;
-      setAvailableStudents(filtered);
+      // In edit mode, show all students but disable selection
+      setAvailableStudents(students);
       setFormData({
         studentId: evaluation.student_id,
         academicScore: evaluation.evaluator_type === 'supervisor' ? String(evaluation.score) : '',
@@ -101,26 +100,21 @@ const AddEvaluationDialog = ({
       });
       setActiveTab(evaluation.evaluator_type === 'supervisor' ? 'academic' : 'field');
     } else {
-      // In add mode, filter out students who already have evaluations
+      // Filter out students with existing evaluations only in add mode
       const filtered = students.filter(student => 
         !existingStudentIds.includes(student.id)
       );
       setAvailableStudents(filtered);
-    }
-  }, [students, evaluation, existingStudentIds]);
-
-  // Reset form when dialog closes
-  useEffect(() => {
-    if (!open) {
+      
+      // Reset form data in add mode
       setFormData({
         studentId: '',
         academicScore: '',
         fieldScore: '',
         comments: '',
       });
-      setActiveTab('academic');
     }
-  }, [open]);
+  }, [students, evaluation, existingStudentIds]);
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
@@ -180,6 +174,7 @@ const AddEvaluationDialog = ({
             score: parseFloat(formData.academicScore),
             comments: formData.comments,
             document_url: null,
+            evaluation_date: new Date().toISOString(),
           });
           toast.success('Nilai pembimbing akademik berhasil ditambahkan');
         } else {
@@ -190,6 +185,7 @@ const AddEvaluationDialog = ({
             score: parseFloat(formData.fieldScore),
             comments: formData.comments,
             document_url: null,
+            evaluation_date: new Date().toISOString(),
           });
           toast.success('Nilai pembimbing lapangan berhasil ditambahkan');
         }
@@ -205,7 +201,7 @@ const AddEvaluationDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => !submitting && onClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !submitting && !isOpen && onClose()}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
@@ -240,12 +236,12 @@ const AddEvaluationDialog = ({
             </Select>
           </div>
           
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full">
-              <TabsTrigger value="academic" className="flex-1">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="academic">
                 Pembimbing Akademik
               </TabsTrigger>
-              <TabsTrigger value="field" className="flex-1">
+              <TabsTrigger value="field">
                 Pembimbing Lapangan
               </TabsTrigger>
             </TabsList>
@@ -258,9 +254,11 @@ const AddEvaluationDialog = ({
                   type="number"
                   min="0"
                   max="100"
+                  placeholder="Masukkan nilai"
                   value={formData.academicScore}
                   onChange={handleInputChange('academicScore')}
                   disabled={submitting}
+                  className="w-full"
                 />
               </div>
             </TabsContent>
@@ -273,9 +271,11 @@ const AddEvaluationDialog = ({
                   type="number"
                   min="0"
                   max="100"
+                  placeholder="Masukkan nilai"
                   value={formData.fieldScore}
                   onChange={handleInputChange('fieldScore')}
                   disabled={submitting}
+                  className="w-full"
                 />
               </div>
             </TabsContent>
@@ -286,6 +286,7 @@ const AddEvaluationDialog = ({
             <Textarea
               id="comments"
               rows={3}
+              placeholder="Tambahkan komentar (opsional)"
               value={formData.comments}
               onChange={handleInputChange('comments')}
               disabled={submitting}
@@ -297,12 +298,14 @@ const AddEvaluationDialog = ({
               variant="outline"
               onClick={onClose}
               disabled={submitting}
+              type="button"
             >
               Batal
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={submitting}
+              type="button"
             >
               {submitting ? 'Menyimpan...' : evaluation ? 'Perbarui' : 'Simpan'}
             </Button>
