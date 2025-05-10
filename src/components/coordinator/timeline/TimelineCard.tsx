@@ -39,7 +39,7 @@ const TimelineCard = ({ step, index, onEditStep, variant }: TimelineCardProps) =
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow p-4 mx-auto relative group">
+    <div className="bg-white border border-gray-200 rounded-lg shadow p-4 min-h-[150px] relative group">
       <Button 
         variant="ghost" 
         size="icon" 
@@ -48,9 +48,9 @@ const TimelineCard = ({ step, index, onEditStep, variant }: TimelineCardProps) =
       >
         <Edit className="h-4 w-4" />
       </Button>
-      <h3 className="font-semibold text-gray-900">{step.title}</h3>
+      <h3 className="font-bold text-gray-900 mb-2">{step.title}</h3>
       {step.description && (
-        <p className="text-gray-600 text-sm mt-2">{step.description}</p>
+        <p className="text-gray-600 text-sm">{step.description}</p>
       )}
     </div>
   );

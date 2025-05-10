@@ -1,379 +1,258 @@
 
 import { useState, useEffect } from 'react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle 
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Evaluation, createEvaluation } from '@/services/evaluationService';
 import { supabase } from '@/integrations/supabase/client';
-import { createEvaluation, Evaluation } from '@/services/evaluationService';
+import { toast } from 'sonner';
 
 interface AddEvaluationDialogProps {
   open: boolean;
-  onClose: () => void;
-  onEvaluationAdded: () => void;
-  evaluation: Evaluation | null;
-  existingStudentIds: string[];
+  onOpenChange: (open: boolean) => void;
+  onAddEvaluation: (evaluation: Evaluation) => void;
+  existingEvaluations: Evaluation[];
 }
 
-const formSchema = z.object({
-  student_id: z.string({
-    required_error: "Silakan pilih mahasiswa",
-  }),
-  evaluator_id: z.string({
-    required_error: "Silakan pilih pembimbing",
-  }),
-  evaluator_type: z.enum(['supervisor', 'field_supervisor'], {
-    required_error: "Silakan pilih tipe pembimbing",
-  }),
-  score: z.coerce.number()
-    .min(0, { message: "Nilai minimal 0" })
-    .max(100, { message: "Nilai maksimal 100" }),
-  comments: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+interface Student {
+  id: string;
+  full_name: string;
+}
 
 const AddEvaluationDialog = ({
   open,
-  onClose,
-  onEvaluationAdded,
-  evaluation,
-  existingStudentIds,
+  onOpenChange,
+  onAddEvaluation,
+  existingEvaluations
 }: AddEvaluationDialogProps) => {
-  const [students, setStudents] = useState<{ id: string; full_name: string; nim: string }[]>([]);
-  const [supervisors, setSupervisors] = useState<{ id: string; full_name: string }[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      student_id: '',
-      evaluator_id: '',
-      evaluator_type: 'supervisor',
-      score: 0,
-      comments: '',
-    },
-  });
+  // Form state
+  const [studentId, setStudentId] = useState<string>('');
+  const [academicScore, setAcademicScore] = useState<string>('');
+  const [fieldScore, setFieldScore] = useState<string>('');
+  const [finalScore, setFinalScore] = useState<string>('');
   
+  // Load students that have participated in KP
   useEffect(() => {
-    if (open) {
-      loadUsers();
-      
-      if (evaluation) {
-        form.reset({
-          student_id: evaluation.student_id,
-          evaluator_id: evaluation.evaluator_id,
-          evaluator_type: evaluation.evaluator_type,
-          score: evaluation.score,
-          comments: evaluation.comments || '',
-        });
-      } else {
-        form.reset({
-          student_id: '',
-          evaluator_id: '',
-          evaluator_type: 'supervisor',
-          score: 0,
-          comments: '',
-        });
-      }
-    }
-  }, [open, evaluation]);
-  
-  const loadUsers = async () => {
-    setLoading(true);
-    
-    try {
-      // Load students
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('profiles')
-        .select('id, full_name, nim')
-        .eq('role', 'student')
-        .order('full_name');
+    const fetchStudents = async () => {
+      setLoading(true);
+      try {
+        // Get students with role 'student'
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('role', 'student');
         
-      if (studentsError) throw studentsError;
-      
-      // Load supervisors
-      const { data: supervisorsData, error: supervisorsError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('role', ['supervisor'])
-        .order('full_name');
-        
-      if (supervisorsError) throw supervisorsError;
-      
-      setStudents(studentsData || []);
-      setSupervisors(supervisorsData || []);
-    } catch (error: any) {
-      console.error('Error loading users:', error);
-      toast.error(`Failed to load users: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const onSubmit = async (data: FormValues) => {
-    setLoading(true);
-    
-    try {
-      let evaluationData: Omit<Evaluation, 'id' | 'created_at'> = {
-        student_id: data.student_id,
-        evaluator_id: data.evaluator_id,
-        evaluator_type: data.evaluator_type,
-        score: data.score,
-        comments: data.comments || null,
-        evaluation_date: new Date().toISOString(),
-        document_url: null,
-      };
-      
-      if (evaluation) {
-        // Update existing evaluation
-        const { error } = await supabase
-          .from('evaluations')
-          .update({
-            evaluator_id: data.evaluator_id,
-            score: data.score,
-            comments: data.comments || null,
-            evaluation_date: new Date().toISOString(),
-          })
-          .eq('id', evaluation.id);
-          
         if (error) throw error;
-        
-        toast.success('Penilaian berhasil diperbarui');
-      } else {
-        // Check if student already has an evaluation of this type
-        const { data: existingData, error: checkError } = await supabase
-          .from('evaluations')
-          .select('id')
-          .eq('student_id', data.student_id)
-          .eq('evaluator_type', data.evaluator_type)
-          .limit(1);
-          
-        if (checkError) throw checkError;
-        
-        if (existingData && existingData.length > 0) {
-          throw new Error(`Mahasiswa ini sudah memiliki penilaian ${data.evaluator_type === 'supervisor' ? 'pembimbing akademik' : 'pembimbing lapangan'}`);
-        }
-        
-        // Create new evaluation
-        await createEvaluation(evaluationData);
-        toast.success('Penilaian berhasil ditambahkan');
+        setStudents(data || []);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        toast.error('Failed to load student data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (open) {
+      fetchStudents();
+      resetForm();
+    }
+  }, [open]);
+  
+  const resetForm = () => {
+    setStudentId('');
+    setAcademicScore('');
+    setFieldScore('');
+    setFinalScore('');
+  };
+  
+  // Calculate final score when academic and field scores change
+  useEffect(() => {
+    if (academicScore && fieldScore) {
+      const academic = parseFloat(academicScore);
+      const field = parseFloat(fieldScore);
+      
+      if (!isNaN(academic) && !isNaN(field)) {
+        // Calculate final score (60% academic + 40% field)
+        const calculatedFinal = (academic * 0.6) + (field * 0.4);
+        setFinalScore(calculatedFinal.toFixed(2));
+      }
+    } else {
+      setFinalScore('');
+    }
+  }, [academicScore, fieldScore]);
+  
+  // Check if a student already has an evaluation
+  const isStudentEvaluated = (id: string) => {
+    // Group evaluations by student_id and evaluator_type to check if both academic and field evaluations exist
+    const evaluationsByStudent: Record<string, Set<string>> = {};
+    
+    existingEvaluations.forEach(evaluation => {
+      if (!evaluationsByStudent[evaluation.student_id]) {
+        evaluationsByStudent[evaluation.student_id] = new Set();
+      }
+      evaluationsByStudent[evaluation.student_id].add(evaluation.evaluator_type);
+    });
+    
+    // Return true if the student already has both types of evaluations
+    return evaluationsByStudent[id] && 
+           evaluationsByStudent[id].has('supervisor') && 
+           evaluationsByStudent[id].has('field_supervisor');
+  };
+  
+  // Filter out students who already have complete evaluations
+  const availableStudents = students.filter(student => !isStudentEvaluated(student.id));
+  
+  const handleSubmit = async () => {
+    if (!studentId || !academicScore || !fieldScore) {
+      toast.error('Semua field harus diisi');
+      return;
+    }
+    
+    const academic = parseFloat(academicScore);
+    const field = parseFloat(fieldScore);
+    
+    if (isNaN(academic) || isNaN(field) || academic < 0 || academic > 100 || field < 0 || field > 100) {
+      toast.error('Nilai harus berupa angka antara 0-100');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      // Get current user (coordinator) for evaluator_id
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
       }
       
-      onEvaluationAdded();
-    } catch (error: any) {
-      console.error('Error saving evaluation:', error);
-      toast.error(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Check if student already has both types of evaluations
-  const isStudentFullyEvaluated = (studentId: string) => {
-    return existingStudentIds.includes(studentId);
-  };
-  
-  // Filter available students based on existing evaluations when creating a new evaluation
-  const getAvailableStudents = () => {
-    if (evaluation) {
-      // If editing, don't filter
-      return students;
-    }
-    
-    const selectedType = form.watch('evaluator_type');
-    
-    // Check which students already have the current evaluator type
-    return students.filter(student => {
-      // Check if this student already has an evaluation of the selected type
-      const hasEvaluation = students.some(s => 
-        s.id === student.id && 
-        isStudentFullyEvaluated(student.id)
-      );
+      // Create academic supervisor evaluation
+      const academicEvaluation = await createEvaluation({
+        student_id: studentId,
+        evaluator_id: user.id,
+        evaluator_type: 'supervisor',
+        score: academic,
+        comments: 'Penilaian oleh pembimbing akademik',
+        document_url: null  // Add this line to fix TypeScript error
+      });
       
-      return !hasEvaluation;
-    });
+      // Create field supervisor evaluation
+      const fieldEvaluation = await createEvaluation({
+        student_id: studentId,
+        evaluator_id: user.id,
+        evaluator_type: 'field_supervisor',
+        score: field,
+        comments: 'Penilaian oleh pembimbing lapangan',
+        document_url: null  // Add this line to fix TypeScript error
+      });
+      
+      if (academicEvaluation && fieldEvaluation) {
+        onAddEvaluation(academicEvaluation);
+        onAddEvaluation(fieldEvaluation);
+        resetForm();
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error('Error adding evaluation:', error);
+      toast.error('Failed to save evaluation');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-  
-  const dialogTitle = evaluation ? 'Edit Penilaian' : 'Tambah Penilaian';
   
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>
-            {evaluation 
-              ? 'Edit nilai dan komentar untuk mahasiswa ini.' 
-              : 'Tambahkan penilaian baru untuk mahasiswa KP.'}
-          </DialogDescription>
+          <DialogTitle>Tambah Nilai KP</DialogTitle>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="student_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mahasiswa</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    disabled={loading || !!evaluation}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih mahasiswa" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {getAvailableStudents().map(student => (
-                        <SelectItem key={student.id} value={student.id}>
-                          {student.full_name} - {student.nim}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="student">Mahasiswa</Label>
+            <Select 
+              value={studentId} 
+              onValueChange={setStudentId}
+              disabled={loading || availableStudents.length === 0}
+            >
+              <SelectTrigger id="student">
+                <SelectValue placeholder="Pilih mahasiswa" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableStudents.map(student => (
+                  <SelectItem key={student.id} value={student.id}>
+                    {student.full_name}
+                  </SelectItem>
+                ))}
+                {availableStudents.length === 0 && (
+                  <SelectItem value="none" disabled>
+                    Tidak ada mahasiswa tersedia
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="academicScore">Nilai Pembimbing Akademik (0-100)</Label>
+            <Input
+              id="academicScore"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={academicScore}
+              onChange={(e) => setAcademicScore(e.target.value)}
+              disabled={isSubmitting}
             />
-            
-            <FormField
-              control={form.control}
-              name="evaluator_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipe Pembimbing</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    disabled={loading || !!evaluation}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih tipe pembimbing" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="supervisor">Pembimbing Akademik</SelectItem>
-                      <SelectItem value="field_supervisor">Pembimbing Lapangan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="fieldScore">Nilai Pembimbing Lapangan (0-100)</Label>
+            <Input
+              id="fieldScore"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={fieldScore}
+              onChange={(e) => setFieldScore(e.target.value)}
+              disabled={isSubmitting}
             />
-            
-            <FormField
-              control={form.control}
-              name="evaluator_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Pembimbing</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    disabled={loading}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih pembimbing" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {supervisors.map(supervisor => (
-                        <SelectItem key={supervisor.id} value={supervisor.id}>
-                          {supervisor.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="finalScore">Nilai Akhir (60% Akademik + 40% Lapangan)</Label>
+            <Input
+              id="finalScore"
+              type="text"
+              value={finalScore}
+              disabled
+              className="bg-gray-50"
             />
-            
-            <FormField
-              control={form.control}
-              name="score"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nilai</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      placeholder="Masukkan nilai (0-100)"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="comments"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Komentar (opsional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Masukkan komentar tambahan jika ada"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-                disabled={loading}
-              >
-                Batal
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Menyimpan...' : evaluation ? 'Perbarui' : 'Simpan'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Batal
+            </Button>
+            <Button 
+              onClick={handleSubmit}
+              disabled={isSubmitting || !studentId || !academicScore || !fieldScore}
+            >
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
