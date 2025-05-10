@@ -69,7 +69,7 @@ export const fetchTimelineSteps = async (): Promise<TimelineStep[]> => {
 };
 
 export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineStep | null> => {
-  if (!step || !step.id || !step.title || !step.period) {
+  if (!step || !step.title || !step.period) {
     toast.error('Invalid timeline step data');
     return null;
   }
@@ -93,6 +93,14 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
     let result;
     
     if (checkError || !existingStep) {
+      // Generate a proper UUID if it's not already one
+      let id = step.id;
+      if (!isUUID(id)) {
+        // Use the numeric id to generate a deterministic UUID
+        id = generateDeterministicUUID(id);
+        stepToUpdate.id = id;
+      }
+      
       // Insert if it doesn't exist
       const { data, error } = await supabase
         .from('kp_timeline')
@@ -127,6 +135,21 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
   }
 };
 
+// Helper function to check if a string is a valid UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+// Helper function to generate a deterministic UUID from a string
+function generateDeterministicUUID(input: string): string {
+  // This is a simplified UUID generator for demonstration
+  // In production, you might want to use a more robust approach
+  const prefix = '00000000-0000-4000-8000-';
+  const paddedInput = input.padStart(12, '0');
+  return prefix + paddedInput;
+}
+
 export const initializeTimeline = async (): Promise<void> => {
   try {
     // Check if timeline data already exists
@@ -141,9 +164,15 @@ export const initializeTimeline = async (): Promise<void> => {
 
     // If no timeline data exists, insert the default steps
     if (!data || data.length === 0) {
+      // Transform default steps to ensure all IDs are valid UUIDs
+      const stepsWithUUIDs = defaultTimelineSteps.map(step => ({
+        ...step,
+        id: isUUID(step.id) ? step.id : generateDeterministicUUID(step.id)
+      }));
+      
       const { error: insertError } = await supabase
         .from('kp_timeline')
-        .insert(defaultTimelineSteps);
+        .insert(stepsWithUUIDs);
 
       if (insertError) {
         throw insertError;

@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   User, LogOut, FileText, Home, Users, Settings, 
-  FileSignature, BookOpen, Layout, Award, FileCheck
+  FileSignature, BookOpen, Layout, Award, FileCheck, GraduationCap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -26,6 +25,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   coordinator: [
     { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} /> },
     { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} /> },
+    { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} /> },
   ],
   admin: [
     { title: 'Dashboard', href: '/admin', icon: <Home size={18} /> },

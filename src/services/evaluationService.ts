@@ -70,12 +70,19 @@ export const fetchStudentEvaluations = async (studentId: string): Promise<Evalua
 };
 
 // Create a new evaluation
-export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'created_at'>): Promise<Evaluation | null> => {
+export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'created_at' | 'evaluation_date'>): Promise<Evaluation | null> => {
   try {
     const { data, error } = await supabase
       .from('evaluations')
-      .insert(evaluation)
-      .select()
+      .insert({
+        ...evaluation,
+        evaluation_date: new Date().toISOString()
+      })
+      .select(`
+        *,
+        student:profiles!student_id (full_name, nim),
+        evaluator:profiles!evaluator_id (full_name)
+      `)
       .single();
 
     if (error) {
@@ -88,6 +95,54 @@ export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'crea
     console.error('Error creating evaluation:', error);
     toast.error(`Failed to create evaluation: ${error.message}`);
     return null;
+  }
+};
+
+// Update an evaluation
+export const updateEvaluation = async (id: string, updates: Partial<Evaluation>): Promise<Evaluation | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('evaluations')
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        student:profiles!student_id (full_name, nim),
+        evaluator:profiles!evaluator_id (full_name)
+      `)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    toast.success('Evaluation successfully updated');
+    return data as Evaluation;
+  } catch (error: any) {
+    console.error('Error updating evaluation:', error);
+    toast.error(`Failed to update evaluation: ${error.message}`);
+    return null;
+  }
+};
+
+// Delete an evaluation
+export const deleteEvaluation = async (id: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('evaluations')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw error;
+    }
+
+    toast.success('Evaluation successfully deleted');
+    return true;
+  } catch (error: any) {
+    console.error('Error deleting evaluation:', error);
+    toast.error(`Failed to delete evaluation: ${error.message}`);
+    return false;
   }
 };
 
