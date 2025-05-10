@@ -27,7 +27,6 @@ import CoordinatorProfile from "./pages/coordinator/Profile";
 import ProposalReview from "./pages/coordinator/ProposalReview";
 import CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
 import GuidanceManagement from "./pages/coordinator/GuidanceManagement";
-import StudentEvaluation from "./pages/coordinator/StudentEvaluation";
 
 // SuperAdmin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -106,7 +105,6 @@ const AppRoutes = () => {
         <Route path="proposal-review" element={<ProposalReview />} />
         <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
         <Route path="guidance-management" element={<GuidanceManagement />} />
-        <Route path="student-evaluation" element={<StudentEvaluation />} />
       </Route>
       
       {/* SuperAdmin Routes */}
