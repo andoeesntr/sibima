@@ -62,15 +62,15 @@ const StudentEvaluation = () => {
     // Group evaluations by student and evaluator type to identify students with both evaluation types
     const studentEvaluationTypes: Record<string, Set<string>> = {};
     
-    evaluations.forEach(eval => {
-      if (!studentEvaluationTypes[eval.student_id]) {
-        studentEvaluationTypes[eval.student_id] = new Set();
+    evaluations.forEach(evaluation => {
+      if (!studentEvaluationTypes[evaluation.student_id]) {
+        studentEvaluationTypes[evaluation.student_id] = new Set();
       }
-      studentEvaluationTypes[eval.student_id].add(eval.evaluator_type);
+      studentEvaluationTypes[evaluation.student_id].add(evaluation.evaluator_type);
       
       // If a student already has both types of evaluations, add them to uniqueIds
-      if (studentEvaluationTypes[eval.student_id].size === 2) {
-        uniqueIds.add(eval.student_id);
+      if (studentEvaluationTypes[evaluation.student_id].size === 2) {
+        uniqueIds.add(evaluation.student_id);
       }
     });
     
