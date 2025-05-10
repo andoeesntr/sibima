@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { StatusCard } from "@/components/student/dashboard/StatusCard";
 import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
+import { FinalGradeCard } from "@/components/student/dashboard/FinalGradeCard";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { formatDate, statusColors, statusLabels } from "@/utils/formatters";
 
@@ -11,6 +12,7 @@ const StudentDashboard = () => {
     proposals, 
     selectedProposal, 
     team, 
+    finalGrade,
     loading, 
     handleSelectProposal 
   } = useStudentDashboard();
@@ -34,6 +36,9 @@ const StudentDashboard = () => {
 
         {/* KP Team Card */}
         <TeamCard team={team} />
+        
+        {/* Final Grade Card */}
+        <FinalGradeCard finalGrade={finalGrade} />
       </div>
 
       {/* Quick Actions */}

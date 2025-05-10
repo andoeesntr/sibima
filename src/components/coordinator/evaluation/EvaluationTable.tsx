@@ -19,7 +19,6 @@ import {
 import { 
   Evaluation, deleteEvaluation 
 } from '@/services/evaluationService';
-import { formatDate } from '@/utils/dateUtils';
 
 interface EvaluationTableProps {
   evaluations: Evaluation[];
@@ -93,7 +92,8 @@ const EvaluationTable = ({
       fieldSupervisorScore,
       finalScore: parseFloat(finalScore.toFixed(2)),
       supervisorEval,
-      fieldSupervisorEval
+      fieldSupervisorEval,
+      hasFullEvaluation: supervisorScore > 0 && fieldSupervisorScore > 0
     };
   });
 
@@ -132,8 +132,12 @@ const EvaluationTable = ({
             <TableRow key={score.studentId}>
               <TableCell className="font-medium">{score.studentNim}</TableCell>
               <TableCell>{score.studentName}</TableCell>
-              <TableCell className="text-center">{score.supervisorScore || '-'}</TableCell>
-              <TableCell className="text-center">{score.fieldSupervisorScore || '-'}</TableCell>
+              <TableCell className="text-center">
+                {score.supervisorScore || '-'}
+              </TableCell>
+              <TableCell className="text-center">
+                {score.fieldSupervisorScore || '-'}
+              </TableCell>
               <TableCell className="text-center font-bold">{score.finalScore}</TableCell>
               <TableCell className="text-right">
                 <DropdownMenu>
