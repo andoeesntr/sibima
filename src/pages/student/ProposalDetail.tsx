@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -169,7 +168,6 @@ const ProposalDetail = () => {
             description={proposal.description}
             createdAt={proposal.created_at}
             updatedAt={proposal.updated_at}
-            supervisors={supervisors}
             supervisors={supervisors}
             formatDate={formatDate}
           />
