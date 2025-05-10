@@ -170,6 +170,7 @@ const ProposalDetail = () => {
             createdAt={proposal.created_at}
             updatedAt={proposal.updated_at}
             supervisors={supervisors}
+            supervisors={supervisors}
             formatDate={formatDate}
           />
 
