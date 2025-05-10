@@ -89,10 +89,23 @@ const AddEvaluationDialog = ({
   
   // Check if a student already has an evaluation
   const isStudentEvaluated = (id: string) => {
-    return existingEvaluations.some(e => e.student_id === id);
+    // Group evaluations by student_id and evaluator_type to check if both academic and field evaluations exist
+    const evaluationsByStudent: Record<string, Set<string>> = {};
+    
+    existingEvaluations.forEach(evaluation => {
+      if (!evaluationsByStudent[evaluation.student_id]) {
+        evaluationsByStudent[evaluation.student_id] = new Set();
+      }
+      evaluationsByStudent[evaluation.student_id].add(evaluation.evaluator_type);
+    });
+    
+    // Return true if the student already has both types of evaluations
+    return evaluationsByStudent[id] && 
+           evaluationsByStudent[id].has('supervisor') && 
+           evaluationsByStudent[id].has('field_supervisor');
   };
   
-  // Filter out students who already have evaluations
+  // Filter out students who already have complete evaluations
   const availableStudents = students.filter(student => !isStudentEvaluated(student.id));
   
   const handleSubmit = async () => {

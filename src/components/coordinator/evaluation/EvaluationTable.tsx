@@ -61,6 +61,46 @@ const EvaluationTable = ({
     );
   }
   
+  // Group evaluations by student
+  const studentEvaluations: Record<string, {
+    student_name: string,
+    academic_score?: number,
+    field_score?: number,
+    final_score: number,
+    evaluations: Evaluation[]
+  }> = {};
+  
+  evaluations.forEach(evaluation => {
+    const studentId = evaluation.student_id;
+    const studentName = evaluation.student?.full_name || 'Unknown Student';
+    
+    if (!studentEvaluations[studentId]) {
+      studentEvaluations[studentId] = {
+        student_name: studentName,
+        evaluations: [],
+        final_score: 0
+      };
+    }
+    
+    // Add the evaluation to the student's evaluation array
+    studentEvaluations[studentId].evaluations.push(evaluation);
+    
+    // Update the academic or field score based on the evaluator type
+    if (evaluation.evaluator_type === 'supervisor') {
+      studentEvaluations[studentId].academic_score = evaluation.score;
+    } else if (evaluation.evaluator_type === 'field_supervisor') {
+      studentEvaluations[studentId].field_score = evaluation.score;
+    }
+    
+    // Calculate the final score if both scores are present
+    if (studentEvaluations[studentId].academic_score !== undefined && 
+        studentEvaluations[studentId].field_score !== undefined) {
+      const academic = studentEvaluations[studentId].academic_score!;
+      const field = studentEvaluations[studentId].field_score!;
+      studentEvaluations[studentId].final_score = academic * 0.6 + field * 0.4;
+    }
+  });
+  
   return (
     <>
       <div className="overflow-x-auto">
@@ -76,34 +116,45 @@ const EvaluationTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {evaluations.map((evaluation) => {
-              let finalGrade = evaluation.score;
-              
-              return (
-                <TableRow key={evaluation.id}>
-                  <TableCell className="font-medium">
-                    {evaluation.student?.full_name || 'Unknown Student'}
-                  </TableCell>
-                  <TableCell>
-                    {evaluation.evaluator_type === 'supervisor' ? evaluation.score : '-'}
-                  </TableCell>
-                  <TableCell>
-                    {evaluation.evaluator_type === 'field_supervisor' ? evaluation.score : '-'}
-                  </TableCell>
-                  <TableCell>{finalGrade}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEditClick(evaluation)}>
+            {Object.values(studentEvaluations).map((student) => (
+              <TableRow key={student.evaluations[0].student_id}>
+                <TableCell className="font-medium">
+                  {student.student_name}
+                </TableCell>
+                <TableCell>
+                  {student.academic_score !== undefined ? student.academic_score : '-'}
+                </TableCell>
+                <TableCell>
+                  {student.field_score !== undefined ? student.field_score : '-'}
+                </TableCell>
+                <TableCell>
+                  {(student.academic_score !== undefined && student.field_score !== undefined) ? 
+                    student.final_score.toFixed(2) : '-'}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end space-x-2">
+                    {student.evaluations.map(evaluation => (
+                      <Button 
+                        key={evaluation.id}
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditClick(evaluation)}
+                        className="mr-1"
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDeleteClick(evaluation)}>
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleDeleteClick(student.evaluations[0])}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import EvaluationTable from "@/components/coordinator/evaluation/EvaluationTable";
 import AddEvaluationDialog from "@/components/coordinator/evaluation/AddEvaluationDialog";
-import { fetchAllEvaluations, calculateFinalGrade } from '@/services/evaluationService';
+import { fetchAllEvaluations } from '@/services/evaluationService';
 import { Evaluation } from '@/services/evaluationService';
 import { toast } from 'sonner';
 
@@ -46,10 +46,16 @@ const StudentEvaluation = () => {
   };
   
   const handleDeleteEvaluation = (id: string) => {
-    setEvaluations(prevEvaluations => 
-      prevEvaluations.filter(evaluation => evaluation.id !== id)
-    );
-    toast.success('Penilaian berhasil dihapus');
+    // When deleting one evaluation, we should delete both evaluations for the student
+    const evaluationToDelete = evaluations.find(e => e.id === id);
+    if (evaluationToDelete) {
+      const studentId = evaluationToDelete.student_id;
+      // Filter out all evaluations for this student
+      setEvaluations(prevEvaluations => 
+        prevEvaluations.filter(evaluation => evaluation.student_id !== studentId)
+      );
+      toast.success('Penilaian mahasiswa berhasil dihapus');
+    }
   };
   
   return (
