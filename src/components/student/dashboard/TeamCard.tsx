@@ -60,7 +60,7 @@ export const TeamCard = ({ team }: TeamCardProps) => {
                       <AvatarFallback>{supervisor.name ? supervisor.name.charAt(0) : 'P'}</AvatarFallback>
                     </Avatar>
                     <span>{supervisor.name}</span>
-                    <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
+                    <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 2}</span>
                   </div>
                 )) : (
                   <div className="p-2 text-gray-500 text-sm">Belum ada dosen pembimbing</div>
