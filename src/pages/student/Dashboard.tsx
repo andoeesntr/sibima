@@ -1,21 +1,22 @@
 
 import { useEffect } from 'react';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
-import StatusCard from '@/components/student/dashboard/StatusCard';
-import ActionCards from '@/components/student/dashboard/ActionCards';
-import TeamCard from '@/components/student/dashboard/TeamCard';
+import { StatusCard } from '@/components/student/dashboard/StatusCard';
+import { ActionCards } from '@/components/student/dashboard/ActionCards';
+import { TeamCard } from '@/components/student/dashboard/TeamCard';
 import FinalGradeCard from '@/components/student/dashboard/FinalGradeCard';
 
 const StudentDashboard = () => {
   const { 
-    proposal, 
+    proposals,
+    selectedProposal, 
     team,
     loading,
-    refreshDashboardData,
+    handleSelectProposal,
   } = useStudentDashboard();
 
   useEffect(() => {
-    refreshDashboardData();
+    // Initial data loading happens in the hook
   }, []);
 
   return (
@@ -25,21 +26,31 @@ const StudentDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 space-y-4">
           <StatusCard 
-            proposal={proposal} 
-            loading={loading} 
+            proposals={proposals}
+            selectedProposal={selectedProposal} 
+            loading={loading}
+            onSelectProposal={handleSelectProposal}
+            formatDate={(date) => new Date(date).toLocaleDateString('id-ID')}
+            statusColors={{
+              submitted: "bg-yellow-500 hover:bg-yellow-600",
+              approved: "bg-green-500 hover:bg-green-600",
+              rejected: "bg-red-500 hover:bg-red-600"
+            }}
+            statusLabels={{
+              submitted: "Diajukan",
+              approved: "Disetujui",
+              rejected: "Ditolak"
+            }}
           />
           
           <ActionCards 
-            proposal={proposal} 
-            team={team}
-            loading={loading} 
+            selectedProposal={selectedProposal}
           />
         </div>
         
         <div className="space-y-4">
           <TeamCard 
-            team={team} 
-            loading={loading}
+            team={team}
           />
           
           <FinalGradeCard />

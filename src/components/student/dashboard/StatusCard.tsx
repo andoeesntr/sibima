@@ -14,6 +14,7 @@ interface StatusCardProps {
   formatDate: (dateString: string) => string;
   statusColors: Record<string, string>;
   statusLabels: Record<string, string>;
+  loading?: boolean;
 }
 
 export const StatusCard = ({
@@ -22,9 +23,26 @@ export const StatusCard = ({
   onSelectProposal,
   formatDate,
   statusColors,
-  statusLabels
+  statusLabels,
+  loading = false
 }: StatusCardProps) => {
   const navigate = useNavigate();
+  
+  if (loading) {
+    return (
+      <Card className="col-span-2 shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader>
+          <CardTitle>Status KP</CardTitle>
+          <CardDescription>Memuat data...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card className="col-span-2 shadow-sm hover:shadow-md transition-shadow">
@@ -64,8 +82,8 @@ export const StatusCard = ({
                 
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Status:</span>
-                  <Badge className={statusColors[selectedProposal.status as keyof typeof statusColors] || "bg-gray-500"}>
-                    {statusLabels[selectedProposal.status as keyof typeof statusLabels] || "Unknown"}
+                  <Badge className={statusColors[selectedProposal.status] || "bg-gray-500"}>
+                    {statusLabels[selectedProposal.status] || "Unknown"}
                   </Badge>
                 </div>
                 

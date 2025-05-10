@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { toast } from 'sonner';
 import { ProposalType, TeamType } from '@/types/student';
 import { fetchStudentProposals } from '@/services/studentProposalService';
