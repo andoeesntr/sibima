@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -173,13 +174,13 @@ export const calculateFinalGrade = async (studentId: string): Promise<GradeResul
 
     // Separate evaluations by evaluator type
     const academicEvaluations = evaluations.filter(
-      (eval) => eval.evaluator_type === 'academic_supervisor'
+      (evaluation) => evaluation.evaluator_type === 'academic_supervisor'
     );
     const fieldEvaluations = evaluations.filter(
-      (eval) => eval.evaluator_type === 'field_supervisor'
+      (evaluation) => evaluation.evaluator_type === 'field_supervisor'
     );
     const coordinatorEvaluations = evaluations.filter(
-      (eval) => eval.evaluator_type === 'coordinator'
+      (evaluation) => evaluation.evaluator_type === 'coordinator'
     );
 
     // Calculate average scores
@@ -188,15 +189,15 @@ export const calculateFinalGrade = async (studentId: string): Promise<GradeResul
     let coordinatorScore = 0;
 
     if (academicEvaluations.length > 0) {
-      academicScore = academicEvaluations.reduce((sum, eval) => sum + Number(eval.score), 0) / academicEvaluations.length;
+      academicScore = academicEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / academicEvaluations.length;
     }
 
     if (fieldEvaluations.length > 0) {
-      fieldScore = fieldEvaluations.reduce((sum, eval) => sum + Number(eval.score), 0) / fieldEvaluations.length;
+      fieldScore = fieldEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / fieldEvaluations.length;
     }
 
     if (coordinatorEvaluations.length > 0) {
-      coordinatorScore = coordinatorEvaluations.reduce((sum, eval) => sum + Number(eval.score), 0) / coordinatorEvaluations.length;
+      coordinatorScore = coordinatorEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / coordinatorEvaluations.length;
     }
 
     // Calculate final score with weights (customize as needed)

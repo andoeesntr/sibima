@@ -156,7 +156,7 @@ const ProposalDetail = () => {
             title={proposal.title}
             createdAt={proposal.created_at}
             description={proposal.description}
-            companyName={proposal.companyName}
+            companyName={proposal.company_name}
             rejectionReason={proposal.rejectionReason}
             status={proposal.status}
             documents={proposal.documents}
@@ -206,7 +206,7 @@ const ProposalDetail = () => {
         isOpen={isEditSupervisorDialogOpen}
         setIsOpen={setIsEditSupervisorDialogOpen}
         proposalId={proposal.id}
-        teamId={proposal.teamId}
+        teamId={proposal.team_id}
         currentSupervisors={supervisors}
         onSupervisorsUpdated={handleUpdateSupervisors}
       />
