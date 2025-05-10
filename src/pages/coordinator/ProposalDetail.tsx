@@ -49,9 +49,7 @@ const ProposalDetail = () => {
   const [isEditSupervisorDialogOpen, setIsEditSupervisorDialogOpen] = useState(false);
   
   const handleGoBack = () => {
-    // Go back to the previous route, defaulting to the proposal list if not specified
-    const fromPath = location.state?.from || '/coordinator/proposal-list';
-    navigate(fromPath);
+    navigate('/coordinator/proposal-list');
   };
   
   const handleApprove = async () => {

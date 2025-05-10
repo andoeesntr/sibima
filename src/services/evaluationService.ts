@@ -179,10 +179,14 @@ export const calculateFinalGrade = async (studentId: string): Promise<GradeResul
     const fieldEvaluations = evaluations.filter(
       (evaluation) => evaluation.evaluator_type === 'field_supervisor'
     );
+    const coordinatorEvaluations = evaluations.filter(
+      (evaluation) => evaluation.evaluator_type === 'coordinator'
+    );
     
     // Calculate average scores
     let academicScore = 0;
     let fieldScore = 0;
+    let coordinatorScore = 0;
 
     if (academicEvaluations.length > 0) {
       academicScore = academicEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / academicEvaluations.length;
@@ -190,6 +194,10 @@ export const calculateFinalGrade = async (studentId: string): Promise<GradeResul
 
     if (fieldEvaluations.length > 0) {
       fieldScore = fieldEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / fieldEvaluations.length;
+    }
+
+    if (coordinatorEvaluations.length > 0) {
+      coordinatorScore = coordinatorEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / coordinatorEvaluations.length;
     }
 
     // Calculate final score with weights (customize as needed)

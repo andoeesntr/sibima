@@ -63,20 +63,23 @@ const EvaluationTable = ({
   
   // Group evaluations by student
   const studentEvaluations: Record<string, {
-    student_name: string,
-    academic_score?: number,
-    field_score?: number,
-    final_score: number,
+    student_name: string;
+    student_nim?: string;
+    academic_score?: number;
+    field_score?: number;
+    final_score: number;
     evaluations: Evaluation[]
   }> = {};
   
   evaluations.forEach(evaluation => {
     const studentId = evaluation.student_id;
     const studentName = evaluation.student?.full_name || 'Unknown Student';
+    const studentNim = evaluation.student?.nim;
     
     if (!studentEvaluations[studentId]) {
       studentEvaluations[studentId] = {
         student_name: studentName,
+        student_nim: studentNim,
         evaluations: [],
         final_score: 0
       };
@@ -109,6 +112,7 @@ const EvaluationTable = ({
           <TableHeader>
             <TableRow>
               <TableHead>Nama</TableHead>
+              <TableHead>NIM</TableHead>
               <TableHead>Nilai Pembimbing Akademik</TableHead>
               <TableHead>Nilai Pembimbing Lapangan</TableHead>
               <TableHead>Nilai Akhir</TableHead>
@@ -120,6 +124,9 @@ const EvaluationTable = ({
               <TableRow key={student.evaluations[0].student_id}>
                 <TableCell className="font-medium">
                   {student.student_name}
+                </TableCell>
+                <TableCell>
+                  {student.student_nim || '-'}
                 </TableCell>
                 <TableCell>
                   {student.academic_score !== undefined ? student.academic_score : '-'}
