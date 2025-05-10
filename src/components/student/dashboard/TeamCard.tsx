@@ -47,7 +47,7 @@ export const TeamCard = ({ team }: TeamCardProps) => {
             <div>
               <span className="font-medium text-gray-700 block mb-2">Dosen Pembimbing:</span>
               <div className="space-y-2">
-                {team.supervisors && team.supervisors.length > 0 ? team.supervisors.map((supervisor, index) => (
+                {team.supervisors && team.supervisors.length > 1 ? team.supervisors.map((supervisor, index) => (
                   <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
                     <Avatar className="h-8 w-8 mr-2">
                       <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.name} />
