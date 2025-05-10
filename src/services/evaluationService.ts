@@ -6,7 +6,7 @@ export interface Evaluation {
   id: string;
   student_id: string;
   evaluator_id: string;
-  evaluator_type: 'supervisor' | 'field_supervisor';
+  evaluator_type: 'supervisor' | 'field_supervisor' | 'academic_supervisor';
   evaluation_date: string;
   score: number;
   comments: string | null;
@@ -174,19 +174,15 @@ export const calculateFinalGrade = async (studentId: string): Promise<GradeResul
 
     // Separate evaluations by evaluator type
     const academicEvaluations = evaluations.filter(
-      (evaluation) => evaluation.evaluator_type === 'academic_supervisor'
+      (evaluation) => evaluation.evaluator_type === 'supervisor' || evaluation.evaluator_type === 'academic_supervisor'
     );
     const fieldEvaluations = evaluations.filter(
       (evaluation) => evaluation.evaluator_type === 'field_supervisor'
     );
-    const coordinatorEvaluations = evaluations.filter(
-      (evaluation) => evaluation.evaluator_type === 'coordinator'
-    );
-
+    
     // Calculate average scores
     let academicScore = 0;
     let fieldScore = 0;
-    let coordinatorScore = 0;
 
     if (academicEvaluations.length > 0) {
       academicScore = academicEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / academicEvaluations.length;
@@ -196,20 +192,38 @@ export const calculateFinalGrade = async (studentId: string): Promise<GradeResul
       fieldScore = fieldEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / fieldEvaluations.length;
     }
 
-    if (coordinatorEvaluations.length > 0) {
-      coordinatorScore = coordinatorEvaluations.reduce((sum, evaluation) => sum + Number(evaluation.score), 0) / coordinatorEvaluations.length;
-    }
-
     // Calculate final score with weights (customize as needed)
-    // For example: 40% academic, 40% field, 20% coordinator
-    const weightedScore =
-      (academicScore * 0.4) + (fieldScore * 0.4) + (coordinatorScore * 0.2);
+    // For example: 60% academic, 40% field
+    let weightedScore = 0;
+    let letterGrade = '';
+    
+    if (academicScore > 0 && fieldScore > 0) {
+      weightedScore = (academicScore * 0.6) + (fieldScore * 0.4);
+    } else if (academicScore > 0) {
+      weightedScore = academicScore;
+    } else if (fieldScore > 0) {
+      weightedScore = fieldScore;
+    }
+    
+    // Calculate letter grade
+    if (weightedScore >= 85) {
+      letterGrade = 'A';
+    } else if (weightedScore >= 70) {
+      letterGrade = 'B';
+    } else if (weightedScore >= 55) {
+      letterGrade = 'C';
+    } else if (weightedScore >= 40) {
+      letterGrade = 'D';
+    } else {
+      letterGrade = 'E';
+    }
 
     // Return formatted result
     return {
       score: weightedScore || 0,
       academicSupervisorScore: academicEvaluations.length > 0 ? academicScore : undefined,
-      fieldSupervisorScore: fieldEvaluations.length > 0 ? fieldScore : undefined
+      fieldSupervisorScore: fieldEvaluations.length > 0 ? fieldScore : undefined,
+      letterGrade
     };
   } catch (error) {
     console.error('Error calculating final grade:', error);

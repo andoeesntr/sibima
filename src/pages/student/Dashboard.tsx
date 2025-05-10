@@ -40,6 +40,7 @@ const StudentDashboard = () => {
   const [finalGrade, setFinalGrade] = useState<number | null>(null);
   const [academicGrade, setAcademicGrade] = useState<number | null>(null);
   const [fieldGrade, setFieldGrade] = useState<number | null>(null);
+  const [letterGrade, setLetterGrade] = useState<string>('');
   const [loadingGrade, setLoadingGrade] = useState(false);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ const StudentDashboard = () => {
             setFinalGrade(gradeData.score);
             setAcademicGrade(gradeData.academicSupervisorScore || null);
             setFieldGrade(gradeData.fieldSupervisorScore || null);
+            setLetterGrade(gradeData.letterGrade || '');
           }
         }
       } catch (error) {
@@ -102,7 +104,7 @@ const StudentDashboard = () => {
                 <div className="flex items-center justify-center">
                   <Badge className="text-xl py-6 px-6 bg-primary hover:bg-primary">
                     {finalGrade.toFixed(1)}
-                    <span className="ml-2">({getLetterGrade(finalGrade)})</span>
+                    <span className="ml-2">({letterGrade || getLetterGrade(finalGrade)})</span>
                   </Badge>
                 </div>
                 

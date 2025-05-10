@@ -86,7 +86,7 @@ const EvaluationTable = ({
     studentEvaluations[studentId].evaluations.push(evaluation);
     
     // Update the academic or field score based on the evaluator type
-    if (evaluation.evaluator_type === 'supervisor') {
+    if (evaluation.evaluator_type === 'supervisor' || evaluation.evaluator_type === 'academic_supervisor') {
       studentEvaluations[studentId].academic_score = evaluation.score;
     } else if (evaluation.evaluator_type === 'field_supervisor') {
       studentEvaluations[studentId].field_score = evaluation.score;

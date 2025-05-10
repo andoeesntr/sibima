@@ -48,10 +48,10 @@ export const TeamCard = ({ team }: TeamCardProps) => {
               <span className="font-medium text-gray-700 block mb-2">Dosen Pembimbing:</span>
               <div className="space-y-2">
                 {team.supervisors && team.supervisors.length > 0 ? team.supervisors.map((supervisor, index) => (
-                  <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
+                  <div key={index} className="flex items-center p-2 bg-gray-50 rounded">
                     <Avatar className="h-8 w-8 mr-2">
                       <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.name} />
-                      <AvatarFallback>{supervisor.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{supervisor.name ? supervisor.name.charAt(0) : 'P'}</AvatarFallback>
                     </Avatar>
                     <span>{supervisor.name}</span>
                     <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
