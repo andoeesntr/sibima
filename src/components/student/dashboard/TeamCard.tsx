@@ -55,6 +55,7 @@ export const TeamCard = ({ team }: TeamCardProps) => {
                     </Avatar>
                     <span>{supervisor.name}</span>
                     <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
+                    <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
                   </div>
                 )) : (
                   <div className="p-2 text-gray-500 text-sm">Belum ada dosen pembimbing</div>
