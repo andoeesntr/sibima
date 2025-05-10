@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 
 type NavItem = {
   title: string;
@@ -26,6 +26,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   coordinator: [
     { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} /> },
     { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} /> },
+    { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <Award size={18} /> },
   ],
   admin: [
     { title: 'Dashboard', href: '/admin', icon: <Home size={18} /> },
