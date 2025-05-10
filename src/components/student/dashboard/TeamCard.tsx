@@ -55,6 +55,11 @@ export const TeamCard = ({ team }: TeamCardProps) => {
                     </Avatar>
                     <span>{supervisor.name}</span>
                     <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
+                    <Avatar className="h-8 w-8 mr-2">
+                      <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.name} />
+                      <AvatarFallback>{supervisor.name ? supervisor.name.charAt(0) : 'P'}</AvatarFallback>
+                    </Avatar>
+                    <span>{supervisor.name}</span>
                     <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
                   </div>
                 )) : (
