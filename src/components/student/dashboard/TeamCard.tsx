@@ -30,7 +30,7 @@ export const TeamCard = ({ team }: TeamCardProps) => {
             <div>
               <span className="font-medium text-gray-700 block mb-2">Anggota:</span>
               <div className="space-y-2">
-                {team.members.map(member => (
+                {team.members?.map(member => (
                   <div key={member.id} className="flex items-center p-2 bg-gray-50 rounded">
                     <Avatar className="h-8 w-8 mr-2">
                       <AvatarImage src={member.profile_image || "/placeholder.svg"} alt={member.full_name} />
@@ -38,14 +38,16 @@ export const TeamCard = ({ team }: TeamCardProps) => {
                     </Avatar>
                     <span>{member.full_name} {member.nim ? `(${member.nim})` : ''}</span>
                   </div>
-                ))}
+                )) || (
+                  <div className="p-2 text-gray-500 text-sm">Belum ada anggota tim</div>
+                )}
               </div>
             </div>
             
             <div>
-              <span className="font-medium text-gray-700 block mb-2">Pembimbing:</span>
+              <span className="font-medium text-gray-700 block mb-2">Dosen Pembimbing:</span>
               <div className="space-y-2">
-                {team.supervisors && team.supervisors.map((supervisor, index) => (
+                {team.supervisors && team.supervisors.length > 0 ? team.supervisors.map((supervisor, index) => (
                   <div key={supervisor.id} className="flex items-center p-2 bg-gray-50 rounded">
                     <Avatar className="h-8 w-8 mr-2">
                       <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.name} />
@@ -54,9 +56,8 @@ export const TeamCard = ({ team }: TeamCardProps) => {
                     <span>{supervisor.name}</span>
                     <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
                   </div>
-                ))}
-                {(!team.supervisors || team.supervisors.length === 0) && (
-                  <div className="p-2 text-gray-500 text-sm">Belum ada pembimbing</div>
+                )) : (
+                  <div className="p-2 text-gray-500 text-sm">Belum ada dosen pembimbing</div>
                 )}
               </div>
             </div>

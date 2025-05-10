@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -146,54 +145,74 @@ export const deleteEvaluation = async (id: string): Promise<boolean> => {
   }
 };
 
+// Expanded type for grade calculation results
+export interface GradeResult {
+  score: number;
+  academicSupervisorScore?: number;
+  fieldSupervisorScore?: number;
+  letterGrade?: string;
+}
+
 // Calculate final grade for a student
-export const calculateFinalGrade = async (studentId: string): Promise<{score: number, breakdown: {[key: string]: number}} | null> => {
+export const calculateFinalGrade = async (studentId: string): Promise<GradeResult | null> => {
   try {
-    const { data, error } = await supabase
+    // Fetch all evaluations for the student
+    const { data: evaluations, error } = await supabase
       .from('evaluations')
-      .select('evaluator_type, score')
+      .select('*')
       .eq('student_id', studentId);
 
     if (error) {
-      throw error;
-    }
-
-    if (!data || data.length === 0) {
+      console.error('Error fetching evaluations:', error);
       return null;
     }
 
-    // Group scores by evaluator type
-    const scoresByType: {[key: string]: number[]} = {};
-    
-    data.forEach(evaluation => {
-      if (!scoresByType[evaluation.evaluator_type]) {
-        scoresByType[evaluation.evaluator_type] = [];
-      }
-      scoresByType[evaluation.evaluator_type].push(evaluation.score);
-    });
+    if (!evaluations || evaluations.length === 0) {
+      return null;
+    }
 
-    // Calculate average for each type
-    const averageScores: {[key: string]: number} = {};
-    
-    Object.keys(scoresByType).forEach(type => {
-      const scores = scoresByType[type];
-      const sum = scores.reduce((total, score) => total + score, 0);
-      averageScores[type] = sum / scores.length;
-    });
+    // Separate evaluations by evaluator type
+    const academicEvaluations = evaluations.filter(
+      (eval) => eval.evaluator_type === 'academic_supervisor'
+    );
+    const fieldEvaluations = evaluations.filter(
+      (eval) => eval.evaluator_type === 'field_supervisor'
+    );
+    const coordinatorEvaluations = evaluations.filter(
+      (eval) => eval.evaluator_type === 'coordinator'
+    );
 
-    // Calculate final score (60% supervisor + 40% field supervisor)
-    const supervisorScore = averageScores['supervisor'] || 0;
-    const fieldSupervisorScore = averageScores['field_supervisor'] || 0;
-    
-    const finalScore = supervisorScore * 0.6 + fieldSupervisorScore * 0.4;
+    // Calculate average scores
+    let academicScore = 0;
+    let fieldScore = 0;
+    let coordinatorScore = 0;
 
+    if (academicEvaluations.length > 0) {
+      academicScore = academicEvaluations.reduce((sum, eval) => sum + Number(eval.score), 0) / academicEvaluations.length;
+    }
+
+    if (fieldEvaluations.length > 0) {
+      fieldScore = fieldEvaluations.reduce((sum, eval) => sum + Number(eval.score), 0) / fieldEvaluations.length;
+    }
+
+    if (coordinatorEvaluations.length > 0) {
+      coordinatorScore = coordinatorEvaluations.reduce((sum, eval) => sum + Number(eval.score), 0) / coordinatorEvaluations.length;
+    }
+
+    // Calculate final score with weights (customize as needed)
+    // For example: 40% academic, 40% field, 20% coordinator
+    const weightedScore =
+      (academicScore * 0.4) + (fieldScore * 0.4) + (coordinatorScore * 0.2);
+
+    // Return formatted result
     return {
-      score: parseFloat(finalScore.toFixed(2)),
-      breakdown: averageScores
+      score: weightedScore || 0,
+      academicSupervisorScore: academicEvaluations.length > 0 ? academicScore : undefined,
+      fieldSupervisorScore: fieldEvaluations.length > 0 ? fieldScore : undefined
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error calculating final grade:', error);
-    toast.error(`Failed to calculate final grade: ${error.message}`);
+    toast.error('Gagal menghitung nilai akhir');
     return null;
   }
 };

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProposalData } from '@/hooks/useCoordinatorProposal';
+import { useNavigate, useLocation } from 'react-router-dom';
 import ProposalLoading from '@/components/coordinator/proposals/ProposalLoading';
 import NotFoundMessage from '@/components/coordinator/proposals/NotFoundMessage';
 import ProposalHeader from '@/components/coordinator/proposals/ProposalHeader';
@@ -13,6 +14,8 @@ import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview'
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
 import SupervisorEditDialog from '@/components/coordinator/proposals/SupervisorEditDialog';
 import { Supervisor } from '@/services/supervisorService';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -39,9 +42,17 @@ const ProposalDetail = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewName, setPreviewName] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // State for supervisor editing
   const [isEditSupervisorDialogOpen, setIsEditSupervisorDialogOpen] = useState(false);
+  
+  const handleGoBack = () => {
+    // Go back to the previous route, defaulting to the proposal list if not specified
+    const fromPath = location.state?.from || '/coordinator/proposal-list';
+    navigate(fromPath);
+  };
   
   const handleApprove = async () => {
     if (!proposal) return;
@@ -122,12 +133,21 @@ const ProposalDetail = () => {
 
   return (
     <div className="space-y-6">
-      <ProposalHeader 
-        title="Detail Proposal" 
-        status={proposal.status} 
-        statusColors={statusColors}
-        statusLabels={statusLabels}
-      />
+      <div className="flex items-center">
+        <Button 
+          variant="ghost" 
+          onClick={handleGoBack} 
+          className="mr-2"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" /> Kembali
+        </Button>
+        <ProposalHeader 
+          title="Detail Proposal" 
+          status={proposal.status} 
+          statusColors={statusColors}
+          statusLabels={statusLabels}
+        />
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Proposal Details */}
@@ -136,7 +156,7 @@ const ProposalDetail = () => {
             title={proposal.title}
             createdAt={proposal.created_at}
             description={proposal.description}
-            companyName={proposal.company_name}
+            companyName={proposal.companyName}
             rejectionReason={proposal.rejectionReason}
             status={proposal.status}
             documents={proposal.documents}
@@ -186,7 +206,7 @@ const ProposalDetail = () => {
         isOpen={isEditSupervisorDialogOpen}
         setIsOpen={setIsEditSupervisorDialogOpen}
         proposalId={proposal.id}
-        teamId={proposal.team_id}
+        teamId={proposal.teamId}
         currentSupervisors={supervisors}
         onSupervisorsUpdated={handleUpdateSupervisors}
       />

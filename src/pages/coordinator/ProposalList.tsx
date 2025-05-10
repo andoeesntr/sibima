@@ -25,14 +25,15 @@ const ProposalList = () => {
       const query = searchQuery.toLowerCase();
       return (
         proposal.title.toLowerCase().includes(query) ||
-        (proposal.studentName && proposal.studentName.toLowerCase().includes(query))
+        (proposal.studentName && proposal.studentName.toLowerCase().includes(query)) ||
+        (proposal.student?.nim && proposal.student.nim.toLowerCase().includes(query))
       );
     }
     return true;
   });
 
   const handleViewProposal = (proposalId: string) => {
-    navigate(`/coordinator/proposal-detail/${proposalId}`);
+    navigate(`/coordinator/proposal-detail/${proposalId}`, { state: { from: '/coordinator/proposal-list' } });
   };
   
   return (
