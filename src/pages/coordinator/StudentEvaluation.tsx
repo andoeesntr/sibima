@@ -1,21 +1,22 @@
 
 import { useState, useEffect } from 'react';
-import { 
-  Card, CardContent, CardDescription, 
-  CardHeader, CardTitle 
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import EvaluationTable from "@/components/coordinator/evaluation/EvaluationTable";
+import AddEvaluationDialog from "@/components/coordinator/evaluation/AddEvaluationDialog";
+import { fetchAllEvaluations } from '@/services/evaluationService';
+import { Evaluation } from '@/services/evaluationService';
 import { toast } from 'sonner';
-import EvaluationTable from '@/components/coordinator/evaluation/EvaluationTable';
-import AddEvaluationDialog from '@/components/coordinator/evaluation/AddEvaluationDialog';
-import { fetchAllEvaluations, Evaluation } from '@/services/evaluationService';
 
 const StudentEvaluation = () => {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openAddDialog, setOpenAddDialog] = useState(false);
-  const [editingEvaluation, setEditingEvaluation] = useState<Evaluation | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  useEffect(() => {
+    loadEvaluations();
+  }, []);
   
   const loadEvaluations = async () => {
     setLoading(true);
@@ -23,93 +24,66 @@ const StudentEvaluation = () => {
       const data = await fetchAllEvaluations();
       setEvaluations(data);
     } catch (error) {
-      console.error('Error loading evaluations:', error);
-      toast.error('Failed to load evaluation data');
+      console.error('Failed to load evaluations:', error);
+      toast.error('Gagal memuat data penilaian');
     } finally {
       setLoading(false);
     }
   };
   
-  useEffect(() => {
-    loadEvaluations();
-  }, []);
-  
-  const handleOpenAddDialog = () => {
-    setEditingEvaluation(null);
-    setOpenAddDialog(true);
+  const handleAddEvaluation = (newEvaluation: Evaluation) => {
+    setEvaluations(prevEvaluations => [...prevEvaluations, newEvaluation]);
+    toast.success('Penilaian berhasil ditambahkan');
   };
   
-  const handleEditEvaluation = (evaluation: Evaluation) => {
-    setEditingEvaluation(evaluation);
-    setOpenAddDialog(true);
+  const handleEditEvaluation = (updatedEvaluation: Evaluation) => {
+    setEvaluations(prevEvaluations => 
+      prevEvaluations.map(evaluation => 
+        evaluation.id === updatedEvaluation.id ? updatedEvaluation : evaluation
+      )
+    );
+    toast.success('Penilaian berhasil diperbarui');
   };
   
-  const handleDialogClose = () => {
-    setOpenAddDialog(false);
-    setEditingEvaluation(null);
-  };
-  
-  const handleEvaluationAdded = () => {
-    loadEvaluations();
-    setOpenAddDialog(false);
-    setEditingEvaluation(null);
-  };
-  
-  // Get unique student IDs that already have evaluations
-  const getExistingStudentIds = () => {
-    const uniqueIds = new Set<string>();
-    
-    // Group evaluations by student and evaluator type to identify students with both evaluation types
-    const studentEvaluationTypes: Record<string, Set<string>> = {};
-    
-    evaluations.forEach(evaluation => {
-      if (!studentEvaluationTypes[evaluation.student_id]) {
-        studentEvaluationTypes[evaluation.student_id] = new Set();
-      }
-      studentEvaluationTypes[evaluation.student_id].add(evaluation.evaluator_type);
-      
-      // If a student already has both types of evaluations, add them to uniqueIds
-      if (studentEvaluationTypes[evaluation.student_id].size === 2) {
-        uniqueIds.add(evaluation.student_id);
-      }
-    });
-    
-    return Array.from(uniqueIds);
+  const handleDeleteEvaluation = (id: string) => {
+    // When deleting one evaluation, we should delete both evaluations for the student
+    const evaluationToDelete = evaluations.find(e => e.id === id);
+    if (evaluationToDelete) {
+      const studentId = evaluationToDelete.student_id;
+      // Filter out all evaluations for this student
+      setEvaluations(prevEvaluations => 
+        prevEvaluations.filter(evaluation => evaluation.student_id !== studentId)
+      );
+      toast.success('Penilaian mahasiswa berhasil dihapus');
+    }
   };
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Penilaian Mahasiswa</h2>
-        <Button onClick={handleOpenAddDialog} className="flex items-center gap-2">
-          <PlusCircle className="h-4 w-4" />
-          Tambah Penilaian
-        </Button>
-      </div>
+      <h1 className="text-2xl font-bold">Penilaian KP Mahasiswa</h1>
       
       <Card>
-        <CardHeader>
-          <CardTitle>Daftar Penilaian KP</CardTitle>
-          <CardDescription>
-            Daftar nilai mahasiswa yang telah mengikuti KP
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Daftar Nilai KP Mahasiswa</CardTitle>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Tambah Data
+          </Button>
         </CardHeader>
         <CardContent>
           <EvaluationTable 
-            evaluations={evaluations} 
+            evaluations={evaluations}
             loading={loading}
-            onEdit={handleEditEvaluation}
-            onRefresh={loadEvaluations}
+            onEditEvaluation={handleEditEvaluation}
+            onDeleteEvaluation={handleDeleteEvaluation}
           />
         </CardContent>
       </Card>
       
       <AddEvaluationDialog
-        open={openAddDialog}
-        onClose={handleDialogClose}
-        onEvaluationAdded={handleEvaluationAdded}
-        evaluation={editingEvaluation}
-        existingStudentIds={getExistingStudentIds()}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onAddEvaluation={handleAddEvaluation}
+        existingEvaluations={evaluations}
       />
     </div>
   );

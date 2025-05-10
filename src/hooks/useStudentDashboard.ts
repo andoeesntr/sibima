@@ -1,18 +1,16 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { ProposalType, TeamType } from '@/types/student';
 import { fetchStudentProposals } from '@/services/studentProposalService';
 import { fetchTeamData } from '@/services/teamService';
-import { calculateFinalGrade } from '@/services/evaluationService';
 
 export const useStudentDashboard = () => {
   const { user, profile } = useAuth();
   const [proposals, setProposals] = useState<ProposalType[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<ProposalType | null>(null);
   const [team, setTeam] = useState<TeamType | null>(null);
-  const [finalGrade, setFinalGrade] = useState<{score: number, breakdown: {[key: string]: number}} | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -34,15 +32,9 @@ export const useStudentDashboard = () => {
         const teamData = await fetchTeamData(proposalsList[0], profile, user);
         console.log('Fetched team data:', teamData);
         setTeam(teamData);
-        
-        // Fetch final grade for the student
-        const grade = await calculateFinalGrade(user.id);
-        console.log('Fetched final grade:', grade);
-        setFinalGrade(grade);
       } else {
         setSelectedProposal(null);
         setTeam(null);
-        setFinalGrade(null);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -67,7 +59,6 @@ export const useStudentDashboard = () => {
     proposals,
     selectedProposal,
     team,
-    finalGrade,
     loading,
     handleSelectProposal
   };

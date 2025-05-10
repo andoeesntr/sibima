@@ -70,12 +70,19 @@ export const fetchStudentEvaluations = async (studentId: string): Promise<Evalua
 };
 
 // Create a new evaluation
-export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'created_at'>): Promise<Evaluation | null> => {
+export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'created_at' | 'evaluation_date'>): Promise<Evaluation | null> => {
   try {
     const { data, error } = await supabase
       .from('evaluations')
-      .insert(evaluation)
-      .select()
+      .insert({
+        ...evaluation,
+        evaluation_date: new Date().toISOString()
+      })
+      .select(`
+        *,
+        student:profiles!student_id (full_name, nim),
+        evaluator:profiles!evaluator_id (full_name)
+      `)
       .single();
 
     if (error) {
@@ -91,14 +98,18 @@ export const createEvaluation = async (evaluation: Omit<Evaluation, 'id' | 'crea
   }
 };
 
-// Update an existing evaluation
-export const updateEvaluation = async (evaluation: Partial<Evaluation> & { id: string }): Promise<Evaluation | null> => {
+// Update an evaluation
+export const updateEvaluation = async (id: string, updates: Partial<Evaluation>): Promise<Evaluation | null> => {
   try {
     const { data, error } = await supabase
       .from('evaluations')
-      .update(evaluation)
-      .eq('id', evaluation.id)
-      .select()
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        student:profiles!student_id (full_name, nim),
+        evaluator:profiles!evaluator_id (full_name)
+      `)
       .single();
 
     if (error) {
@@ -126,6 +137,7 @@ export const deleteEvaluation = async (id: string): Promise<boolean> => {
       throw error;
     }
 
+    toast.success('Evaluation successfully deleted');
     return true;
   } catch (error: any) {
     console.error('Error deleting evaluation:', error);

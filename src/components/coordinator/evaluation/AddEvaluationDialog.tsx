@@ -1,107 +1,58 @@
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
-import { 
-  createEvaluation, 
-  updateEvaluation, 
-  Evaluation 
-} from '@/services/evaluationService';
-import { useAuth } from '@/contexts/auth';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Evaluation, createEvaluation } from '@/services/evaluationService';
 import { supabase } from '@/integrations/supabase/client';
-import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from 'sonner';
+
+interface AddEvaluationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddEvaluation: (evaluation: Evaluation) => void;
+  existingEvaluations: Evaluation[];
+}
 
 interface Student {
   id: string;
   full_name: string;
-  nim: string;
 }
-
-interface AddEvaluationDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onEvaluationAdded: () => void;
-  evaluation: Evaluation | null;
-  existingStudentIds: string[];
-}
-
-const formSchema = z.object({
-  studentId: z.string({
-    required_error: "Pilih mahasiswa terlebih dahulu",
-  }),
-  score: z.string().refine((val) => {
-    const num = parseFloat(val);
-    return !isNaN(num) && num >= 0 && num <= 100;
-  }, { message: "Nilai harus antara 0-100" }),
-  comments: z.string().optional(),
-});
 
 const AddEvaluationDialog = ({
   open,
-  onClose,
-  onEvaluationAdded,
-  evaluation,
-  existingStudentIds
+  onOpenChange,
+  onAddEvaluation,
+  existingEvaluations
 }: AddEvaluationDialogProps) => {
-  const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState('academic');
-  const [submitting, setSubmitting] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
-  const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      studentId: "",
-      score: "",
-      comments: "",
-    },
-  });
-
-  // Get available students for dropdown
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form state
+  const [studentId, setStudentId] = useState<string>('');
+  const [academicScore, setAcademicScore] = useState<string>('');
+  const [fieldScore, setFieldScore] = useState<string>('');
+  const [finalScore, setFinalScore] = useState<string>('');
+  
+  // Load students that have participated in KP
   useEffect(() => {
     const fetchStudents = async () => {
       setLoading(true);
       try {
+        // Get students with role 'student'
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, nim')
+          .select('id, full_name')
           .eq('role', 'student');
-          
-        if (error) throw error;
         
-        setStudents(data as Student[]);
+        if (error) throw error;
+        setStudents(data || []);
       } catch (error) {
         console.error('Error fetching students:', error);
-        toast.error('Failed to load students');
+        toast.error('Failed to load student data');
       } finally {
         setLoading(false);
       }
@@ -109,229 +60,199 @@ const AddEvaluationDialog = ({
     
     if (open) {
       fetchStudents();
+      resetForm();
     }
   }, [open]);
-
-  // Filter available students based on editing state
+  
+  const resetForm = () => {
+    setStudentId('');
+    setAcademicScore('');
+    setFieldScore('');
+    setFinalScore('');
+  };
+  
+  // Calculate final score when academic and field scores change
   useEffect(() => {
-    if (evaluation) {
-      // In edit mode, show all students but disable selection
-      setAvailableStudents(students);
-      form.setValue("studentId", evaluation.student_id);
-      form.setValue("score", evaluation.evaluator_type === 'supervisor' ? 
-        String(evaluation.score) : (evaluation.evaluator_type === 'field_supervisor' ? 
-        String(evaluation.score) : ""));
-      form.setValue("comments", evaluation.comments || "");
-      setActiveTab(evaluation.evaluator_type === 'supervisor' ? 'academic' : 'field');
+    if (academicScore && fieldScore) {
+      const academic = parseFloat(academicScore);
+      const field = parseFloat(fieldScore);
+      
+      if (!isNaN(academic) && !isNaN(field)) {
+        // Calculate final score (60% academic + 40% field)
+        const calculatedFinal = (academic * 0.6) + (field * 0.4);
+        setFinalScore(calculatedFinal.toFixed(2));
+      }
     } else {
-      // Filter out students with existing evaluations only in add mode
-      const filtered = students.filter(student => 
-        !existingStudentIds.includes(student.id)
-      );
-      setAvailableStudents(filtered);
-      
-      // Reset form data in add mode
-      form.reset({
-        studentId: "",
-        score: "",
-        comments: "",
-      });
+      setFinalScore('');
     }
-  }, [students, evaluation, existingStudentIds, form]);
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setSubmitting(true);
-
+  }, [academicScore, fieldScore]);
+  
+  // Check if a student already has an evaluation
+  const isStudentEvaluated = (id: string) => {
+    // Group evaluations by student_id and evaluator_type to check if both academic and field evaluations exist
+    const evaluationsByStudent: Record<string, Set<string>> = {};
+    
+    existingEvaluations.forEach(evaluation => {
+      if (!evaluationsByStudent[evaluation.student_id]) {
+        evaluationsByStudent[evaluation.student_id] = new Set();
+      }
+      evaluationsByStudent[evaluation.student_id].add(evaluation.evaluator_type);
+    });
+    
+    // Return true if the student already has both types of evaluations
+    return evaluationsByStudent[id] && 
+           evaluationsByStudent[id].has('supervisor') && 
+           evaluationsByStudent[id].has('field_supervisor');
+  };
+  
+  // Filter out students who already have complete evaluations
+  const availableStudents = students.filter(student => !isStudentEvaluated(student.id));
+  
+  const handleSubmit = async () => {
+    if (!studentId || !academicScore || !fieldScore) {
+      toast.error('Semua field harus diisi');
+      return;
+    }
+    
+    const academic = parseFloat(academicScore);
+    const field = parseFloat(fieldScore);
+    
+    if (isNaN(academic) || isNaN(field) || academic < 0 || academic > 100 || field < 0 || field > 100) {
+      toast.error('Nilai harus berupa angka antara 0-100');
+      return;
+    }
+    
+    setIsSubmitting(true);
     try {
-      const evaluatorId = profile?.id || '';
+      // Get current user (coordinator) for evaluator_id
+      const { data: { user } } = await supabase.auth.getUser();
       
-      if (evaluation) {
-        // Update existing evaluation
-        const updatedEvaluation = {
-          id: evaluation.id,
-          score: parseFloat(values.score),
-          comments: values.comments || null,
-          document_url: evaluation.document_url,
-        };
-        
-        await updateEvaluation(updatedEvaluation);
-        toast.success('Penilaian berhasil diperbarui');
-      } else {
-        // Create new evaluation
-        if (activeTab === 'academic') {
-          await createEvaluation({
-            student_id: values.studentId,
-            evaluator_id: evaluatorId,
-            evaluator_type: 'supervisor',
-            score: parseFloat(values.score),
-            comments: values.comments || null,
-            document_url: null,
-            evaluation_date: new Date().toISOString(),
-          });
-          toast.success('Nilai pembimbing akademik berhasil ditambahkan');
-        } else {
-          await createEvaluation({
-            student_id: values.studentId,
-            evaluator_id: evaluatorId,
-            evaluator_type: 'field_supervisor',
-            score: parseFloat(values.score),
-            comments: values.comments || null,
-            document_url: null,
-            evaluation_date: new Date().toISOString(),
-          });
-          toast.success('Nilai pembimbing lapangan berhasil ditambahkan');
-        }
+      if (!user) {
+        throw new Error('User not authenticated');
       }
       
-      onEvaluationAdded();
+      // Create academic supervisor evaluation
+      const academicEvaluation = await createEvaluation({
+        student_id: studentId,
+        evaluator_id: user.id,
+        evaluator_type: 'supervisor',
+        score: academic,
+        comments: 'Penilaian oleh pembimbing akademik',
+        document_url: null  // Add this line to fix TypeScript error
+      });
+      
+      // Create field supervisor evaluation
+      const fieldEvaluation = await createEvaluation({
+        student_id: studentId,
+        evaluator_id: user.id,
+        evaluator_type: 'field_supervisor',
+        score: field,
+        comments: 'Penilaian oleh pembimbing lapangan',
+        document_url: null  // Add this line to fix TypeScript error
+      });
+      
+      if (academicEvaluation && fieldEvaluation) {
+        onAddEvaluation(academicEvaluation);
+        onAddEvaluation(fieldEvaluation);
+        resetForm();
+        onOpenChange(false);
+      }
     } catch (error) {
-      console.error('Error saving evaluation:', error);
-      toast.error('Gagal menyimpan penilaian');
+      console.error('Error adding evaluation:', error);
+      toast.error('Failed to save evaluation');
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
-
+  
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !submitting && !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {evaluation ? 'Edit Penilaian' : 'Tambah Penilaian Baru'}
-          </DialogTitle>
+          <DialogTitle>Tambah Nilai KP</DialogTitle>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-            <FormField
-              control={form.control}
-              name="studentId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mahasiswa</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    disabled={!!evaluation || submitting}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih mahasiswa" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {availableStudents.length === 0 ? (
-                        <SelectItem value="empty" disabled>
-                          {loading ? 'Loading...' : 'Tidak ada mahasiswa tersedia'}
-                        </SelectItem>
-                      ) : (
-                        availableStudents.map((student) => (
-                          <SelectItem key={student.id} value={student.id}>
-                            {student.nim} - {student.full_name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="student">Mahasiswa</Label>
+            <Select 
+              value={studentId} 
+              onValueChange={setStudentId}
+              disabled={loading || availableStudents.length === 0}
+            >
+              <SelectTrigger id="student">
+                <SelectValue placeholder="Pilih mahasiswa" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableStudents.map(student => (
+                  <SelectItem key={student.id} value={student.id}>
+                    {student.full_name}
+                  </SelectItem>
+                ))}
+                {availableStudents.length === 0 && (
+                  <SelectItem value="none" disabled>
+                    Tidak ada mahasiswa tersedia
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="academicScore">Nilai Pembimbing Akademik (0-100)</Label>
+            <Input
+              id="academicScore"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={academicScore}
+              onChange={(e) => setAcademicScore(e.target.value)}
+              disabled={isSubmitting}
             />
-            
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="academic">
-                  Pembimbing Akademik
-                </TabsTrigger>
-                <TabsTrigger value="field">
-                  Pembimbing Lapangan
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="academic" className="space-y-4 pt-4">
-                <FormField
-                  control={form.control}
-                  name="score"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nilai (0-100)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="Masukkan nilai"
-                          disabled={submitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-              
-              <TabsContent value="field" className="space-y-4 pt-4">
-                <FormField
-                  control={form.control}
-                  name="score"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nilai (0-100)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="Masukkan nilai"
-                          disabled={submitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-            </Tabs>
-            
-            <FormField
-              control={form.control}
-              name="comments"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Komentar</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      rows={3}
-                      placeholder="Tambahkan komentar (opsional)"
-                      disabled={submitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="fieldScore">Nilai Pembimbing Lapangan (0-100)</Label>
+            <Input
+              id="fieldScore"
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={fieldScore}
+              onChange={(e) => setFieldScore(e.target.value)}
+              disabled={isSubmitting}
             />
-            
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                disabled={submitting}
-                type="button"
-              >
-                Batal
-              </Button>
-              <Button
-                disabled={submitting}
-                type="submit"
-              >
-                {submitting ? 'Menyimpan...' : evaluation ? 'Perbarui' : 'Simpan'}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="finalScore">Nilai Akhir (60% Akademik + 40% Lapangan)</Label>
+            <Input
+              id="finalScore"
+              type="text"
+              value={finalScore}
+              disabled
+              className="bg-gray-50"
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Batal
+            </Button>
+            <Button 
+              onClick={handleSubmit}
+              disabled={isSubmitting || !studentId || !academicScore || !fieldScore}
+            >
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
