@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { TeamMember, TeamType } from '@/types/student';
+import { TeamType, TeamMember, TeamSupervisor } from '@/types/student';
 import { fetchTeamSupervisors } from './supervisorService';
 
 export const fetchTeamData = async (proposal: any, profile: any, user: any): Promise<TeamType | null> => {
@@ -42,7 +42,7 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
       }
       
       // Fetch all team supervisors using team_supervisors service
-      let supervisors = [];
+      let supervisors: TeamSupervisor[] = [];
       if (proposal.team.id) {
         try {
           const teamSupervisors = await fetchTeamSupervisors(proposal.team.id);
@@ -78,11 +78,11 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
     } else {
       // Create a temporary team based on the user
       if (profile && user) {
-        const supervisors = [];
+        const supervisors: TeamSupervisor[] = [];
         if (proposal.supervisors && proposal.supervisors.length > 0) {
           // Use supervisors from the proposal object
           console.log('Using supervisors from proposal object for temp team:', proposal.supervisors);
-          proposal.supervisors.forEach(supervisor => {
+          proposal.supervisors.forEach((supervisor: any) => {
             supervisors.push({
               id: supervisor.id,
               name: supervisor.full_name,

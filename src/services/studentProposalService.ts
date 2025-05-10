@@ -93,10 +93,11 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
         created_at: proposal.created_at,
         supervisor: supervisorData,
         supervisors: supervisors,
-        company_name: proposal.company_name,
+        companyName: proposal.company_name,
         team: teamData,
         team_id: proposal.team_id,
-        rejectionReason: proposal.rejection_reason
+        rejectionReason: proposal.rejection_reason,
+        studentId: userId
       });
     }
     

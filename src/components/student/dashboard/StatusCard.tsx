@@ -73,14 +73,14 @@ export const StatusCard = ({
                   <span className="font-medium text-gray-700">Tanggal Pengajuan:</span>
                   <span className="flex items-center">
                     <Calendar size={16} className="mr-1" />
-                    {formatDate(selectedProposal.created_at)}
+                    {formatDate(selectedProposal.created_at || selectedProposal.submissionDate)}
                   </span>
                 </div>
                 
-                {selectedProposal.company_name && (
+                {selectedProposal.companyName && (
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-700">Perusahaan/Instansi:</span>
-                    <span>{selectedProposal.company_name}</span>
+                    <span>{selectedProposal.companyName}</span>
                   </div>
                 )}
                 
