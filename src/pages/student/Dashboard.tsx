@@ -118,10 +118,7 @@ const StudentDashboard = () => {
                     <span className="text-xs text-gray-600">Nilai Pembimbing Lapangan</span>
                   </div>
                 </div>
-                
-                <div className="text-xs text-gray-500 mt-2">
-                  <p>Skala Nilai: A (85-100), B (70-84.99), C (55-69.99), D (40-54.99), E (0-39.99)</p>
-                </div>
+              
               </>
             ) : (
               <p className="text-gray-500 text-sm text-center">
