@@ -44,6 +44,12 @@ export type TeamSupervisor = {
   profile_image?: string;
 };
 
+export type TeamSupervisor = {
+  id: string;
+  name: string;
+  profile_image?: string;
+};
+
 export type TeamType = {
   id: string;
   name: string;
