@@ -14,6 +14,10 @@ export async function transformProposalData(
     status: rawProposalData.status || 'submitted',
     submissionDate: rawProposalData.created_at,
     studentName: rawProposalData.student?.full_name || 'Unknown Student',
+    student: {
+      nim: rawProposalData.student?.nim,
+      full_name: rawProposalData.student?.full_name
+    },
     supervisorIds: rawProposalData.supervisor_id ? [rawProposalData.supervisor_id] : [],
     supervisors: supervisors,
     companyName: rawProposalData.company_name,

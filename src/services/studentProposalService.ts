@@ -12,6 +12,7 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
       .select(`
         id,
         title,
+        description,
         status,
         created_at,
         supervisor_id,
@@ -88,6 +89,7 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
       processedProposals.push({
         id: proposal.id,
         title: proposal.title,
+        description: proposal.description || '',
         status: proposal.status || 'draft',
         submissionDate: proposal.created_at,
         created_at: proposal.created_at,

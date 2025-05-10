@@ -13,6 +13,10 @@ export interface Proposal {
     profile_image?: string;
   }[];
   studentName?: string;
+  student?: {
+    nim?: string;
+    full_name?: string;
+  };
   companyName?: string;
   documentUrl?: string;
   teamId?: string;
