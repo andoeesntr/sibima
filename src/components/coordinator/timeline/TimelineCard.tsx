@@ -38,7 +38,7 @@ const TimelineCard = ({ step, index, onEditStep, variant }: TimelineCardProps) =
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 h-auto min-h-[150px] relative group">
+    <div className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white relative group min-h-[150px]">
       <Button 
         variant="ghost" 
         size="icon" 
