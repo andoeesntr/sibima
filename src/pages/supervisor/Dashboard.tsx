@@ -24,7 +24,7 @@ const SupervisorDashboard = () => {
       try {
         // Fetch assigned students count
         const { count: studentCount, error: studentError } = await supabase
-          .from('teams_supervisors')
+          .from('team_supervisors')
           .select('*', { count: 'exact', head: true })
           .eq('supervisor_id', user.id);
           
