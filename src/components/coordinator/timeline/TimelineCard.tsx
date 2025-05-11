@@ -13,7 +13,7 @@ interface TimelineCardProps {
 const TimelineCard = ({ step, index, onEditStep, variant }: TimelineCardProps) => {
   if (variant === 'mobile') {
     return (
-      <div className="border border-gray-200 rounded-lg p-6 shadow-sm bg-white relative group">
+      <div className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white relative group">
         <Button 
           variant="ghost" 
           size="icon" 
@@ -22,24 +22,23 @@ const TimelineCard = ({ step, index, onEditStep, variant }: TimelineCardProps) =
         >
           <Edit className="h-4 w-4" />
         </Button>
-        <div className="flex items-center mb-4">
-          <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-full">
+        
+        <div className="flex items-center mb-2">
+          <div className="flex items-center justify-center w-8 h-8 bg-orange-100 rounded-full">
             <span className="text-orange-600 font-bold">{index + 1}</span>
           </div>
-          <div className="ml-4">
-            <span className="text-orange-500 font-medium text-sm block mb-1">{step.period}</span>
-            <h3 className="font-semibold text-lg">{step.title}</h3>
-          </div>
+          <h3 className="font-semibold text-lg ml-3">{step.title}</h3>
         </div>
+        
         {step.description && (
-          <p className="text-gray-600">{step.description}</p>
+          <p className="text-gray-600 text-sm">{step.description}</p>
         )}
       </div>
     );
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow p-4 min-h-[150px] relative group">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 h-[150px] relative group">
       <Button 
         variant="ghost" 
         size="icon" 
@@ -48,7 +47,9 @@ const TimelineCard = ({ step, index, onEditStep, variant }: TimelineCardProps) =
       >
         <Edit className="h-4 w-4" />
       </Button>
+      
       <h3 className="font-bold text-gray-900 mb-2">{step.title}</h3>
+      
       {step.description && (
         <p className="text-gray-600 text-sm">{step.description}</p>
       )}

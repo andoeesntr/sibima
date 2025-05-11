@@ -51,55 +51,24 @@ serve(async (req) => {
     const filePath = `${userId}/${path}`;
 
     try {
-      // First, check if the signatures bucket exists
-      const { data: buckets, error: bucketsError } = await supabaseAdmin
-        .storage
-        .listBuckets();
-      
-      if (bucketsError) {
-        console.error("Error listing buckets:", bucketsError);
-        throw bucketsError;
-      }
-
-      // Check if signatures bucket exists
-      const signaturesBucketExists = buckets?.find(bucket => bucket.name === 'signatures');
-      
-      // If bucket doesn't exist, create it
-      if (!signaturesBucketExists) {
-        console.log('Creating signatures bucket...');
-        const { error: createBucketError } = await supabaseAdmin
+      // Create or use existing bucket for signatures
+      // This will simply use the bucket if it exists, reducing errors
+      try {
+        const { error } = await supabaseAdmin
           .storage
-          .createBucket('signatures', { public: true });
-        
-        if (createBucketError) {
-          console.error("Error creating signatures bucket:", createBucketError);
-          throw createBucketError;
-        }
-        
-        // Create policies for the bucket to allow public access
-        try {
-          await supabaseAdmin.rpc('create_storage_policy', {
-            bucket_name: 'signatures',
-            policy_name: 'signatures_public_select',
-            definition: `bucket_id = 'signatures'`,
-            operation: 'SELECT',
-            role_name: 'anon'
+          .createBucket('signatures', { 
+            public: true,
+            fileSizeLimit: 1024 * 1024, // 1MB
           });
           
-          await supabaseAdmin.rpc('create_storage_policy', {
-            bucket_name: 'signatures',
-            policy_name: 'signatures_auth_insert',
-            definition: `bucket_id = 'signatures' AND auth.role() = 'authenticated'`,
-            operation: 'INSERT',
-            role_name: 'authenticated'
-          });
-        } catch (policyError) {
-          console.error("Policy creation error:", policyError);
-          // Continue even if policy creation fails
+        if (error && !error.message.includes('already exists')) {
+          console.error("Error creating signatures bucket:", error);
+        } else {
+          console.log("Bucket created or already exists");
         }
-        
-        // Let's wait a bit to make sure the bucket is ready
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (bucketError) {
+        // If bucket already exists, that's fine
+        console.log("Bucket operation error (likely already exists):", bucketError);
       }
 
       console.log(`Uploading file to path: ${filePath}`);

@@ -1,35 +1,39 @@
 
 import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 interface ProposalHeaderProps {
   title: string;
   status: string;
   statusColors: Record<string, string>;
   statusLabels: Record<string, string>;
+  onGoBack: () => void;
 }
 
-const ProposalHeader = ({ title, status, statusColors, statusLabels }: ProposalHeaderProps) => {
-  const navigate = useNavigate();
-
+const ProposalHeader = ({
+  title,
+  status,
+  statusColors,
+  statusLabels,
+  onGoBack
+}: ProposalHeaderProps) => {
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center">
         <Button 
-          onClick={() => navigate('/coordinator/proposal-review')}
-          variant="outline"
-          size="icon"
+          variant="ghost" 
+          onClick={onGoBack} 
+          className="mr-2"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft className="h-4 w-4 mr-2" /> Kembali
         </Button>
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <h2 className="text-2xl font-bold">{title}</h2>
       </div>
-      
-      <Badge className={statusColors[status as keyof typeof statusColors]}>
-        {statusLabels[status as keyof typeof statusLabels]}
-      </Badge>
+      <div 
+        className={`${statusColors[status] || 'bg-gray-500'} text-white px-3 py-1 rounded-full text-sm`}
+      >
+        {statusLabels[status] || status}
+      </div>
     </div>
   );
 };

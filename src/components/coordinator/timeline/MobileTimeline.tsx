@@ -1,6 +1,5 @@
 
 import { Button } from '@/components/ui/button';
-import { Edit } from 'lucide-react';
 import { TimelineStep } from '@/types/timeline';
 import { 
   Carousel, 
@@ -22,12 +21,21 @@ const MobileTimeline = ({ steps, onEditStep }: MobileTimelineProps) => {
       <CarouselContent>
         {steps.map((step, index) => (
           <CarouselItem key={step.id}>
-            <TimelineCard 
-              step={step} 
-              index={index} 
-              onEditStep={onEditStep} 
-              variant="mobile" 
-            />
+            <div className="pt-10 pb-6 px-2 relative">
+              {/* Period above the card */}
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 mb-2">
+                <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium">
+                  {step.period}
+                </div>
+              </div>
+              
+              <TimelineCard 
+                step={step} 
+                index={index} 
+                onEditStep={onEditStep} 
+                variant="mobile" 
+              />
+            </div>
           </CarouselItem>
         ))}
       </CarouselContent>

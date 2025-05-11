@@ -14,8 +14,6 @@ import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview'
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
 import SupervisorEditDialog from '@/components/coordinator/proposals/SupervisorEditDialog';
 import { Supervisor } from '@/services/supervisorService';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
 
 const statusColors = {
   draft: "bg-gray-500",
@@ -131,21 +129,13 @@ const ProposalDetail = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center">
-        <Button 
-          variant="ghost" 
-          onClick={handleGoBack} 
-          className="mr-2"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" /> Kembali
-        </Button>
-        <ProposalHeader 
-          title="Detail Proposal" 
-          status={proposal.status} 
-          statusColors={statusColors}
-          statusLabels={statusLabels}
-        />
-      </div>
+      <ProposalHeader 
+        title="Detail Proposal" 
+        status={proposal.status} 
+        statusColors={statusColors}
+        statusLabels={statusLabels}
+        onGoBack={handleGoBack}
+      />
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Proposal Details */}
