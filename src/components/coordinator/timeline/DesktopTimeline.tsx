@@ -11,25 +11,37 @@ const DesktopTimeline = ({ steps, onEditStep }: DesktopTimelineProps) => {
   return (
     <div className="relative py-10">
       {/* Main horizontal line */}
-      <div className="absolute h-2 bg-orange-500 top-16 left-0 right-0"></div>
+      <div className="absolute h-1 bg-orange-500 top-20 left-0 right-0"></div>
       
-      <div className="grid grid-cols-6 gap-2 relative">
-        {steps.map((step, index) => (
-          <div key={step.id} className="relative px-2">
-            {/* Period label above the line */}
-            <div className="text-center mb-2 absolute w-full top-0 left-0">
-              <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium inline-block">
-                {step.period}
-              </div>
+      {/* Period labels above the timeline */}
+      <div className="flex justify-between mb-2 px-4">
+        {steps.map((step) => (
+          <div key={`period-${step.id}`} className="text-center">
+            <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium inline-block">
+              {step.period}
             </div>
-            
-            {/* Step number in circle - on the timeline */}
-            <div className="absolute left-1/2 top-16 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-2 border-orange-500 z-10 flex items-center justify-center">
+          </div>
+        ))}
+      </div>
+
+      {/* Timeline with step numbers and cards */}
+      <div className="relative">
+        {/* Step numbers in circles */}
+        <div className="flex justify-between px-16">
+          {steps.map((step, index) => (
+            <div 
+              key={`circle-${step.id}`} 
+              className="w-8 h-8 bg-white rounded-full border-2 border-orange-500 flex items-center justify-center z-10"
+            >
               <span className="text-orange-600 font-bold">{index + 1}</span>
             </div>
-            
-            {/* Card below the line */}
-            <div className="mt-20">
+          ))}
+        </div>
+
+        {/* Cards below the timeline */}
+        <div className="grid grid-cols-6 gap-4 mt-8">
+          {steps.map((step, index) => (
+            <div key={`card-${step.id}`} className="flex flex-col">
               <TimelineCard 
                 step={step} 
                 index={index} 
@@ -37,8 +49,8 @@ const DesktopTimeline = ({ steps, onEditStep }: DesktopTimelineProps) => {
                 variant="desktop" 
               />
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
