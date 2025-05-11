@@ -10,7 +10,11 @@ import DesktopTimeline from './timeline/DesktopTimeline';
 import TimelineEditDialog from './timeline/TimelineEditDialog';
 import TimelineSkeleton from './timeline/TimelineSkeleton';
 
-const KpTimeline = () => {
+interface KpTimelineProps {
+  readOnly?: boolean;
+}
+
+const KpTimeline = ({ readOnly = false }: KpTimelineProps) => {
   const [steps, setSteps] = useState<TimelineStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -68,20 +72,30 @@ const KpTimeline = () => {
           <TimelineSkeleton isMobile={isMobile} />
         ) : (
           isMobile ? (
-            <MobileTimeline steps={steps} onEditStep={handleEditClick} />
+            <MobileTimeline 
+              steps={steps} 
+              onEditStep={readOnly ? undefined : handleEditClick} 
+              readOnly={readOnly}
+            />
           ) : (
-            <DesktopTimeline steps={steps} onEditStep={handleEditClick} />
+            <DesktopTimeline 
+              steps={steps} 
+              onEditStep={readOnly ? undefined : handleEditClick} 
+              readOnly={readOnly}
+            />
           )
         )}
       </CardContent>
 
-      <TimelineEditDialog
-        open={openDialog}
-        onOpenChange={setOpenDialog}
-        currentStep={currentStep}
-        onSave={handleSaveStep}
-        isSubmitting={isSubmitting}
-      />
+      {!readOnly && (
+        <TimelineEditDialog
+          open={openDialog}
+          onOpenChange={setOpenDialog}
+          currentStep={currentStep}
+          onSave={handleSaveStep}
+          isSubmitting={isSubmitting}
+        />
+      )}
     </Card>
   );
 };
