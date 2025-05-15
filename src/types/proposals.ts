@@ -37,4 +37,4 @@ export interface Proposal {
   rejectionReason?: string;
 }
 
-export type ProposalStatus = 'submitted' | 'approved' | 'rejected' | 'all';
+export type ProposalStatus = 'submitted' | 'revision' | 'approved' | 'rejected' | 'all';

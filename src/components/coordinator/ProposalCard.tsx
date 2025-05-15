@@ -2,13 +2,14 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Check, FileText, User, X } from 'lucide-react';
+import { ArrowRight, Check, FileEdit, FileText, User, X } from 'lucide-react';
 import { formatDate } from '@/services/mockData';
 import { Proposal } from '@/hooks/useProposals';
 
 const statusColors = {
   draft: "bg-gray-500",
   submitted: "bg-yellow-500",
+  revision: "bg-amber-500",
   reviewed: "bg-blue-500",
   approved: "bg-green-500",
   rejected: "bg-red-500",
@@ -17,6 +18,7 @@ const statusColors = {
 const statusLabels = {
   draft: "Draft",
   submitted: "Diajukan",
+  revision: "Perlu Revisi",
   reviewed: "Ditinjau",
   approved: "Disetujui",
   rejected: "Ditolak",
@@ -42,10 +44,14 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
           {proposal.description.length > 100 ? '...' : ''}
         </div>
         
-        {/* Show rejection reason for rejected proposals */}
-        {proposal.status === 'rejected' && proposal.rejectionReason && (
-          <div className="bg-red-50 border border-red-100 rounded p-2 mb-4">
-            <p className="text-xs font-medium text-red-800">Alasan ditolak: {proposal.rejectionReason.substring(0, 70)}{proposal.rejectionReason.length > 70 ? '...' : ''}</p>
+        {/* Show rejection reason or revision feedback */}
+        {(proposal.status === 'rejected' || proposal.status === 'revision') && proposal.rejectionReason && (
+          <div className={`${proposal.status === 'rejected' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'} border rounded p-2 mb-4`}>
+            <p className={`text-xs font-medium ${proposal.status === 'rejected' ? 'text-red-800' : 'text-amber-800'}`}>
+              {proposal.status === 'rejected' ? 'Alasan ditolak: ' : 'Catatan revisi: '}
+              {proposal.rejectionReason.substring(0, 70)}
+              {proposal.rejectionReason.length > 70 ? '...' : ''}
+            </p>
           </div>
         )}
         
@@ -85,6 +91,13 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
               <Check size={16} className="mr-1" /> Setuju
             </Button>
             <Button 
+              variant="outline" 
+              onClick={() => onView(proposal.id)}
+              className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:text-amber-800 flex-1 mr-2"
+            >
+              <FileEdit size={16} className="mr-1" /> Revisi
+            </Button>
+            <Button 
               variant="destructive" 
               onClick={() => onView(proposal.id)}
               className="flex-1"
@@ -93,7 +106,7 @@ const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
             </Button>
           </>
         )}
-        {(proposal.status === 'approved' || proposal.status === 'rejected') && (
+        {(proposal.status === 'approved' || proposal.status === 'rejected' || proposal.status === 'revision') && (
           <Button 
             variant="outline" 
             onClick={() => onView(proposal.id)}

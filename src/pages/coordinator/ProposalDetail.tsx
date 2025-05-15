@@ -18,6 +18,7 @@ import { Supervisor } from '@/services/supervisorService';
 const statusColors = {
   draft: "bg-gray-500",
   submitted: "bg-yellow-500",
+  revision: "bg-amber-500", 
   reviewed: "bg-blue-500",
   approved: "bg-green-500",
   rejected: "bg-red-500",
@@ -26,6 +27,7 @@ const statusColors = {
 const statusLabels = {
   draft: "Draft",
   submitted: "Menunggu Review",
+  revision: "Perlu Revisi",
   reviewed: "Ditinjau",
   approved: "Disetujui",
   rejected: "Ditolak",
@@ -35,7 +37,9 @@ const ProposalDetail = () => {
   const { proposal, loading, supervisors, handleUpdateSupervisors } = useProposalData();
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isRevisionDialogOpen, setIsRevisionDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [revisionFeedback, setRevisionFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -108,6 +112,39 @@ const ProposalDetail = () => {
     }
   };
 
+  const handleRevision = async () => {
+    if (!proposal) return;
+    
+    if (!revisionFeedback.trim()) {
+      toast.error('Harap berikan catatan revisi');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Update proposal status to 'revision'
+      const { error: proposalError } = await supabase
+        .from('proposals')
+        .update({ 
+          status: 'revision',
+          updated_at: new Date().toISOString(),
+          rejection_reason: revisionFeedback // Using the same field for revisions
+        })
+        .eq('id', proposal.id);
+        
+      if (proposalError) throw proposalError;
+      
+      toast.success('Permintaan revisi berhasil dikirim');
+      setIsRevisionDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error requesting revision:", error);
+      toast.error(`Failed to request revision: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handlePreviewDocument = (url: string, name: string) => {
     setPreviewUrl(url);
     setPreviewName(name);
@@ -156,6 +193,7 @@ const ProposalDetail = () => {
             status={proposal.status}
             onApprove={() => setIsApproveDialogOpen(true)}
             onReject={() => setIsRejectDialogOpen(true)}
+            onRevision={() => setIsRevisionDialogOpen(true)}
           />
         </div>
         
@@ -174,10 +212,15 @@ const ProposalDetail = () => {
         setIsApproveDialogOpen={setIsApproveDialogOpen}
         isRejectDialogOpen={isRejectDialogOpen}
         setIsRejectDialogOpen={setIsRejectDialogOpen}
+        isRevisionDialogOpen={isRevisionDialogOpen}
+        setIsRevisionDialogOpen={setIsRevisionDialogOpen}
         rejectionReason={rejectionReason}
         setRejectionReason={setRejectionReason}
+        revisionFeedback={revisionFeedback}
+        setRevisionFeedback={setRevisionFeedback}
         handleApprove={handleApprove}
         handleReject={handleReject}
+        handleRevision={handleRevision}
         isSubmitting={isSubmitting}
       />
 

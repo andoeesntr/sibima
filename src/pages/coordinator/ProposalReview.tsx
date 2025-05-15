@@ -47,8 +47,9 @@ const ProposalReview = () => {
       </div>
       
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ProposalStatus)}>
-        <TabsList className="grid grid-cols-4 mb-6">
+        <TabsList className="grid grid-cols-5 mb-6">
           <TabsTrigger value="submitted">Menunggu Review</TabsTrigger>
+          <TabsTrigger value="revision">Perlu Revisi</TabsTrigger>
           <TabsTrigger value="approved">Disetujui</TabsTrigger>
           <TabsTrigger value="rejected">Ditolak</TabsTrigger>
           <TabsTrigger value="all">Semua</TabsTrigger>

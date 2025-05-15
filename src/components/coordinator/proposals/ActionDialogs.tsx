@@ -9,10 +9,15 @@ interface ActionDialogsProps {
   setIsApproveDialogOpen: (isOpen: boolean) => void;
   isRejectDialogOpen: boolean;
   setIsRejectDialogOpen: (isOpen: boolean) => void;
+  isRevisionDialogOpen: boolean;
+  setIsRevisionDialogOpen: (isOpen: boolean) => void;
   rejectionReason: string;
   setRejectionReason: (reason: string) => void;
+  revisionFeedback: string;
+  setRevisionFeedback: (feedback: string) => void;
   handleApprove: () => Promise<void>;
   handleReject: () => Promise<void>;
+  handleRevision: () => Promise<void>;
   isSubmitting: boolean;
 }
 
@@ -21,10 +26,15 @@ const ActionDialogs = ({
   setIsApproveDialogOpen,
   isRejectDialogOpen,
   setIsRejectDialogOpen,
+  isRevisionDialogOpen,
+  setIsRevisionDialogOpen,
   rejectionReason,
   setRejectionReason,
+  revisionFeedback,
+  setRevisionFeedback,
   handleApprove,
   handleReject,
+  handleRevision,
   isSubmitting
 }: ActionDialogsProps) => {
   return (
@@ -88,6 +98,42 @@ const ActionDialogs = ({
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Memproses...' : 'Tolak'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revision Dialog */}
+      <Dialog open={isRevisionDialogOpen} onOpenChange={setIsRevisionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Minta Revisi Proposal</DialogTitle>
+            <DialogDescription>
+              Berikan catatan untuk revisi proposal ini
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Textarea 
+              placeholder="Masukkan catatan revisi" 
+              value={revisionFeedback}
+              onChange={(e) => setRevisionFeedback(e.target.value)}
+              rows={4}
+            />
+          </div>
+          <DialogFooter className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsRevisionDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              Batal
+            </Button>
+            <Button 
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+              onClick={handleRevision}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Memproses...' : 'Kirim Revisi'}
             </Button>
           </DialogFooter>
         </DialogContent>

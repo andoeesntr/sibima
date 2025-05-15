@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { FileCheck } from "lucide-react";
+import { FileCheck, FileEdit } from "lucide-react";
 
 interface ProposalFooterProps {
   status: string;
@@ -22,9 +22,13 @@ const ProposalFooter = ({ status }: ProposalFooterProps) => {
           </Button>
         )}
       </div>
-      {status === 'rejected' && (
-        <Button onClick={() => navigate('/student/proposal-submission')}>
-          Ajukan Ulang Proposal
+      {(status === 'rejected' || status === 'revision') && (
+        <Button 
+          onClick={() => navigate('/student/proposal-submission')}
+          className={status === 'revision' ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
+        >
+          <FileEdit className="mr-2 h-4 w-4" />
+          {status === 'revision' ? 'Revisi Proposal' : 'Ajukan Ulang Proposal'}
         </Button>
       )}
     </div>
