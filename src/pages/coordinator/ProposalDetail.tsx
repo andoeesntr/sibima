@@ -1,9 +1,5 @@
 
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { useProposalData } from '@/hooks/useCoordinatorProposal';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ProposalLoading from '@/components/coordinator/proposals/ProposalLoading';
 import NotFoundMessage from '@/components/coordinator/proposals/NotFoundMessage';
 import ProposalHeader from '@/components/coordinator/proposals/ProposalHeader';
@@ -13,147 +9,43 @@ import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
 import SupervisorEditDialog from '@/components/coordinator/proposals/SupervisorEditDialog';
-import { Supervisor } from '@/services/supervisorService';
-
-const statusColors = {
-  draft: "bg-gray-500",
-  submitted: "bg-yellow-500",
-  revision: "bg-amber-500", 
-  reviewed: "bg-blue-500",
-  approved: "bg-green-500",
-  rejected: "bg-red-500",
-};
-
-const statusLabels = {
-  draft: "Draft",
-  submitted: "Menunggu Review",
-  revision: "Perlu Revisi",
-  reviewed: "Ditinjau",
-  approved: "Disetujui",
-  rejected: "Ditolak",
-};
+import { useCoordinatorProposalDetail } from '@/hooks/useCoordinatorProposalDetail';
+import { statusColors, statusLabels } from '@/constants/proposalStatus';
 
 const ProposalDetail = () => {
-  const { proposal, loading, supervisors, handleUpdateSupervisors } = useProposalData();
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [isRevisionDialogOpen, setIsRevisionDialogOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [revisionFeedback, setRevisionFeedback] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [previewName, setPreviewName] = useState('');
+  const {
+    proposal,
+    loading,
+    supervisors,
+    isApproveDialogOpen,
+    setIsApproveDialogOpen,
+    isRejectDialogOpen,
+    setIsRejectDialogOpen,
+    isRevisionDialogOpen,
+    setIsRevisionDialogOpen,
+    rejectionReason,
+    setRejectionReason,
+    revisionFeedback,
+    setRevisionFeedback,
+    isSubmitting,
+    previewDialogOpen,
+    setPreviewDialogOpen,
+    previewUrl,
+    previewName,
+    isEditSupervisorDialogOpen,
+    setIsEditSupervisorDialogOpen,
+    handleUpdateSupervisors,
+    handlePreviewDocument,
+    handleDownloadFile,
+    handleApprove,
+    handleReject,
+    handleRevision
+  } = useCoordinatorProposalDetail();
+
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // State for supervisor editing
-  const [isEditSupervisorDialogOpen, setIsEditSupervisorDialogOpen] = useState(false);
   
   const handleGoBack = () => {
     navigate('/coordinator/proposal-list');
-  };
-  
-  const handleApprove = async () => {
-    if (!proposal) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      const { error } = await supabase
-        .from('proposals')
-        .update({ 
-          status: 'approved',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposal.id);
-        
-      if (error) throw error;
-      
-      toast.success('Proposal berhasil disetujui');
-      setIsApproveDialogOpen(false);
-    } catch (error: any) {
-      console.error("Error approving proposal:", error);
-      toast.error(`Failed to approve proposal: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!proposal) return;
-    
-    if (!rejectionReason.trim()) {
-      toast.error('Harap berikan alasan penolakan');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      const { error } = await supabase
-        .from('proposals')
-        .update({ 
-          status: 'rejected',
-          updated_at: new Date().toISOString(),
-          rejection_reason: rejectionReason
-        })
-        .eq('id', proposal.id);
-        
-      if (error) throw error;
-      
-      toast.success('Proposal berhasil ditolak');
-      setIsRejectDialogOpen(false);
-    } catch (error: any) {
-      console.error("Error rejecting proposal:", error);
-      toast.error(`Failed to reject proposal: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRevision = async () => {
-    if (!proposal) return;
-    
-    if (!revisionFeedback.trim()) {
-      toast.error('Harap berikan catatan revisi');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    try {
-      // Update proposal status to 'revision'
-      const { error: proposalError } = await supabase
-        .from('proposals')
-        .update({ 
-          status: 'revision',
-          updated_at: new Date().toISOString(),
-          rejection_reason: revisionFeedback // Using the same field for revisions
-        })
-        .eq('id', proposal.id);
-        
-      if (proposalError) throw proposalError;
-      
-      toast.success('Permintaan revisi berhasil dikirim');
-      setIsRevisionDialogOpen(false);
-    } catch (error: any) {
-      console.error("Error requesting revision:", error);
-      toast.error(`Failed to request revision: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handlePreviewDocument = (url: string, name: string) => {
-    setPreviewUrl(url);
-    setPreviewName(name);
-    setPreviewDialogOpen(true);
-  };
-
-  const handleDownloadFile = (url: string, fileName: string) => {
-    window.open(url, '_blank');
-    toast.success(`Downloading ${fileName}`);
   };
 
   if (loading) {
