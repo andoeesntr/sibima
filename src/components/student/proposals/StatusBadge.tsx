@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgeProps {
@@ -25,7 +24,8 @@ export const statusLabels: Record<string, string> = {
 };
 
 const StatusBadge = ({ status, rejectionReason }: StatusBadgeProps) => {
-  // If status is "submitted" but has a rejection reason, treat it as a revision request
+  // We can still keep the compatibility to show revision for old data
+  // where submitted status has a rejection reason
   const displayStatus = (status === 'submitted' && rejectionReason) ? 'revision' : status;
   
   return (

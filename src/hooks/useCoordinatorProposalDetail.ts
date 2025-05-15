@@ -124,12 +124,11 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      // For temporary compatibility with database constraints, we'll use "submitted"
-      // with a rejection_reason to indicate revision is needed
+      // Now we can use the proper 'revision' status since it's allowed in the database
       const { error: proposalError } = await supabase
         .from('proposals')
         .update({ 
-          status: 'submitted', // Use a valid status from the constraint
+          status: 'revision',
           updated_at: new Date().toISOString(),
           rejection_reason: revisionFeedback
         })
