@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface StatusBadgeProps {
   status: string;
+  rejectionReason?: string | null;
 }
 
 export const statusColors: Record<string, string> = {
@@ -23,10 +24,13 @@ export const statusLabels: Record<string, string> = {
   rejected: "Ditolak",
 };
 
-const StatusBadge = ({ status }: StatusBadgeProps) => {
+const StatusBadge = ({ status, rejectionReason }: StatusBadgeProps) => {
+  // If status is "submitted" but has a rejection reason, treat it as a revision request
+  const displayStatus = (status === 'submitted' && rejectionReason) ? 'revision' : status;
+  
   return (
-    <Badge className={statusColors[status] || "bg-gray-500"}>
-      {statusLabels[status] || "Unknown"}
+    <Badge className={statusColors[displayStatus] || "bg-gray-500"}>
+      {statusLabels[displayStatus] || "Unknown"}
     </Badge>
   );
 };

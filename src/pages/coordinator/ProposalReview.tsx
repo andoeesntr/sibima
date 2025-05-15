@@ -15,8 +15,14 @@ const ProposalReview = () => {
 
   const filteredProposals = proposals.filter(proposal => {
     // Filter by tab selection
-    if (activeTab !== 'all' && proposal.status !== activeTab) {
-      return false;
+    if (activeTab !== 'all') {
+      if (activeTab === 'revision') {
+        // For "revision" tab, check if status is submitted and has rejection_reason
+        return proposal.status === 'submitted' && proposal.rejectionReason;
+      } else {
+        // For other tabs, check status normally
+        return proposal.status === activeTab;
+      }
     }
     
     // Filter by search query

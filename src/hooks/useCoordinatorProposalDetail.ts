@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useProposalData } from '@/hooks/useCoordinatorProposal';
 
@@ -25,7 +25,10 @@ export const useCoordinatorProposalDetail = () => {
 
   const handleDownloadFile = (url: string, fileName: string) => {
     window.open(url, '_blank');
-    toast.success(`Downloading ${fileName}`);
+    toast({
+      title: "Downloading file",
+      description: `Downloading ${fileName}`
+    });
   };
 
   const handleApprove = async () => {
@@ -44,11 +47,19 @@ export const useCoordinatorProposalDetail = () => {
         
       if (error) throw error;
       
-      toast.success('Proposal berhasil disetujui');
+      toast({
+        title: "Success",
+        description: "Proposal berhasil disetujui",
+        variant: "default"
+      });
       setIsApproveDialogOpen(false);
     } catch (error: any) {
       console.error("Error approving proposal:", error);
-      toast.error(`Failed to approve proposal: ${error.message}`);
+      toast({
+        title: "Error",
+        description: `Failed to approve proposal: ${error.message}`,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -58,7 +69,11 @@ export const useCoordinatorProposalDetail = () => {
     if (!proposal) return;
     
     if (!rejectionReason.trim()) {
-      toast.error('Harap berikan alasan penolakan');
+      toast({
+        title: "Error",
+        description: "Harap berikan alasan penolakan",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -76,11 +91,19 @@ export const useCoordinatorProposalDetail = () => {
         
       if (error) throw error;
       
-      toast.success('Proposal berhasil ditolak');
+      toast({
+        title: "Success",
+        description: "Proposal berhasil ditolak",
+        variant: "default"
+      });
       setIsRejectDialogOpen(false);
     } catch (error: any) {
       console.error("Error rejecting proposal:", error);
-      toast.error(`Failed to reject proposal: ${error.message}`);
+      toast({
+        title: "Error",
+        description: `Failed to reject proposal: ${error.message}`,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -90,30 +113,43 @@ export const useCoordinatorProposalDetail = () => {
     if (!proposal) return;
     
     if (!revisionFeedback.trim()) {
-      toast.error('Harap berikan catatan revisi');
+      toast({
+        title: "Error",
+        description: "Harap berikan catatan revisi",
+        variant: "destructive"
+      });
       return;
     }
     
     setIsSubmitting(true);
     
     try {
-      // Update proposal status to 'revision'
+      // For temporary compatibility with database constraints, we'll use "submitted"
+      // with a rejection_reason to indicate revision is needed
       const { error: proposalError } = await supabase
         .from('proposals')
         .update({ 
-          status: 'revision',
+          status: 'submitted', // Use a valid status from the constraint
           updated_at: new Date().toISOString(),
-          rejection_reason: revisionFeedback // Using the same field for revisions
+          rejection_reason: revisionFeedback
         })
         .eq('id', proposal.id);
         
       if (proposalError) throw proposalError;
       
-      toast.success('Permintaan revisi berhasil dikirim');
+      toast({
+        title: "Success",
+        description: "Permintaan revisi berhasil dikirim",
+        variant: "default"
+      });
       setIsRevisionDialogOpen(false);
     } catch (error: any) {
       console.error("Error requesting revision:", error);
-      toast.error(`Failed to request revision: ${error.message}`);
+      toast({
+        title: "Error",
+        description: `Failed to request revision: ${error.message}`,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
