@@ -44,7 +44,9 @@ const ProposalDetailContent = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {proposal.status === 'rejected' && proposal.rejection_reason && (
+        {(proposal.status === 'rejected' || proposal.status === 'revision' || 
+          (proposal.status === 'submitted' && proposal.rejection_reason)) && 
+          proposal.rejection_reason && (
           <RejectionMessage rejectionReason={proposal.rejection_reason} />
         )}
 
@@ -66,7 +68,11 @@ const ProposalDetailContent = ({
         </div>
       </CardContent>
       <CardFooter>
-        <ProposalFooter status={proposal.status} />
+        <ProposalFooter 
+          status={proposal.status} 
+          proposalId={proposal.id}
+          rejectionReason={proposal.rejection_reason} 
+        />
       </CardFooter>
     </Card>
   );

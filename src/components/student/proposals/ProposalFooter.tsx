@@ -5,10 +5,15 @@ import { FileCheck, FileEdit } from "lucide-react";
 
 interface ProposalFooterProps {
   status: string;
+  proposalId?: string;
+  rejectionReason?: string | null;
 }
 
-const ProposalFooter = ({ status }: ProposalFooterProps) => {
+const ProposalFooter = ({ status, proposalId, rejectionReason }: ProposalFooterProps) => {
   const navigate = useNavigate();
+  
+  // Check if status is revision or if it's submitted with rejection reason
+  const needsRevision = status === 'revision' || (status === 'submitted' && rejectionReason);
   
   return (
     <div className="flex justify-between">
@@ -22,13 +27,21 @@ const ProposalFooter = ({ status }: ProposalFooterProps) => {
           </Button>
         )}
       </div>
-      {(status === 'rejected' || status === 'revision') && (
+      {status === 'rejected' && (
         <Button 
           onClick={() => navigate('/student/proposal-submission')}
-          className={status === 'revision' ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
         >
           <FileEdit className="mr-2 h-4 w-4" />
-          {status === 'revision' ? 'Revisi Proposal' : 'Ajukan Ulang Proposal'}
+          Ajukan Ulang Proposal
+        </Button>
+      )}
+      {needsRevision && (
+        <Button 
+          onClick={() => navigate(`/student/proposal-submission?edit=${proposalId}`)}
+          className="bg-amber-500 hover:bg-amber-600 text-white"
+        >
+          <FileEdit className="mr-2 h-4 w-4" />
+          Revisi Proposal
         </Button>
       )}
     </div>

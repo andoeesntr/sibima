@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -29,6 +28,12 @@ const ProposalSubmission = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   
+  // Get query params to check if we're editing an existing proposal
+  const location = window.location;
+  const params = new URLSearchParams(location.search);
+  const editProposalId = params.get('edit');
+  const [isEditMode, setIsEditMode] = useState(!!editProposalId);
+  
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [teamName, setTeamName] = useState('');
@@ -39,55 +44,105 @@ const ProposalSubmission = () => {
   const [activeTab, setActiveTab] = useState('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companyName, setCompanyName] = useState('');
+  const [existingTeamId, setExistingTeamId] = useState<string | null>(null);
+  const [existingDocumentId, setExistingDocumentId] = useState<string | null>(null);
   
   const [formStepValid, setFormStepValid] = useState(false);
   const [teamStepValid, setTeamStepValid] = useState(false);
+  const [isLoading, setIsLoading] = useState(isEditMode);
 
   const [students, setStudents] = useState<Student[]>([]);
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
 
+  // Load existing proposal data if in edit mode
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-
+    const loadExistingProposal = async () => {
+      if (!editProposalId || !user) return;
+      
+      setIsLoading(true);
       try {
-        const { data: studentsData, error: studentsError } = await supabase
-          .from('profiles')
-          .select('id, full_name, nim')
-          .eq('role', 'student');
+        // Fetch proposal details
+        const { data: proposalData, error: proposalError } = await supabase
+          .from('proposals')
+          .select(`
+            id, title, description, company_name, team_id, supervisor_id, 
+            team:team_id (id, name)
+          `)
+          .eq('id', editProposalId)
+          .single();
 
-        if (studentsError) {
-          throw studentsError;
+        if (proposalError) {
+          throw proposalError;
         }
 
-        const { data: supervisorsData, error: supervisorsError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .eq('role', 'supervisor');
-
-        if (supervisorsError) {
-          throw supervisorsError;
+        if (proposalData) {
+          // Set form data
+          setTitle(proposalData.title || '');
+          setDescription(proposalData.description || '');
+          setCompanyName(proposalData.company_name || '');
+          setExistingTeamId(proposalData.team_id);
+          
+          if (proposalData.supervisor_id) {
+            setSelectedSupervisors([proposalData.supervisor_id]);
+          }
+          
+          if (proposalData.team_id) {
+            setTeamName(proposalData.team?.name || '');
+            
+            // Fetch team members
+            const { data: teamMembersData, error: teamMembersError } = await supabase
+              .from('team_members')
+              .select(`
+                user_id,
+                user:user_id (id, full_name, nim)
+              `)
+              .eq('team_id', proposalData.team_id);
+              
+            if (!teamMembersError && teamMembersData) {
+              const members: Student[] = teamMembersData.map(item => ({
+                id: item.user?.id || item.user_id,
+                full_name: item.user?.full_name || 'Unknown',
+                nim: item.user?.nim
+              }));
+              setTeamMembers(members);
+            }
+            
+            // Fetch team supervisors
+            const { data: teamSupervisorsData, error: teamSupervisorsError } = await supabase
+              .from('team_supervisors')
+              .select('supervisor_id')
+              .eq('team_id', proposalData.team_id);
+              
+            if (!teamSupervisorsError && teamSupervisorsData) {
+              const supervisorIds = teamSupervisorsData.map(item => item.supervisor_id);
+              setSelectedSupervisors(supervisorIds);
+            }
+          }
+          
+          // Fetch proposal documents
+          const { data: documentData, error: documentError } = await supabase
+            .from('proposal_documents')
+            .select('id, file_name')
+            .eq('proposal_id', editProposalId)
+            .order('uploaded_at', { ascending: false })
+            .limit(1);
+            
+          if (!documentError && documentData && documentData.length > 0) {
+            setExistingDocumentId(documentData[0].id);
+          }
         }
-
-        setStudents(studentsData || []);
-        setSupervisors(supervisorsData || []);
-
-        if (profile && profile.role === 'student') {
-          setTeamMembers([{
-            id: user.id,
-            full_name: profile.full_name || 'Unnamed Student',
-            nim: profile.nim
-          }]);
-        }
-
-      } catch (error: any) {
-        console.error('Error fetching data:', error);
-        toast.error(`Failed to load data: ${error.message}`);
+      } catch (error) {
+        console.error('Error loading proposal data:', error);
+        toast.error('Gagal memuat data proposal');
+      } finally {
+        setIsLoading(false);
       }
     };
-
-    fetchData();
-  }, [user, profile]);
+    
+    if (isEditMode) {
+      loadExistingProposal();
+    }
+  }, [editProposalId, user]);
 
   const availableStudents = students.filter(
     student => !teamMembers.some(member => member.id === student.id)
@@ -149,8 +204,10 @@ const ProposalSubmission = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formStepValid || !teamStepValid || !file) {
-      toast.error('Harap isi semua bidang yang diperlukan');
+    if (!formStepValid || !teamStepValid || (!file && !isEditMode)) {
+      toast.error(isEditMode && !file 
+        ? 'Harap isi semua bidang yang diperlukan. File dokumen baru opsional untuk revisi' 
+        : 'Harap isi semua bidang yang diperlukan');
       return;
     }
 
@@ -167,106 +224,149 @@ const ProposalSubmission = () => {
     setIsSubmitting(true);
 
     try {
-      // Create team first
-      const { data: teamData, error: teamError } = await supabase
-        .from('teams')
-        .insert({
-          name: teamName
-        })
-        .select('id')
-        .single();
+      let teamId = existingTeamId;
+      
+      // If editing and team exists, update team
+      if (isEditMode && existingTeamId) {
+        // Update team name if changed
+        const { error: teamUpdateError } = await supabase
+          .from('teams')
+          .update({ name: teamName, updated_at: new Date().toISOString() })
+          .eq('id', existingTeamId);
+          
+        if (teamUpdateError) {
+          throw teamUpdateError;
+        }
+      } else {
+        // Create team if doesn't exist
+        const { data: teamData, error: teamError } = await supabase
+          .from('teams')
+          .insert({ name: teamName })
+          .select('id')
+          .single();
 
-      if (teamError) {
-        throw teamError;
+        if (teamError) {
+          throw teamError;
+        }
+        
+        teamId = teamData.id;
+        
+        // Add team members
+        const teamMembersToInsert = teamMembers.map(member => ({
+          team_id: teamData.id,
+          user_id: member.id,
+          role: member.id === user.id ? 'leader' : 'member'
+        }));
+
+        const { error: memberError } = await supabase
+          .from('team_members')
+          .insert(teamMembersToInsert);
+
+        if (memberError) {
+          throw memberError;
+        }
       }
 
-      // Add team members
-      const teamMembersToInsert = teamMembers.map(member => ({
-        team_id: teamData.id,
-        user_id: member.id,
-        role: member.id === user.id ? 'leader' : 'member'
-      }));
+      let proposalId = editProposalId;
+      
+      if (isEditMode && editProposalId) {
+        // Update existing proposal
+        const { error: proposalUpdateError } = await supabase
+          .from('proposals')
+          .update({
+            title,
+            description,
+            company_name: companyName,
+            supervisor_id: selectedSupervisors[0],
+            status: 'submitted', // Reset to submitted after revision
+            rejection_reason: null, // Clear previous rejection reason
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editProposalId);
+          
+        if (proposalUpdateError) {
+          throw proposalUpdateError;
+        }
+      } else {
+        // Create new proposal
+        const { data: proposalData, error: proposalError } = await supabase
+          .from('proposals')
+          .insert({
+            student_id: user.id,
+            title,
+            description,
+            company_name: companyName,
+            supervisor_id: selectedSupervisors[0],
+            status: 'submitted',
+            team_id: teamId
+          })
+          .select();
 
-      const { error: memberError } = await supabase
-        .from('team_members')
-        .insert(teamMembersToInsert);
-
-      if (memberError) {
-        throw memberError;
+        if (proposalError) {
+          throw proposalError;
+        }
+        
+        proposalId = proposalData[0].id;
       }
 
-      // Create the proposal
-      const { data: proposalData, error: proposalError } = await supabase
-        .from('proposals')
-        .insert({
-          student_id: user.id,
-          title,
-          description,
-          company_name: companyName,
-          supervisor_id: selectedSupervisors[0],
-          status: 'submitted',
-          team_id: teamData.id
-        })
-        .select();
+      // Upload new file if provided
+      if (file && proposalId) {
+        const fileName = `${Date.now()}_${file.name}`;
+        const fileExt = fileName.split('.').pop();
+        const filePath = `${user.id}/${proposalId}/${fileName}`;
 
-      if (proposalError) {
-        throw proposalError;
-      }
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('proposal-documents')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type
+          });
 
-      // Upload file to storage
-      const fileName = `${Date.now()}_${file.name}`;
-      const fileExt = fileName.split('.').pop();
-      const filePath = `${user.id}/${proposalData[0].id}/${fileName}`;
+        if (uploadError) {
+          throw uploadError;
+        }
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('proposal-documents')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type
-        });
+        // Get the public URL for the uploaded file
+        const { data: publicURLData } = supabase.storage
+          .from('proposal-documents')
+          .getPublicUrl(filePath);
 
-      if (uploadError) {
-        throw uploadError;
-      }
+        if (!publicURLData.publicUrl) {
+          throw new Error('Failed to get public URL for uploaded file');
+        }
 
-      // Get the public URL for the uploaded file
-      const { data: publicURLData } = supabase.storage
-        .from('proposal-documents')
-        .getPublicUrl(filePath);
+        // Add document record in the database
+        const { error: documentError } = await supabase
+          .from('proposal_documents')
+          .insert({
+            proposal_id: proposalId,
+            file_name: fileName,
+            file_url: publicURLData.publicUrl,
+            file_type: fileExt,
+            uploaded_by: user.id
+          });
 
-      if (!publicURLData.publicUrl) {
-        throw new Error('Failed to get public URL for uploaded file');
-      }
-
-      // Add document record in the database
-      const { error: documentError } = await supabase
-        .from('proposal_documents')
-        .insert({
-          proposal_id: proposalData[0].id,
-          file_name: fileName,
-          file_url: publicURLData.publicUrl,
-          file_type: fileExt,
-          uploaded_by: user.id
-        });
-
-      if (documentError) {
-        throw documentError;
+        if (documentError) {
+          throw documentError;
+        }
       }
 
       await supabase.from('activity_logs').insert({
         user_id: user.id,
         user_name: profile.full_name || user.email,
-        action: 'submitted',
+        action: isEditMode ? 'revised' : 'submitted',
         target_type: 'proposal',
-        target_id: proposalData[0].id
+        target_id: proposalId
       });
 
-      toast.success('Proposal berhasil diajukan');
+      toast.success(isEditMode 
+        ? 'Revisi proposal berhasil dikirim' 
+        : 'Proposal berhasil diajukan');
       navigate('/student');
     } catch (error: any) {
       console.error('Error submitting proposal:', error);
-      toast.error(`Gagal mengajukan proposal: ${error.message}`);
+      toast.error(`Gagal ${isEditMode ? 'merevisi' : 'mengajukan'} proposal: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -295,9 +395,20 @@ const ProposalSubmission = () => {
     setTeamStepValid(teamMembers.length > 0 && selectedSupervisors.length > 0);
   }, [teamMembers, selectedSupervisors]);
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+        <span className="ml-3">Memuat data proposal...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Pengajuan Proposal KP</h1>
+      <h1 className="text-2xl font-bold">
+        {isEditMode ? 'Revisi Proposal KP' : 'Pengajuan Proposal KP'}
+      </h1>
       
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-3">
@@ -309,9 +420,11 @@ const ProposalSubmission = () => {
         <TabsContent value="form">
           <Card className="shadow-sm">
             <CardHeader>
-              <CardTitle>Informasi Proposal</CardTitle>
+              <CardTitle>{isEditMode ? 'Revisi Informasi Proposal' : 'Informasi Proposal'}</CardTitle>
               <CardDescription>
-                Masukkan informasi proposal kerja praktik yang akan diajukan
+                {isEditMode 
+                  ? 'Perbaiki informasi proposal kerja praktik yang akan direvisi' 
+                  : 'Masukkan informasi proposal kerja praktik yang akan diajukan'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -353,7 +466,11 @@ const ProposalSubmission = () => {
                   placeholder="Masukkan nama tim KP" 
                   value={teamName}
                   onChange={(e) => setTeamName(e.target.value)}
+                  disabled={isEditMode && existingTeamId !== null}
                 />
+                {isEditMode && existingTeamId !== null && (
+                  <p className="text-xs text-muted-foreground">Nama tim tidak dapat diubah dalam mode revisi</p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
@@ -373,9 +490,11 @@ const ProposalSubmission = () => {
         <TabsContent value="team">
           <Card>
             <CardHeader>
-              <CardTitle>Tim KP</CardTitle>
+              <CardTitle>{isEditMode ? 'Tim KP (Revisi)' : 'Tim KP'}</CardTitle>
               <CardDescription>
-                Tambahkan anggota tim dan pilih dosen pembimbing
+                {isEditMode && existingTeamId 
+                  ? 'Tim anggota KP sudah terbentuk dan tidak dapat diubah saat revisi' 
+                  : 'Tambahkan anggota tim dan pilih dosen pembimbing'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -507,16 +626,30 @@ const ProposalSubmission = () => {
         <TabsContent value="upload">
           <Card>
             <CardHeader>
-              <CardTitle>Upload Dokumen</CardTitle>
+              <CardTitle>
+                {isEditMode ? 'Upload Dokumen Revisi' : 'Upload Dokumen'}
+              </CardTitle>
               <CardDescription>
-                Upload dokumen proposal KP Anda dalam format PDF
+                {isEditMode 
+                  ? 'Upload dokumen revisi proposal KP Anda dalam format PDF' 
+                  : 'Upload dokumen proposal KP Anda dalam format PDF'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isEditMode && existingDocumentId && (
+                <div className="bg-blue-50 p-4 rounded border border-blue-200 mb-4">
+                  <p className="text-blue-700 text-sm">
+                    Dokumen proposal sebelumnya sudah tersimpan. Anda dapat mengganti dokumen dengan mengunggah yang baru.
+                  </p>
+                </div>
+              )}
+              
               <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center">
                 <FileUp size={40} className="text-gray-400 mb-4" />
                 <p className="mb-4 text-sm text-gray-600 text-center">
-                  Drag & drop file proposal Anda di sini, atau klik tombol di bawah
+                  {isEditMode 
+                    ? 'Drag & drop file revisi proposal Anda di sini, atau klik tombol di bawah' 
+                    : 'Drag & drop file proposal Anda di sini, atau klik tombol di bawah'}
                 </p>
                 <div className="space-y-2">
                   <Label htmlFor="file-upload" className="sr-only">Upload file</Label>
@@ -560,9 +693,13 @@ const ProposalSubmission = () => {
               <Button 
                 onClick={handleSubmit}
                 className="bg-primary hover:bg-primary/90"
-                disabled={isSubmitting || !file}
+                disabled={isSubmitting || (!file && !isEditMode)}
               >
-                {isSubmitting ? 'Memproses...' : 'Ajukan Proposal'}
+                {isSubmitting 
+                  ? 'Memproses...' 
+                  : isEditMode 
+                    ? 'Kirim Revisi Proposal' 
+                    : 'Ajukan Proposal'}
               </Button>
             </CardFooter>
           </Card>
