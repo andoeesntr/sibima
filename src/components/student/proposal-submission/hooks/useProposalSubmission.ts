@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -334,6 +333,52 @@ export const useProposalSubmission = (editProposalId: string | null) => {
         const fileExt = fileName.split('.').pop();
         const filePath = `${user.id}/${proposalId}/${fileName}`;
 
+        // If we're in edit mode, delete the old documents before uploading the new one
+        if (isEditMode && existingDocumentId) {
+          // First, get the file URL of the existing document to delete from storage
+          const { data: existingDoc, error: fetchError } = await supabase
+            .from('proposal_documents')
+            .select('file_url')
+            .eq('id', existingDocumentId)
+            .single();
+          
+          if (fetchError) {
+            console.error("Error fetching existing document:", fetchError);
+            // Continue with upload even if fetch fails
+          } else if (existingDoc) {
+            // Extract the path from the URL
+            try {
+              const url = new URL(existingDoc.file_url);
+              const storagePath = url.pathname.split('/').slice(3).join('/'); // Remove /storage/v1/object/public/ prefix
+              
+              // Delete the file from storage
+              const { error: storageDeleteError } = await supabase.storage
+                .from('proposal-documents')
+                .remove([storagePath]);
+                
+              if (storageDeleteError) {
+                console.error("Error deleting file from storage:", storageDeleteError);
+                // Continue with upload even if delete fails
+              }
+            } catch (e) {
+              console.error("Error parsing file URL:", e);
+              // Continue with upload even if parse fails
+            }
+          }
+
+          // Delete the old document record from the database
+          const { error: deleteError } = await supabase
+            .from('proposal_documents')
+            .delete()
+            .eq('id', existingDocumentId);
+
+          if (deleteError) {
+            console.error("Error deleting old document record:", deleteError);
+            // Continue with upload even if delete fails
+          }
+        }
+
+        // Upload the new file
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('proposal-documents')
           .upload(filePath, file, {
