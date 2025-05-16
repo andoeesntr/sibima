@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
@@ -5,7 +6,7 @@ import ProposalsList from '@/components/supervisor/proposals/ProposalsList';
 import FeedbackDialog from '@/components/supervisor/proposals/FeedbackDialog';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import KpTimeline from '@/components/coordinator/KpTimeline';
-import useSupervisorProposals from '@/hooks/useSupervisorProposals';
+import { useSupervisorProposals } from '@/hooks/useSupervisorProposals';
 import ProposalDetailCard from '@/components/supervisor/proposals/ProposalDetailCard';
 
 const SupervisorDashboard = () => {
@@ -33,8 +34,9 @@ const SupervisorDashboard = () => {
     handleStatusChange
   } = useSupervisorProposals();
   
-  const handlePreviewFile = (url: string) => {
+  const handlePreviewFile = (url: string, name: string = '') => {
     setPreviewUrl(url);
+    setPreviewName(name);
     setPreviewDialogOpen(true);
   };
   
@@ -71,7 +73,7 @@ const SupervisorDashboard = () => {
             <ProposalsList
               proposals={filteredProposals}
               loading={loading}
-              selectedProposalId={selectedProposal?.id || ''}
+              selectedProposal={selectedProposal?.id || ''}
               onSelectProposal={setSelectedProposal}
             />
             
@@ -92,7 +94,7 @@ const SupervisorDashboard = () => {
             <ProposalsList
               proposals={filterProposals(proposals, 'submitted')}
               loading={loading}
-              selectedProposalId={selectedProposal?.id || ''}
+              selectedProposal={selectedProposal?.id || ''}
               onSelectProposal={setSelectedProposal}
             />
             
@@ -113,7 +115,7 @@ const SupervisorDashboard = () => {
             <ProposalsList
               proposals={filterProposals(proposals, 'revision')}
               loading={loading}
-              selectedProposalId={selectedProposal?.id || ''}
+              selectedProposal={selectedProposal?.id || ''}
               onSelectProposal={setSelectedProposal}
             />
             
@@ -134,7 +136,7 @@ const SupervisorDashboard = () => {
             <ProposalsList
               proposals={filterProposals(proposals, 'approved')}
               loading={loading}
-              selectedProposalId={selectedProposal?.id || ''}
+              selectedProposal={selectedProposal?.id || ''}
               onSelectProposal={setSelectedProposal}
             />
             
@@ -155,7 +157,7 @@ const SupervisorDashboard = () => {
             <ProposalsList
               proposals={filterProposals(proposals, 'rejected')}
               loading={loading}
-              selectedProposalId={selectedProposal?.id || ''}
+              selectedProposal={selectedProposal?.id || ''}
               onSelectProposal={setSelectedProposal}
             />
             
@@ -174,7 +176,7 @@ const SupervisorDashboard = () => {
       
       <FeedbackDialog
         isOpen={isFeedbackDialogOpen}
-        setIsOpen={setIsFeedbackDialogOpen}
+        onOpenChange={setIsFeedbackDialogOpen}
         proposalId={selectedProposal?.id || ''}
         content={feedbackContent}
         setContent={setFeedbackContent}

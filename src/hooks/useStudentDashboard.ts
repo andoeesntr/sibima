@@ -61,11 +61,22 @@ export const useStudentDashboard = () => {
     setTeam(teamData);
   };
 
+  // Compute derived state
+  const hasActiveProposal = proposals.some(p => 
+    ['submitted', 'revision'].includes(p.status)
+  );
+  
+  const isInTeam = !!team;
+  const lastTeam = team;
+
   return {
     proposals,
     selectedProposal,
     team,
     loading,
-    handleSelectProposal
+    handleSelectProposal,
+    hasActiveProposal,
+    isInTeam,
+    lastTeam
   };
 };

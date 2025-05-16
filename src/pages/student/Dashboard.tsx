@@ -2,11 +2,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import StatusCard from '@/components/student/dashboard/StatusCard';
-import ActionCards from '@/components/student/dashboard/ActionCards';
-import TeamCard from '@/components/student/dashboard/TeamCard';
+import { StatusCard } from '@/components/student/dashboard/StatusCard';
+import { ActionCards } from '@/components/student/dashboard/ActionCards';
+import { TeamCard } from '@/components/student/dashboard/TeamCard';
 import KpTimeline from '@/components/coordinator/KpTimeline';
-import useStudentDashboard from '@/hooks/useStudentDashboard';
+import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
