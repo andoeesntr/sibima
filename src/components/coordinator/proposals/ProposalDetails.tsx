@@ -34,6 +34,11 @@ const ProposalDetails = ({
   onPreviewDocument,
   onDownloadFile
 }: ProposalDetailsProps) => {
+  // Sort documents by name in descending order (assuming the name contains timestamp)
+  const sortedDocuments = [...documents].sort((a, b) => 
+    b.file_name.localeCompare(a.file_name)
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -47,7 +52,7 @@ const ProposalDetails = ({
         <CompanyInfo companyName={companyName} />
         <RejectionInfo status={status} rejectionReason={rejectionReason} />
         <DocumentSection 
-          documents={documents}
+          documents={sortedDocuments}
           onPreviewDocument={onPreviewDocument}
           onDownloadFile={onDownloadFile}
           showOnlyLatest={true}

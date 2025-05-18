@@ -19,10 +19,17 @@ const DocumentSection = ({
   onDownloadFile,
   showOnlyLatest = true
 }: DocumentSectionProps) => {
+  // Sort documents by upload date - newest first
+  const sortedDocuments = [...documents].sort((a, b) => {
+    // If we don't have explicit upload dates, we can use the file names
+    // as they often contain timestamps when using the proposalSubmissionService
+    return b.file_name.localeCompare(a.file_name);
+  });
+  
   // If showOnlyLatest is true, only show the most recent document
-  const displayDocuments = showOnlyLatest && documents.length > 0 
-    ? [documents[0]] 
-    : documents;
+  const displayDocuments = showOnlyLatest && sortedDocuments.length > 0 
+    ? [sortedDocuments[0]] 
+    : sortedDocuments;
   
   return (
     <div>
