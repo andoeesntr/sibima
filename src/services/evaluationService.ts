@@ -30,13 +30,23 @@ export const fetchAllEvaluations = async (): Promise<Evaluation[]> => {
       .from('evaluations')
       .select(`
         *,
-        student:student_id (id, full_name, nim, profile_image),
-        evaluator:evaluator_id (id, name, profile_image)
+        student:profiles!evaluations_student_id_fkey (id, full_name, nim, profile_image),
+        evaluator:profiles!evaluations_evaluator_id_fkey (id, full_name:full_name, profile_image)
       `)
       .order('created_at', { ascending: false });
       
     if (error) throw error;
-    return data as Evaluation[];
+    
+    // Transform the data to match the Evaluation interface
+    const transformedData = data.map(item => ({
+      ...item,
+      evaluator: item.evaluator ? {
+        ...item.evaluator,
+        name: item.evaluator.full_name
+      } : undefined
+    }));
+    
+    return transformedData as Evaluation[];
   } catch (error) {
     console.error('Error fetching evaluations:', error);
     return [];
@@ -49,14 +59,24 @@ export const fetchStudentEvaluations = async (studentId: string): Promise<Evalua
       .from('evaluations')
       .select(`
         *,
-        student:student_id (id, full_name, nim, profile_image),
-        evaluator:evaluator_id (id, name, profile_image)
+        student:profiles!evaluations_student_id_fkey (id, full_name, nim, profile_image),
+        evaluator:profiles!evaluations_evaluator_id_fkey (id, full_name:full_name, profile_image)
       `)
       .eq('student_id', studentId)
       .order('created_at', { ascending: false });
       
     if (error) throw error;
-    return data as Evaluation[];
+    
+    // Transform the data to match the Evaluation interface
+    const transformedData = data.map(item => ({
+      ...item,
+      evaluator: item.evaluator ? {
+        ...item.evaluator,
+        name: item.evaluator.full_name
+      } : undefined
+    }));
+    
+    return transformedData as Evaluation[];
   } catch (error) {
     console.error('Error fetching student evaluations:', error);
     return [];
@@ -67,16 +87,32 @@ export const createEvaluation = async (evaluation: Omit<Evaluation, 'id'>): Prom
   try {
     const { data, error } = await supabase
       .from('evaluations')
-      .insert(evaluation)
+      .insert({
+        student_id: evaluation.student_id,
+        evaluator_id: evaluation.evaluator_id,
+        evaluator_type: evaluation.evaluator_type,
+        score: evaluation.score,
+        comments: evaluation.comments
+      })
       .select(`
         *,
-        student:student_id (id, full_name, nim, profile_image),
-        evaluator:evaluator_id (id, name, profile_image)
+        student:profiles!evaluations_student_id_fkey (id, full_name, nim, profile_image),
+        evaluator:profiles!evaluations_evaluator_id_fkey (id, full_name:full_name, profile_image)
       `)
       .single();
       
     if (error) throw error;
-    return data as Evaluation;
+    
+    // Transform to match the Evaluation interface
+    const transformedData = {
+      ...data,
+      evaluator: data.evaluator ? {
+        ...data.evaluator,
+        name: data.evaluator.full_name
+      } : undefined
+    };
+    
+    return transformedData as Evaluation;
   } catch (error) {
     console.error('Error creating evaluation:', error);
     toast.error('Gagal menambahkan penilaian');

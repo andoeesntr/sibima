@@ -137,8 +137,7 @@ const AddEvaluationDialog = ({
         evaluator_id: user.id,
         evaluator_type: 'supervisor',
         score: academic,
-        comments: 'Penilaian oleh pembimbing akademik',
-        document_url: null  // Add this line to fix TypeScript error
+        comments: 'Penilaian oleh pembimbing akademik'
       });
       
       // Create field supervisor evaluation
@@ -147,8 +146,7 @@ const AddEvaluationDialog = ({
         evaluator_id: user.id,
         evaluator_type: 'field_supervisor',
         score: field,
-        comments: 'Penilaian oleh pembimbing lapangan',
-        document_url: null  // Add this line to fix TypeScript error
+        comments: 'Penilaian oleh pembimbing lapangan'
       });
       
       if (academicEvaluation && fieldEvaluation) {

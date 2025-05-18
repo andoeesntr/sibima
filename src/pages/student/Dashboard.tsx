@@ -34,7 +34,7 @@ const StudentDashboard = () => {
 
   // Calculate final score - average of all evaluations
   const finalScore = evaluations && evaluations.length > 0
-    ? evaluations.reduce((sum, eval) => sum + eval.score, 0) / evaluations.length
+    ? evaluations.reduce((sum, evaluation) => sum + evaluation.score, 0) / evaluations.length
     : null;
 
   if (loading) {

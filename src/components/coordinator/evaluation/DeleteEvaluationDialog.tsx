@@ -10,21 +10,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@/components/ui/alert-dialog";
-import { Evaluation } from '@/services/evaluationService';
-import { supabase } from '@/integrations/supabase/client';
+import { deleteEvaluation } from '@/services/evaluationService';
 import { toast } from 'sonner';
 
 interface DeleteEvaluationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  evaluation: Evaluation;
-  onDelete: (id: string) => void;
+  evaluationId: string;
+  studentName: string;
+  onDelete: () => void;
 }
 
 const DeleteEvaluationDialog = ({
   open,
   onOpenChange,
-  evaluation,
+  evaluationId,
+  studentName,
   onDelete
 }: DeleteEvaluationDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -32,15 +33,14 @@ const DeleteEvaluationDialog = ({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const { error } = await supabase
-        .from('evaluations')
-        .delete()
-        .eq('id', evaluation.id);
+      const success = await deleteEvaluation(evaluationId);
       
-      if (error) throw error;
-      
-      onDelete(evaluation.id);
-      onOpenChange(false);
+      if (success) {
+        onDelete();
+        onOpenChange(false);
+      } else {
+        throw new Error('Failed to delete evaluation');
+      }
     } catch (error) {
       console.error('Error deleting evaluation:', error);
       toast.error('Failed to delete evaluation');
@@ -55,9 +55,7 @@ const DeleteEvaluationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus Penilaian</AlertDialogTitle>
           <AlertDialogDescription>
-            Yakin ingin menghapus penilaian {evaluation?.evaluator_type === 'supervisor' 
-              ? 'Pembimbing Akademik' 
-              : 'Pembimbing Lapangan'} untuk {evaluation?.student?.full_name}?
+            Yakin ingin menghapus penilaian untuk {studentName}?
             <br />
             Tindakan ini tidak dapat diurungkan.
           </AlertDialogDescription>
