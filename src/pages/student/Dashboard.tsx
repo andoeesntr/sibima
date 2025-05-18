@@ -7,6 +7,7 @@ import { ActionCards } from '@/components/student/dashboard/ActionCards';
 import { TeamCard } from '@/components/student/dashboard/TeamCard';
 import KpTimeline from '@/components/coordinator/KpTimeline';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -19,7 +20,8 @@ const StudentDashboard = () => {
     handleSelectProposal,
     hasActiveProposal,
     isInTeam,
-    lastTeam
+    lastTeam,
+    evaluations
   } = useStudentDashboard();
 
   const handleStatusFilter = (status: string) => {
@@ -29,6 +31,11 @@ const StudentDashboard = () => {
   const navigateToProposalSubmission = () => {
     navigate('/student/proposal-submission');
   };
+
+  // Calculate final score - average of all evaluations
+  const finalScore = evaluations && evaluations.length > 0
+    ? evaluations.reduce((sum, eval) => sum + eval.score, 0) / evaluations.length
+    : null;
 
   if (loading) {
     return (
@@ -51,6 +58,62 @@ const StudentDashboard = () => {
         <KpTimeline readOnly={true} />
       </div>
       
+      {/* Status and Team Cards in a grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Status Card */}
+        <StatusCard
+          proposals={proposals}
+          activeTab={activeTab}
+          onTabChange={handleStatusFilter}
+          selectedProposal={selectedProposal}
+          onSelectProposal={handleSelectProposal}
+        />
+
+        {/* Team Card */}
+        {isInTeam && lastTeam ? (
+          <TeamCard team={lastTeam} />
+        ) : (
+          <Card className="shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle>Tim KP</CardTitle>
+              <CardDescription>Informasi tim KP Anda</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-6">
+                <p className="text-gray-600">Anda belum memiliki tim KP</p>
+                <Button 
+                  className="mt-4 bg-primary hover:bg-primary/90"
+                  onClick={navigateToProposalSubmission}
+                >
+                  Buat Tim KP
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Final Score Card */}
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader>
+          <CardTitle>Nilai Akhir KP</CardTitle>
+          <CardDescription>Nilai hasil evaluasi pembimbing</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {finalScore !== null ? (
+            <div className="flex justify-center">
+              <div className="w-32 h-32 rounded-full bg-primary text-white flex items-center justify-center">
+                <span className="text-3xl font-bold">{finalScore.toFixed(1)}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-gray-600">Belum ada penilaian</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
       {/* Quick Access Cards */}
       <h2 className="text-lg font-medium">Akses Cepat</h2>
       <ActionCards
@@ -58,24 +121,6 @@ const StudentDashboard = () => {
         onSubmitProposal={navigateToProposalSubmission}
         selectedProposal={selectedProposal}
       />
-      
-      {/* Status Card */}
-      <h2 className="text-lg font-medium mt-2">Status KP</h2>
-      <StatusCard
-        proposals={proposals}
-        activeTab={activeTab}
-        onTabChange={handleStatusFilter}
-        selectedProposal={selectedProposal}
-        onSelectProposal={handleSelectProposal}
-      />
-
-      {/* Team Card if user is in a team */}
-      {isInTeam && lastTeam && (
-        <div>
-          <h2 className="text-lg font-medium">Tim KP</h2>
-          <TeamCard team={lastTeam} />
-        </div>
-      )}
       
       {/* Submit Proposal Button (if not in a proposal yet) */}
       {!hasActiveProposal && (

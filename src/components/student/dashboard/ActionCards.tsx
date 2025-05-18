@@ -1,7 +1,7 @@
 
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileCheck, FileText, FileSignature, BookOpen } from 'lucide-react';
+import { FileText, FileSignature, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ProposalType } from "@/types/student";
 
@@ -15,35 +15,27 @@ export const ActionCards = ({ hasActiveProposal, onSubmitProposal, selectedPropo
   const navigate = useNavigate();
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-3 gap-4">
       <Card className="shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg text-center">Pengajuan Proposal</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center pb-2">
-          <FileText className="w-10 h-10 mx-auto mb-2 text-primary" />
-        </CardContent>
-        <CardFooter className="flex justify-center pt-0">
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <FileText className="w-8 h-8 mb-2 text-primary" />
+          <span className="text-sm font-medium mb-2">Pengajuan Proposal</span>
           <Button 
-            className="bg-primary hover:bg-primary/90 w-full"
+            className="w-full bg-primary hover:bg-primary/90"
             onClick={() => navigate('/student/proposal-submission')}
             size="sm"
           >
             Akses
           </Button>
-        </CardFooter>
+        </CardContent>
       </Card>
 
       <Card className="shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg text-center">Digital Signature</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center pb-2">
-          <FileSignature className="w-10 h-10 mx-auto mb-2 text-secondary" />
-        </CardContent>
-        <CardFooter className="flex justify-center pt-0">
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <FileSignature className="w-8 h-8 mb-2 text-secondary" />
+          <span className="text-sm font-medium mb-2">Digital Signature</span>
           <Button 
-            className="bg-secondary hover:bg-secondary/90 w-full"
+            className="w-full bg-secondary hover:bg-secondary/90"
             onClick={() => navigate('/student/digital-signature')}
             disabled={!selectedProposal || selectedProposal.status !== 'approved'}
             size="sm"
@@ -51,17 +43,13 @@ export const ActionCards = ({ hasActiveProposal, onSubmitProposal, selectedPropo
             {(!selectedProposal || selectedProposal.status !== 'approved') ? 
               'Belum Tersedia' : 'Akses'}
           </Button>
-        </CardFooter>
+        </CardContent>
       </Card>
 
       <Card className="shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg text-center">Panduan KP</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center pb-2">
-          <BookOpen className="w-10 h-10 mx-auto mb-2 text-blue-500" />
-        </CardContent>
-        <CardFooter className="flex justify-center pt-0">
+        <CardContent className="p-4 flex flex-col items-center justify-center">
+          <BookOpen className="w-8 h-8 mb-2 text-blue-500" />
+          <span className="text-sm font-medium mb-2">Panduan KP</span>
           <Button 
             variant="outline"
             onClick={() => navigate('/student/guide')}
@@ -70,7 +58,7 @@ export const ActionCards = ({ hasActiveProposal, onSubmitProposal, selectedPropo
           >
             Akses
           </Button>
-        </CardFooter>
+        </CardContent>
       </Card>
     </div>
   );

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { ProposalType, TeamType } from '@/types/student';
 import { fetchStudentProposals } from '@/services/studentProposalService';
 import { fetchTeamData } from '@/services/teamService';
+import { Evaluation, fetchStudentEvaluations } from '@/services/evaluationService';
 
 export const useStudentDashboard = () => {
   const { user, profile } = useAuth();
@@ -12,6 +13,7 @@ export const useStudentDashboard = () => {
   const [selectedProposal, setSelectedProposal] = useState<ProposalType | null>(null);
   const [team, setTeam] = useState<TeamType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
 
   const fetchData = async () => {
     if (!user) return;
@@ -38,6 +40,11 @@ export const useStudentDashboard = () => {
         const teamData = await fetchTeamData(proposalsWithStudentId[0], profile, user);
         console.log('Fetched team data:', teamData);
         setTeam(teamData);
+        
+        // Fetch evaluations for the student
+        const studentEvaluations = await fetchStudentEvaluations(user.id);
+        console.log('Fetched evaluations:', studentEvaluations);
+        setEvaluations(studentEvaluations);
       } else {
         setSelectedProposal(null);
         setTeam(null);
@@ -77,6 +84,7 @@ export const useStudentDashboard = () => {
     handleSelectProposal,
     hasActiveProposal,
     isInTeam,
-    lastTeam
+    lastTeam,
+    evaluations
   };
 };
