@@ -46,11 +46,21 @@ const StudentDashboard = () => {
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
       {/* Timeline at the top */}
-      <div className="mb-6">
+      <div className="bg-white p-4 rounded-lg border shadow-sm mb-6">
+        <h2 className="text-lg font-medium mb-2">Timeline KP</h2>
         <KpTimeline readOnly={true} />
       </div>
       
+      {/* Quick Access Cards */}
+      <h2 className="text-lg font-medium">Akses Cepat</h2>
+      <ActionCards
+        hasActiveProposal={hasActiveProposal}
+        onSubmitProposal={navigateToProposalSubmission}
+        selectedProposal={selectedProposal}
+      />
+      
       {/* Status Card */}
+      <h2 className="text-lg font-medium mt-2">Status KP</h2>
       <StatusCard
         proposals={proposals}
         activeTab={activeTab}
@@ -61,15 +71,11 @@ const StudentDashboard = () => {
 
       {/* Team Card if user is in a team */}
       {isInTeam && lastTeam && (
-        <TeamCard team={lastTeam} />
+        <div>
+          <h2 className="text-lg font-medium">Tim KP</h2>
+          <TeamCard team={lastTeam} />
+        </div>
       )}
-
-      {/* Action Cards */}
-      <ActionCards
-        hasActiveProposal={hasActiveProposal}
-        onSubmitProposal={navigateToProposalSubmission}
-        selectedProposal={selectedProposal}
-      />
       
       {/* Submit Proposal Button (if not in a proposal yet) */}
       {!hasActiveProposal && (
