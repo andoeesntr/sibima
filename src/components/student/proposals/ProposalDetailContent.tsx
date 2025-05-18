@@ -35,6 +35,14 @@ const ProposalDetailContent = ({
   attachments,
   onPreview
 }: ProposalDetailContentProps) => {
+  // Sort attachments by uploaded_at in descending order (newest first)
+  const sortedAttachments = [...attachments].sort((a, b) => 
+    new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
+  );
+  
+  // Only show the most recent attachment
+  const displayAttachments = sortedAttachments.length > 0 ? [sortedAttachments[0]] : [];
+
   return (
     <Card>
       <CardHeader>
@@ -62,7 +70,7 @@ const ProposalDetailContent = ({
         <div>
           <h3 className="font-medium mb-3">Lampiran</h3>
           <AttachmentList 
-            attachments={attachments} 
+            attachments={displayAttachments} 
             onPreview={onPreview} 
           />
         </div>

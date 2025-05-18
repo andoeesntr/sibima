@@ -149,87 +149,94 @@ async function handleFileUpload(file: File, userId: string, proposalId: string, 
   const fileExt = fileName.split('.').pop();
   const filePath = `${userId}/${proposalId}/${fileName}`;
 
-  // If we're in edit mode, delete the old documents before uploading the new one
-  if (existingDocumentId) {
-    // First, get the file URL of the existing document to delete from storage
-    const { data: existingDoc, error: fetchError } = await supabase
-      .from('proposal_documents')
-      .select('file_url')
-      .eq('id', existingDocumentId)
-      .single();
-    
-    if (fetchError) {
-      console.error("Error fetching existing document:", fetchError);
-      // Continue with upload even if fetch fails
-    } else if (existingDoc) {
-      // Extract the path from the URL
-      try {
-        const url = new URL(existingDoc.file_url);
-        const storagePath = url.pathname.split('/').slice(3).join('/'); // Remove /storage/v1/object/public/ prefix
+  try {
+    // If we're in edit mode and have existing documents, delete all of them
+    if (existingDocumentId) {
+      // Get all documents for this proposal
+      const { data: existingDocs, error: fetchError } = await supabase
+        .from('proposal_documents')
+        .select('id, file_url')
+        .eq('proposal_id', proposalId);
+      
+      if (!fetchError && existingDocs && existingDocs.length > 0) {
+        console.log(`Found ${existingDocs.length} existing documents to clean up`);
         
-        // Delete the file from storage
-        const { error: storageDeleteError } = await supabase.storage
-          .from('proposal-documents')
-          .remove([storagePath]);
-          
-        if (storageDeleteError) {
-          console.error("Error deleting file from storage:", storageDeleteError);
-          // Continue with upload even if delete fails
+        // Delete each document from storage
+        for (const doc of existingDocs) {
+          try {
+            const url = new URL(doc.file_url);
+            const storagePath = url.pathname.split('/').slice(3).join('/');
+            
+            const { error: storageDeleteError } = await supabase.storage
+              .from('proposal-documents')
+              .remove([storagePath]);
+              
+            if (storageDeleteError) {
+              console.error("Error deleting file from storage:", storageDeleteError);
+            } else {
+              console.log(`Successfully deleted file from storage: ${storagePath}`);
+            }
+          } catch (e) {
+            console.error("Error parsing file URL:", e);
+          }
         }
-      } catch (e) {
-        console.error("Error parsing file URL:", e);
-        // Continue with upload even if parse fails
+        
+        // Delete all document records from database
+        const { error: deleteError } = await supabase
+          .from('proposal_documents')
+          .delete()
+          .eq('proposal_id', proposalId);
+
+        if (deleteError) {
+          console.error("Error deleting old document records:", deleteError);
+        } else {
+          console.log(`Successfully deleted ${existingDocs.length} document records`);
+        }
+      } else if (fetchError) {
+        console.error("Error fetching existing documents:", fetchError);
       }
     }
 
-    // Delete the old document record from the database
-    const { error: deleteError } = await supabase
-      .from('proposal_documents')
-      .delete()
-      .eq('id', existingDocumentId);
+    // Upload the new file
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('proposal-documents')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type
+      });
 
-    if (deleteError) {
-      console.error("Error deleting old document record:", deleteError);
-      // Continue with upload even if delete fails
+    if (uploadError) {
+      throw uploadError;
     }
+
+    // Get the public URL for the uploaded file
+    const { data: publicURLData } = supabase.storage
+      .from('proposal-documents')
+      .getPublicUrl(filePath);
+
+    if (!publicURLData.publicUrl) {
+      throw new Error('Failed to get public URL for uploaded file');
+    }
+
+    // Add document record in the database
+    const { error: documentError } = await supabase
+      .from('proposal_documents')
+      .insert({
+        proposal_id: proposalId,
+        file_name: fileName,
+        file_url: publicURLData.publicUrl,
+        file_type: fileExt,
+        uploaded_by: userId
+      });
+
+    if (documentError) {
+      throw documentError;
+    }
+
+    return publicURLData.publicUrl;
+  } catch (error) {
+    console.error("Error in handleFileUpload:", error);
+    throw error;
   }
-
-  // Upload the new file
-  const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('proposal-documents')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: file.type
-    });
-
-  if (uploadError) {
-    throw uploadError;
-  }
-
-  // Get the public URL for the uploaded file
-  const { data: publicURLData } = supabase.storage
-    .from('proposal-documents')
-    .getPublicUrl(filePath);
-
-  if (!publicURLData.publicUrl) {
-    throw new Error('Failed to get public URL for uploaded file');
-  }
-
-  // Add document record in the database
-  const { error: documentError } = await supabase
-    .from('proposal_documents')
-    .insert({
-      proposal_id: proposalId,
-      file_name: fileName,
-      file_url: publicURLData.publicUrl,
-      file_type: fileExt,
-      uploaded_by: userId
-    });
-
-  if (documentError) {
-    throw documentError;
-  }
-
-  return publicURLData.publicUrl;
 }

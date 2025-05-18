@@ -34,6 +34,9 @@ const DetailSection = ({
   handlePreviewFile,
   handleDownloadFile
 }: DetailSectionProps) => {
+  // Only show the most recent document
+  const displayDocuments = documents.length > 0 ? [documents[0]] : [];
+  
   return (
     <div className="space-y-6">
       <div>
@@ -63,7 +66,7 @@ const DetailSection = ({
       <div>
         <h3 className="font-medium mb-2">Dokumen</h3>
         <DocumentList 
-          documents={documents} 
+          documents={displayDocuments} 
           handlePreviewFile={handlePreviewFile}
           handleDownloadFile={handleDownloadFile}
         />

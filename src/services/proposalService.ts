@@ -41,8 +41,9 @@ export async function fetchProposalDocuments(proposalId: string) {
   try {
     const { data, error } = await supabase
       .from('proposal_documents')
-      .select('id, file_name, file_url, file_type')
-      .eq('proposal_id', proposalId);
+      .select('id, file_name, file_url, file_type, uploaded_at')
+      .eq('proposal_id', proposalId)
+      .order('uploaded_at', { ascending: false }); // Sort by upload date, newest first
     
     if (error) {
       console.error(`Error fetching documents for proposal ${proposalId}:`, error);

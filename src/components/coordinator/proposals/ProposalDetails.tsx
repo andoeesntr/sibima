@@ -50,6 +50,7 @@ const ProposalDetails = ({
           documents={documents}
           onPreviewDocument={onPreviewDocument}
           onDownloadFile={onDownloadFile}
+          showOnlyLatest={true}
         />
       </CardContent>
     </Card>

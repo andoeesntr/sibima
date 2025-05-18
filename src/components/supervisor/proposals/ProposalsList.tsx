@@ -22,6 +22,13 @@ const ProposalsList = ({
 }: ProposalsListProps) => {
   const selectedId = typeof selectedProposal === 'string' ? selectedProposal : selectedProposal?.id;
   
+  // Sort proposals by created_at or updated_at in descending order (newest first)
+  const sortedProposals = [...proposals].sort((a, b) => {
+    const dateA = a.updated_at || a.submissionDate;
+    const dateB = b.updated_at || b.submissionDate;
+    return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
+  
   return (
     <Card className="md:col-span-1">
       <CardHeader>
@@ -35,8 +42,8 @@ const ProposalsList = ({
           <ProposalsLoading />
         ) : (
           <div className="space-y-3">
-            {proposals.length > 0 ? (
-              proposals.map(proposal => (
+            {sortedProposals.length > 0 ? (
+              sortedProposals.map(proposal => (
                 <ProposalListItem 
                   key={proposal.id}
                   proposal={proposal}
