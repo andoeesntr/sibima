@@ -15,6 +15,8 @@ const StudentDashboard = () => {
   const {
     loading,
     proposals,
+    selectedProposal,
+    handleSelectProposal,
     hasActiveProposal,
     isInTeam,
     lastTeam
@@ -53,6 +55,8 @@ const StudentDashboard = () => {
         proposals={proposals}
         activeTab={activeTab}
         onTabChange={handleStatusFilter}
+        selectedProposal={selectedProposal}
+        onSelectProposal={handleSelectProposal}
       />
 
       {/* Team Card if user is in a team */}
@@ -64,6 +68,7 @@ const StudentDashboard = () => {
       <ActionCards
         hasActiveProposal={hasActiveProposal}
         onSubmitProposal={navigateToProposalSubmission}
+        selectedProposal={selectedProposal}
       />
       
       {/* Submit Proposal Button (if not in a proposal yet) */}

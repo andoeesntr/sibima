@@ -11,8 +11,6 @@ import ProposalDetailCard from '@/components/supervisor/proposals/ProposalDetail
 
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
-  
-  const [activeStatus, setActiveStatus] = useState<string>('all');
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -22,7 +20,7 @@ const SupervisorDashboard = () => {
     selectedProposal,
     setSelectedProposal,
     proposals,
-    loading,
+    proposalsLoading,
     activeTab,
     setActiveTab,
     formatDate,
@@ -31,7 +29,9 @@ const SupervisorDashboard = () => {
     isSubmittingFeedback,
     submitFeedback,
     filterProposals,
-    handleStatusChange
+    handleStatusChange,
+    activeStatus,
+    handleSendFeedback
   } = useSupervisorProposals();
   
   const handlePreviewFile = (url: string, name: string = '') => {
@@ -72,9 +72,10 @@ const SupervisorDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <ProposalsList
               proposals={filteredProposals}
-              loading={loading}
-              selectedProposal={selectedProposal?.id || ''}
+              loading={proposalsLoading}
+              selectedProposal={selectedProposal}
               onSelectProposal={setSelectedProposal}
+              formatDate={formatDate}
             />
             
             <ProposalDetailCard
@@ -93,9 +94,10 @@ const SupervisorDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <ProposalsList
               proposals={filterProposals(proposals, 'submitted')}
-              loading={loading}
-              selectedProposal={selectedProposal?.id || ''}
+              loading={proposalsLoading}
+              selectedProposal={selectedProposal}
               onSelectProposal={setSelectedProposal}
+              formatDate={formatDate}
             />
             
             <ProposalDetailCard
@@ -114,9 +116,10 @@ const SupervisorDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <ProposalsList
               proposals={filterProposals(proposals, 'revision')}
-              loading={loading}
-              selectedProposal={selectedProposal?.id || ''}
+              loading={proposalsLoading}
+              selectedProposal={selectedProposal}
               onSelectProposal={setSelectedProposal}
+              formatDate={formatDate}
             />
             
             <ProposalDetailCard
@@ -135,9 +138,10 @@ const SupervisorDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <ProposalsList
               proposals={filterProposals(proposals, 'approved')}
-              loading={loading}
-              selectedProposal={selectedProposal?.id || ''}
+              loading={proposalsLoading}
+              selectedProposal={selectedProposal}
               onSelectProposal={setSelectedProposal}
+              formatDate={formatDate}
             />
             
             <ProposalDetailCard
@@ -156,9 +160,10 @@ const SupervisorDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <ProposalsList
               proposals={filterProposals(proposals, 'rejected')}
-              loading={loading}
-              selectedProposal={selectedProposal?.id || ''}
+              loading={proposalsLoading}
+              selectedProposal={selectedProposal}
               onSelectProposal={setSelectedProposal}
+              formatDate={formatDate}
             />
             
             <ProposalDetailCard
@@ -177,7 +182,8 @@ const SupervisorDashboard = () => {
       <FeedbackDialog
         isOpen={isFeedbackDialogOpen}
         onOpenChange={setIsFeedbackDialogOpen}
-        proposalId={selectedProposal?.id || ''}
+        proposalTitle={selectedProposal?.title}
+        onSendFeedback={handleSendFeedback}
         content={feedbackContent}
         setContent={setFeedbackContent}
         isSubmitting={isSubmittingFeedback}

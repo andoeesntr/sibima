@@ -8,9 +8,9 @@ import ProposalsEmpty from './components/ProposalsEmpty';
 interface ProposalsListProps {
   proposals: Proposal[];
   loading: boolean;
-  selectedProposal: Proposal | null;
+  selectedProposal: Proposal | null | string;
   onSelectProposal: (proposal: Proposal) => void;
-  formatDate: (dateString: string) => string;
+  formatDate?: (dateString: string) => string;
 }
 
 const ProposalsList = ({ 
@@ -18,8 +18,10 @@ const ProposalsList = ({
   loading, 
   selectedProposal, 
   onSelectProposal,
-  formatDate
+  formatDate = (date) => date
 }: ProposalsListProps) => {
+  const selectedId = typeof selectedProposal === 'string' ? selectedProposal : selectedProposal?.id;
+  
   return (
     <Card className="md:col-span-1">
       <CardHeader>
@@ -38,7 +40,7 @@ const ProposalsList = ({
                 <ProposalListItem 
                   key={proposal.id}
                   proposal={proposal}
-                  isSelected={selectedProposal?.id === proposal.id}
+                  isSelected={selectedId === proposal.id}
                   formatDate={formatDate}
                   onClick={() => onSelectProposal(proposal)}
                 />

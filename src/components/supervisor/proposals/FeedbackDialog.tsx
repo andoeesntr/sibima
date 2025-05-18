@@ -5,32 +5,53 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from 'lucide-react';
 
-interface FeedbackDialogProps {
+export interface FeedbackDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSendFeedback: (feedback: string) => Promise<boolean>;
   proposalTitle?: string;
+  // Allow these props for backward compatibility
+  proposalId?: string;
+  content?: string;
+  setContent?: (content: string) => void;
+  isSubmitting?: boolean;
+  onSubmit?: () => Promise<boolean>;
 }
 
 const FeedbackDialog = ({ 
   isOpen, 
   onOpenChange, 
   onSendFeedback, 
-  proposalTitle 
+  proposalTitle,
+  // Handle legacy props
+  content: externalContent,
+  setContent: externalSetContent,
+  isSubmitting: externalIsSubmitting,
+  onSubmit
 }: FeedbackDialogProps) => {
-  const [feedback, setFeedback] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [internalFeedback, setInternalFeedback] = useState('');
+  const [internalIsSubmitting, setInternalIsSubmitting] = useState(false);
+
+  // Determine which values to use
+  const feedback = externalContent !== undefined ? externalContent : internalFeedback;
+  const setFeedback = externalSetContent || setInternalFeedback;
+  const isSubmitting = externalIsSubmitting !== undefined ? externalIsSubmitting : internalIsSubmitting;
 
   const handleSendFeedback = async () => {
-    setIsSubmitting(true);
+    if (onSubmit) {
+      return await onSubmit();
+    }
+
+    setInternalIsSubmitting(true);
     const success = await onSendFeedback(feedback);
     
     if (success) {
-      setFeedback('');
+      setInternalFeedback('');
       onOpenChange(false);
     }
     
-    setIsSubmitting(false);
+    setInternalIsSubmitting(false);
+    return success;
   };
 
   return (
@@ -39,7 +60,7 @@ const FeedbackDialog = ({
         <DialogHeader>
           <DialogTitle>Berikan Feedback</DialogTitle>
           <DialogDescription>
-            Berikan feedback untuk proposal "{proposalTitle}"
+            Berikan feedback untuk proposal {proposalTitle ? `"${proposalTitle}"` : ""}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -73,6 +94,6 @@ const FeedbackDialog = ({
       </DialogContent>
     </Dialog>
   );
-}
+};
 
 export default FeedbackDialog;

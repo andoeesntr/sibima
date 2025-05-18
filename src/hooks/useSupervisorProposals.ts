@@ -3,11 +3,16 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProposals, Proposal } from '@/hooks/useProposals';
+import { formatDate as formatProposalDate } from '@/utils/dateUtils';
 
 export function useSupervisorProposals() {
   const { user } = useAuth();
   const { proposals, loading: proposalsLoading, saveFeedback } = useProposals();
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('detail');
+  const [activeStatus, setActiveStatus] = useState<string>('all');
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     if (proposals.length > 0 && !selectedProposal) {
@@ -19,26 +24,54 @@ export function useSupervisorProposals() {
     setSelectedProposal(proposal);
   };
 
-  const handleSendFeedback = async (feedback: string) => {
-    if (!feedback.trim()) {
+  const handleStatusChange = (status: string) => {
+    setActiveStatus(status);
+    // If changing status filter, reset the selected proposal
+    if (status !== 'all') {
+      const filteredProposals = filterProposals(proposals, status);
+      if (filteredProposals.length > 0) {
+        setSelectedProposal(filteredProposals[0]);
+      } else {
+        setSelectedProposal(null);
+      }
+    } else if (proposals.length > 0) {
+      setSelectedProposal(proposals[0]);
+    }
+  };
+
+  const filterProposals = (proposalList: Proposal[], status: string): Proposal[] => {
+    if (status === 'all') return proposalList;
+    return proposalList.filter(p => p.status === status);
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackContent.trim()) {
       toast.error('Harap masukkan feedback');
-      return;
+      return false;
     }
 
     if (!selectedProposal?.id || !user?.id) {
       toast.error('Tidak dapat mengirim feedback');
-      return;
+      return false;
     }
 
+    setIsSubmittingFeedback(true);
     try {
-      await saveFeedback(selectedProposal.id, user.id, feedback);
+      await saveFeedback(selectedProposal.id, user.id, feedbackContent);
       toast.success('Feedback berhasil dikirim');
+      setFeedbackContent('');
       return true;
     } catch (error) {
       console.error('Error sending feedback:', error);
       toast.error('Gagal mengirim feedback');
       return false;
+    } finally {
+      setIsSubmittingFeedback(false);
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    return formatProposalDate(dateString);
   };
 
   return {
@@ -47,7 +80,22 @@ export function useSupervisorProposals() {
     selectedProposal,
     setSelectedProposal,
     handleSelectProposal,
-    handleSendFeedback,
+    handleSendFeedback: async (feedback: string) => {
+      setFeedbackContent(feedback);
+      return submitFeedback();
+    },
     user,
+    // Additional properties needed by the dashboard
+    loading: proposalsLoading,
+    activeTab,
+    setActiveTab,
+    formatDate,
+    feedbackContent,
+    setFeedbackContent,
+    isSubmittingFeedback,
+    submitFeedback,
+    filterProposals,
+    handleStatusChange,
+    activeStatus
   };
 }

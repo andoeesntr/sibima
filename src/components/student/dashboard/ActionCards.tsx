@@ -5,11 +5,13 @@ import { FileCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ProposalType } from "@/types/student";
 
-interface ActionCardsProps {
-  selectedProposal: ProposalType | null;
+export interface ActionCardsProps {
+  hasActiveProposal: boolean;
+  onSubmitProposal: () => void;
+  selectedProposal?: ProposalType | null;
 }
 
-export const ActionCards = ({ selectedProposal }: ActionCardsProps) => {
+export const ActionCards = ({ hasActiveProposal, onSubmitProposal, selectedProposal }: ActionCardsProps) => {
   const navigate = useNavigate();
   
   return (

@@ -6,25 +6,50 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar, FileWarning } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProposalType } from "@/types/student";
+import { formatDate as formatProposalDate } from "@/utils/dateUtils";
 
-interface StatusCardProps {
+// Define status colors and labels
+const statusColors: Record<string, string> = {
+  submitted: "bg-blue-500",
+  revision: "bg-amber-500",
+  approved: "bg-green-500",
+  rejected: "bg-red-500"
+};
+
+const statusLabels: Record<string, string> = {
+  submitted: "Menunggu Review",
+  revision: "Perlu Revisi",
+  approved: "Disetujui",
+  rejected: "Ditolak"
+};
+
+export interface StatusCardProps {
   proposals: ProposalType[];
-  selectedProposal: ProposalType | null;
-  onSelectProposal: (proposal: ProposalType) => void;
-  formatDate: (dateString: string) => string;
-  statusColors: Record<string, string>;
-  statusLabels: Record<string, string>;
+  activeTab: string;
+  onTabChange: (status: string) => void;
+  selectedProposal?: ProposalType | null;
+  onSelectProposal?: (proposal: ProposalType) => void;
 }
 
 export const StatusCard = ({
   proposals,
+  activeTab,
+  onTabChange,
   selectedProposal,
-  onSelectProposal,
-  formatDate,
-  statusColors,
-  statusLabels
+  onSelectProposal
 }: StatusCardProps) => {
   const navigate = useNavigate();
+  const currentProposal = selectedProposal || (proposals.length > 0 ? proposals[0] : null);
+  
+  const handleSelectProposal = (proposal: ProposalType) => {
+    if (onSelectProposal) {
+      onSelectProposal(proposal);
+    }
+  };
+  
+  const formatDate = (dateString: string) => {
+    return formatProposalDate(dateString);
+  };
   
   return (
     <Card className="col-span-2 shadow-sm hover:shadow-md transition-shadow">
@@ -38,10 +63,10 @@ export const StatusCard = ({
             {proposals.length > 1 && (
               <div className="mb-4">
                 <Tabs 
-                  value={selectedProposal?.id} 
+                  value={currentProposal?.id} 
                   onValueChange={(value) => {
                     const selected = proposals.find(p => p.id === value);
-                    if (selected) onSelectProposal(selected);
+                    if (selected) handleSelectProposal(selected);
                   }}
                 >
                   <TabsList className="grid" style={{ gridTemplateColumns: `repeat(${Math.min(proposals.length, 3)}, 1fr)` }}>
@@ -55,17 +80,17 @@ export const StatusCard = ({
               </div>
             )}
             
-            {selectedProposal && (
+            {currentProposal && (
               <>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Judul KP:</span>
-                  <span>{selectedProposal.title}</span>
+                  <span>{currentProposal.title}</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-700">Status:</span>
-                  <Badge className={statusColors[selectedProposal.status as keyof typeof statusColors] || "bg-gray-500"}>
-                    {statusLabels[selectedProposal.status as keyof typeof statusLabels] || "Unknown"}
+                  <Badge className={statusColors[currentProposal.status] || "bg-gray-500"}>
+                    {statusLabels[currentProposal.status] || "Unknown"}
                   </Badge>
                 </div>
                 
@@ -73,32 +98,32 @@ export const StatusCard = ({
                   <span className="font-medium text-gray-700">Tanggal Pengajuan:</span>
                   <span className="flex items-center">
                     <Calendar size={16} className="mr-1" />
-                    {formatDate(selectedProposal.created_at || selectedProposal.submissionDate)}
+                    {formatDate(currentProposal.created_at || currentProposal.submissionDate)}
                   </span>
                 </div>
                 
-                {selectedProposal.companyName && (
+                {currentProposal.companyName && (
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-700">Perusahaan/Instansi:</span>
-                    <span>{selectedProposal.companyName}</span>
+                    <span>{currentProposal.companyName}</span>
                   </div>
                 )}
                 
-                {selectedProposal.reviewDate && (
+                {currentProposal.reviewDate && (
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-700">Tanggal Review:</span>
                     <span className="flex items-center">
                       <Calendar size={16} className="mr-1" />
-                      {formatDate(selectedProposal.reviewDate)}
+                      {formatDate(currentProposal.reviewDate)}
                     </span>
                   </div>
                 )}
                 
-                {selectedProposal.status === 'rejected' && selectedProposal.rejectionReason && (
+                {currentProposal.status === 'rejected' && currentProposal.rejectionReason && (
                   <div>
                     <span className="font-medium text-gray-700 block mb-1">Alasan Penolakan:</span>
                     <p className="text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100">
-                      {selectedProposal.rejectionReason}
+                      {currentProposal.rejectionReason}
                     </p>
                   </div>
                 )}
@@ -119,13 +144,13 @@ export const StatusCard = ({
         )}
       </CardContent>
       
-      {selectedProposal && (
+      {currentProposal && (
         <CardFooter className="flex justify-end">
           <Button 
             className="bg-primary hover:bg-primary/90" 
-            onClick={() => navigate(`/student/proposal-detail/${selectedProposal.id}`)}
+            onClick={() => navigate(`/student/proposal-detail/${currentProposal.id}`)}
           >
-            {selectedProposal.status === 'rejected' ? 'Lihat Detail Penolakan' : 'Lihat Detail Proposal'}
+            {currentProposal.status === 'rejected' ? 'Lihat Detail Penolakan' : 'Lihat Detail Proposal'}
           </Button>
         </CardFooter>
       )}
