@@ -16,16 +16,19 @@ import { toast } from 'sonner';
 interface DeleteEvaluationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  evaluationId: string;
-  studentName: string;
+  evaluation: {
+    id: string;
+    student?: {
+      full_name: string;
+    };
+  };
   onDelete: () => void;
 }
 
 const DeleteEvaluationDialog = ({
   open,
   onOpenChange,
-  evaluationId,
-  studentName,
+  evaluation,
   onDelete
 }: DeleteEvaluationDialogProps) => {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -33,7 +36,7 @@ const DeleteEvaluationDialog = ({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const success = await deleteEvaluation(evaluationId);
+      const success = await deleteEvaluation(evaluation.id);
       
       if (success) {
         onDelete();
@@ -55,7 +58,7 @@ const DeleteEvaluationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus Penilaian</AlertDialogTitle>
           <AlertDialogDescription>
-            Yakin ingin menghapus penilaian untuk {studentName}?
+            Yakin ingin menghapus penilaian untuk {evaluation?.student?.full_name || 'mahasiswa ini'}?
             <br />
             Tindakan ini tidak dapat diurungkan.
           </AlertDialogDescription>

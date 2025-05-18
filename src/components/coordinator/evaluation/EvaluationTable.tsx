@@ -136,8 +136,7 @@ const EvaluationTable = ({
           <DeleteEvaluationDialog
             open={deleteDialogOpen}
             onOpenChange={setDeleteDialogOpen}
-            evaluationId={selectedEvaluation.id}
-            studentName={selectedEvaluation.student?.full_name || 'Unknown'}
+            evaluation={selectedEvaluation}
             onDelete={() => {
               onDeleteEvaluation(selectedEvaluation.id);
               setDeleteDialogOpen(false);

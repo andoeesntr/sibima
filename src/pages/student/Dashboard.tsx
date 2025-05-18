@@ -58,39 +58,43 @@ const StudentDashboard = () => {
         <KpTimeline readOnly={true} />
       </div>
       
-      {/* Status and Team Cards in a grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Status Card */}
-        <StatusCard
-          proposals={proposals}
-          activeTab={activeTab}
-          onTabChange={handleStatusFilter}
-          selectedProposal={selectedProposal}
-          onSelectProposal={handleSelectProposal}
-        />
+      {/* Status and Team Cards in a grid with adjusted proportions */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Status Card - wider (70%) */}
+        <div className="col-span-8">
+          <StatusCard
+            proposals={proposals}
+            activeTab={activeTab}
+            onTabChange={handleStatusFilter}
+            selectedProposal={selectedProposal}
+            onSelectProposal={handleSelectProposal}
+          />
+        </div>
 
-        {/* Team Card */}
-        {isInTeam && lastTeam ? (
-          <TeamCard team={lastTeam} />
-        ) : (
-          <Card className="shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader>
-              <CardTitle>Tim KP</CardTitle>
-              <CardDescription>Informasi tim KP Anda</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-6">
-                <p className="text-gray-600">Anda belum memiliki tim KP</p>
-                <Button 
-                  className="mt-4 bg-primary hover:bg-primary/90"
-                  onClick={navigateToProposalSubmission}
-                >
-                  Buat Tim KP
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Team Card - narrower (30%) */}
+        <div className="col-span-4">
+          {isInTeam && lastTeam ? (
+            <TeamCard team={lastTeam} />
+          ) : (
+            <Card className="shadow-sm hover:shadow-md transition-shadow h-full">
+              <CardHeader>
+                <CardTitle>Tim KP</CardTitle>
+                <CardDescription>Informasi tim KP Anda</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-6">
+                  <p className="text-gray-600">Anda belum memiliki tim KP</p>
+                  <Button 
+                    className="mt-4 bg-primary hover:bg-primary/90"
+                    onClick={navigateToProposalSubmission}
+                  >
+                    Buat Tim KP
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Final Score Card */}

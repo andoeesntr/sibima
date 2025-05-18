@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Evaluation } from '@/services/evaluationService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface EditEvaluationDialogProps {
   open: boolean;
@@ -22,18 +23,36 @@ const EditEvaluationDialog = ({
   evaluation,
   onSave
 }: EditEvaluationDialogProps) => {
-  const [score, setScore] = useState<string>('');
-  const [comments, setComments] = useState<string>('');
+  const [supervisorScore, setSupervisorScore] = useState<string>('');
+  const [fieldSupervisorScore, setFieldSupervisorScore] = useState<string>('');
+  const [supervisorComments, setSupervisorComments] = useState<string>('');
+  const [fieldSupervisorComments, setFieldSupervisorComments] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>('supervisor');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
     if (evaluation) {
-      setScore(evaluation.score.toString());
-      setComments(evaluation.comments || '');
+      // For the current evaluation
+      const score = evaluation.score.toString();
+      const comments = evaluation.comments || '';
+      
+      if (evaluation.evaluator_type === 'supervisor') {
+        setSupervisorScore(score);
+        setSupervisorComments(comments);
+        setActiveTab('supervisor');
+      } else {
+        setFieldSupervisorScore(score);
+        setFieldSupervisorComments(comments);
+        setActiveTab('field_supervisor');
+      }
     }
   }, [evaluation, open]);
   
   const handleSubmit = async () => {
+    const isActiveSupervisor = activeTab === 'supervisor';
+    const score = isActiveSupervisor ? supervisorScore : fieldSupervisorScore;
+    const comments = isActiveSupervisor ? supervisorComments : fieldSupervisorComments;
+    
     if (!score) {
       toast.error('Nilai harus diisi');
       return;
@@ -67,6 +86,7 @@ const EditEvaluationDialog = ({
       });
       
       onOpenChange(false);
+      toast.success('Penilaian berhasil diperbarui');
     } catch (error) {
       console.error('Error updating evaluation:', error);
       toast.error('Failed to update evaluation');
@@ -88,39 +108,66 @@ const EditEvaluationDialog = ({
             <p className="text-gray-700 mt-1">{evaluation?.student?.full_name}</p>
           </div>
           
-          <div>
-            <Label className="font-bold">Jenis Penilaian</Label>
-            <p className="text-gray-700 mt-1">
-              {evaluation?.evaluator_type === 'supervisor' 
-                ? 'Pembimbing Akademik' 
-                : 'Pembimbing Lapangan'}
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="score">Nilai (0-100)</Label>
-            <Input
-              id="score"
-              type="number"
-              min="0"
-              max="100"
-              step="0.1"
-              value={score}
-              onChange={(e) => setScore(e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="comments">Catatan</Label>
-            <Textarea
-              id="comments"
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              disabled={isSubmitting}
-              rows={3}
-            />
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="supervisor">Pembimbing Akademik</TabsTrigger>
+              <TabsTrigger value="field_supervisor">Pembimbing Lapangan</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="supervisor" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="supervisorScore">Nilai Pembimbing Akademik (0-100)</Label>
+                <Input
+                  id="supervisorScore"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={supervisorScore}
+                  onChange={(e) => setSupervisorScore(e.target.value)}
+                  disabled={isSubmitting || evaluation?.evaluator_type !== 'supervisor'}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="supervisorComments">Catatan</Label>
+                <Textarea
+                  id="supervisorComments"
+                  value={supervisorComments}
+                  onChange={(e) => setSupervisorComments(e.target.value)}
+                  disabled={isSubmitting || evaluation?.evaluator_type !== 'supervisor'}
+                  rows={3}
+                />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="field_supervisor" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="fieldSupervisorScore">Nilai Pembimbing Lapangan (0-100)</Label>
+                <Input
+                  id="fieldSupervisorScore"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={fieldSupervisorScore}
+                  onChange={(e) => setFieldSupervisorScore(e.target.value)}
+                  disabled={isSubmitting || evaluation?.evaluator_type !== 'field_supervisor'}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="fieldSupervisorComments">Catatan</Label>
+                <Textarea
+                  id="fieldSupervisorComments"
+                  value={fieldSupervisorComments}
+                  onChange={(e) => setFieldSupervisorComments(e.target.value)}
+                  disabled={isSubmitting || evaluation?.evaluator_type !== 'field_supervisor'}
+                  rows={3}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button 
@@ -132,7 +179,9 @@ const EditEvaluationDialog = ({
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={isSubmitting || !score}
+              disabled={isSubmitting || 
+                (activeTab === 'supervisor' && !supervisorScore) || 
+                (activeTab === 'field_supervisor' && !fieldSupervisorScore)}
             >
               {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
             </Button>
