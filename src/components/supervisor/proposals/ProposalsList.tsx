@@ -22,10 +22,10 @@ const ProposalsList = ({
 }: ProposalsListProps) => {
   const selectedId = typeof selectedProposal === 'string' ? selectedProposal : selectedProposal?.id;
   
-  // Sort proposals by created_at or updated_at in descending order (newest first)
+  // Sort proposals by submissionDate in descending order (newest first)
   const sortedProposals = [...proposals].sort((a, b) => {
-    const dateA = a.updated_at || a.submissionDate;
-    const dateB = b.updated_at || b.submissionDate;
+    const dateA = a.submissionDate;
+    const dateB = b.submissionDate;
     return new Date(dateB).getTime() - new Date(dateA).getTime();
   });
   
