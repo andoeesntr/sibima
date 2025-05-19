@@ -32,17 +32,14 @@ const EditEvaluationDialog = ({
   
   useEffect(() => {
     if (evaluation) {
-      // For the current evaluation
-      const score = evaluation.score.toString();
-      const comments = evaluation.comments || '';
-      
+      // Set initial values based on evaluation type
       if (evaluation.evaluator_type === 'supervisor') {
-        setSupervisorScore(score);
-        setSupervisorComments(comments);
+        setSupervisorScore(evaluation.score.toString());
+        setSupervisorComments(evaluation.comments || '');
         setActiveTab('supervisor');
       } else {
-        setFieldSupervisorScore(score);
-        setFieldSupervisorComments(comments);
+        setFieldSupervisorScore(evaluation.score.toString());
+        setFieldSupervisorComments(evaluation.comments || '');
         setActiveTab('field_supervisor');
       }
     }
@@ -125,7 +122,7 @@ const EditEvaluationDialog = ({
                   step="0.1"
                   value={supervisorScore}
                   onChange={(e) => setSupervisorScore(e.target.value)}
-                  disabled={isSubmitting || evaluation?.evaluator_type !== 'supervisor'}
+                  disabled={isSubmitting}
                 />
               </div>
               
@@ -135,7 +132,7 @@ const EditEvaluationDialog = ({
                   id="supervisorComments"
                   value={supervisorComments}
                   onChange={(e) => setSupervisorComments(e.target.value)}
-                  disabled={isSubmitting || evaluation?.evaluator_type !== 'supervisor'}
+                  disabled={isSubmitting}
                   rows={3}
                 />
               </div>
@@ -152,7 +149,7 @@ const EditEvaluationDialog = ({
                   step="0.1"
                   value={fieldSupervisorScore}
                   onChange={(e) => setFieldSupervisorScore(e.target.value)}
-                  disabled={isSubmitting || evaluation?.evaluator_type !== 'field_supervisor'}
+                  disabled={isSubmitting}
                 />
               </div>
               
@@ -162,7 +159,7 @@ const EditEvaluationDialog = ({
                   id="fieldSupervisorComments"
                   value={fieldSupervisorComments}
                   onChange={(e) => setFieldSupervisorComments(e.target.value)}
-                  disabled={isSubmitting || evaluation?.evaluator_type !== 'field_supervisor'}
+                  disabled={isSubmitting}
                   rows={3}
                 />
               </div>
