@@ -50,9 +50,18 @@ const EvaluationTable = ({
     }
   };
   
+  // Calculate final score: 60% academic + 40% field supervisor
   const calculateFinalScore = (studentEvaluations: Evaluation[]) => {
     if (studentEvaluations.length === 0) return 0;
-    return studentEvaluations.reduce((sum, evaluation) => sum + evaluation.score, 0) / studentEvaluations.length;
+    
+    const supervisorEval = studentEvaluations.find(e => e.evaluator_type === 'supervisor');
+    const fieldSupervisorEval = studentEvaluations.find(e => e.evaluator_type === 'field_supervisor');
+    
+    const academicScore = supervisorEval ? supervisorEval.score : 0;
+    const fieldScore = fieldSupervisorEval ? fieldSupervisorEval.score : 0;
+    
+    // Apply the weighting: 60% academic + 40% field
+    return (academicScore * 0.6) + (fieldScore * 0.4);
   };
   
   if (loading) {

@@ -67,7 +67,7 @@ const EditEvaluationDialog = ({
       
       setStudentEvaluations(transformedData);
       
-      // Set values for both supervisor types
+      // Set values for both supervisor types regardless of the active tab
       const supervisorEval = transformedData.find(e => e.evaluator_type === 'supervisor');
       const fieldSupervisorEval = transformedData.find(e => e.evaluator_type === 'field_supervisor');
       
@@ -90,6 +90,7 @@ const EditEvaluationDialog = ({
   };
   
   const handleSubmit = async () => {
+    // Always save the current active tab's evaluation
     const isActiveSupervisor = activeTab === 'supervisor';
     const score = isActiveSupervisor ? supervisorScore : fieldSupervisorScore;
     const comments = isActiveSupervisor ? supervisorComments : fieldSupervisorComments;
@@ -129,6 +130,21 @@ const EditEvaluationDialog = ({
       
       if (error) throw error;
       
+      // Update the local state for the modified evaluation
+      const updatedEvaluations = studentEvaluations.map(e => {
+        if (e.id === currentEvaluation.id) {
+          return {
+            ...e,
+            score: numScore,
+            comments: comments
+          };
+        }
+        return e;
+      });
+      
+      setStudentEvaluations(updatedEvaluations);
+      
+      // Only update the specific evaluation that was modified
       onSave({
         ...currentEvaluation,
         score: numScore,
