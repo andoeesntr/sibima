@@ -19,6 +19,8 @@ const ProposalList = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const { proposals, loading } = useProposals();
+  
+  console.log("All proposals:", proposals); // Log to check NIM data
 
   const filteredProposals = proposals.filter(proposal => {
     if (searchQuery) {

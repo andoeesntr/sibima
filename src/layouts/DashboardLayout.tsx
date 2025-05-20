@@ -80,9 +80,9 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
       >
         <div className="flex items-center px-4 py-5">
           {isSidebarOpen ? (
-            <div className="text-xl font-bold">KP Portal</div>
+            <div className="text-xl font-bold">SIBIMA</div>
           ) : (
-            <div className="text-xl font-bold mx-auto">KP</div>
+            <div className="text-xl font-bold mx-auto">SB</div>
           )}
           <Button 
             variant="ghost" 
