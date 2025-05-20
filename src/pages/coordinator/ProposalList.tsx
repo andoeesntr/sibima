@@ -65,11 +65,11 @@ const ProposalList = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>NIM</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Judul Proposal</TableHead>
-                    <TableHead>Tanggal Upload</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="text-center">NIM</TableHead>
+                    <TableHead className="text-center">Nama</TableHead>
+                    <TableHead className="text-center">Judul Proposal</TableHead>
+                    <TableHead className="text-center">Tanggal Upload</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -80,11 +80,11 @@ const ProposalList = () => {
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleViewProposal(proposal.id)}
                       >
-                        <TableCell>{proposal.student?.nim || "-"}</TableCell>
-                        <TableCell>{proposal.studentName || "-"}</TableCell>
-                        <TableCell>{proposal.title}</TableCell>
-                        <TableCell>{formatDate(proposal.submissionDate)}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">{proposal.student?.nim || "-"}</TableCell>
+                        <TableCell className="text-center">{proposal.studentName || "-"}</TableCell>
+                        <TableCell className="text-center">{proposal.title}</TableCell>
+                        <TableCell className="text-center">{formatDate(proposal.submissionDate)}</TableCell>
+                        <TableCell className="text-center">
                           <span 
                             className={`px-2 py-1 rounded-full text-xs font-medium
                               ${proposal.status === 'approved' ? 'bg-green-100 text-green-800' : 

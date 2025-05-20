@@ -77,12 +77,12 @@ const EvaluationTable = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Mahasiswa</TableHead>
-            <TableHead>NIM</TableHead>
-            <TableHead>Nilai Pembimbing</TableHead>
-            <TableHead>Nilai Pembimbing Lapangan</TableHead>
-            <TableHead>Nilai Akhir</TableHead>
-            <TableHead>Aksi</TableHead>
+            <TableHead className="text-center">Mahasiswa</TableHead>
+            <TableHead className="text-center">NIM</TableHead>
+            <TableHead className="text-center">Nilai Pembimbing</TableHead>
+            <TableHead className="text-center">Nilai Pembimbing Lapangan</TableHead>
+            <TableHead className="text-center">Nilai Akhir</TableHead>
+            <TableHead className="text-center">Aksi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -94,13 +94,13 @@ const EvaluationTable = ({
             
             return (
               <TableRow key={studentId}>
-                <TableCell>{student?.full_name || 'Unknown'}</TableCell>
-                <TableCell>{student?.nim || 'N/A'}</TableCell>
-                <TableCell>{supervisorEval?.score?.toFixed(1) || '-'}</TableCell>
-                <TableCell>{fieldSupervisorEval?.score?.toFixed(1) || '-'}</TableCell>
-                <TableCell className="font-medium">{finalScore.toFixed(1)}</TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
+                <TableCell className="text-center">{student?.full_name || 'Unknown'}</TableCell>
+                <TableCell className="text-center">{student?.nim || 'N/A'}</TableCell>
+                <TableCell className="text-center">{supervisorEval?.score?.toFixed(1) || '-'}</TableCell>
+                <TableCell className="text-center">{fieldSupervisorEval?.score?.toFixed(1) || '-'}</TableCell>
+                <TableCell className="text-center font-medium">{finalScore.toFixed(1)}</TableCell>
+                <TableCell className="text-center">
+                  <div className="flex justify-center space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
