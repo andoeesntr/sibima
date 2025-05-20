@@ -54,7 +54,7 @@ const Login = () => {
     >
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">KP Submission Portal</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">SIBIMA</CardTitle>
           <CardDescription>
             Masukkan kredensial Anda untuk mengakses sistem
           </CardDescription>
