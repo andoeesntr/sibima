@@ -47,11 +47,29 @@ const EditEvaluationDialog = ({
         
       if (error) throw error;
       
-      setStudentEvaluations(data);
+      if (!data) return;
+      
+      // Transform the data to ensure evaluator_type is strictly 'supervisor' or 'field_supervisor'
+      const transformedData = data.map(item => {
+        // Validate that evaluator_type is one of the expected values
+        let evaluatorType: 'supervisor' | 'field_supervisor' = 'supervisor';
+        if (item.evaluator_type === 'field_supervisor') {
+          evaluatorType = 'field_supervisor';
+        }
+        
+        return {
+          ...item,
+          evaluator_type: evaluatorType,
+          student: evaluation.student, // Preserve student data from the original evaluation
+          evaluator: evaluation.evaluator // Preserve evaluator data from the original evaluation
+        } as Evaluation;
+      });
+      
+      setStudentEvaluations(transformedData);
       
       // Set values for both supervisor types
-      const supervisorEval = data.find(e => e.evaluator_type === 'supervisor');
-      const fieldSupervisorEval = data.find(e => e.evaluator_type === 'field_supervisor');
+      const supervisorEval = transformedData.find(e => e.evaluator_type === 'supervisor');
+      const fieldSupervisorEval = transformedData.find(e => e.evaluator_type === 'field_supervisor');
       
       if (supervisorEval) {
         setSupervisorScore(supervisorEval.score.toString());
