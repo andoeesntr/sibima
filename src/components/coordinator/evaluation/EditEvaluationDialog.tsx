@@ -29,21 +29,47 @@ const EditEvaluationDialog = ({
   const [fieldSupervisorComments, setFieldSupervisorComments] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('supervisor');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [studentEvaluations, setStudentEvaluations] = useState<Evaluation[]>([]);
   
+  // Fetch all evaluations for this student when the dialog opens
   useEffect(() => {
-    if (evaluation) {
-      // Set initial values based on evaluation type
-      if (evaluation.evaluator_type === 'supervisor') {
-        setSupervisorScore(evaluation.score.toString());
-        setSupervisorComments(evaluation.comments || '');
-        setActiveTab('supervisor');
-      } else {
-        setFieldSupervisorScore(evaluation.score.toString());
-        setFieldSupervisorComments(evaluation.comments || '');
-        setActiveTab('field_supervisor');
-      }
+    if (open && evaluation) {
+      fetchStudentEvaluations(evaluation.student_id);
     }
-  }, [evaluation, open]);
+  }, [open, evaluation]);
+  
+  const fetchStudentEvaluations = async (studentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('evaluations')
+        .select('*')
+        .eq('student_id', studentId);
+        
+      if (error) throw error;
+      
+      setStudentEvaluations(data);
+      
+      // Set values for both supervisor types
+      const supervisorEval = data.find(e => e.evaluator_type === 'supervisor');
+      const fieldSupervisorEval = data.find(e => e.evaluator_type === 'field_supervisor');
+      
+      if (supervisorEval) {
+        setSupervisorScore(supervisorEval.score.toString());
+        setSupervisorComments(supervisorEval.comments || '');
+      }
+      
+      if (fieldSupervisorEval) {
+        setFieldSupervisorScore(fieldSupervisorEval.score.toString());
+        setFieldSupervisorComments(fieldSupervisorEval.comments || '');
+      }
+      
+      // Set active tab based on current evaluation
+      setActiveTab(evaluation.evaluator_type);
+    } catch (error) {
+      console.error('Error fetching student evaluations:', error);
+      toast.error('Gagal memuat data penilaian mahasiswa');
+    }
+  };
   
   const handleSubmit = async () => {
     const isActiveSupervisor = activeTab === 'supervisor';
@@ -64,20 +90,29 @@ const EditEvaluationDialog = ({
     
     setIsSubmitting(true);
     try {
+      // Find the correct evaluation ID based on the active tab
+      const currentEvaluation = studentEvaluations.find(e => e.evaluator_type === activeTab);
+      
+      if (!currentEvaluation) {
+        toast.error('Data penilaian tidak ditemukan');
+        setIsSubmitting(false);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('evaluations')
         .update({
           score: numScore,
           comments: comments
         })
-        .eq('id', evaluation.id)
+        .eq('id', currentEvaluation.id)
         .select()
         .single();
       
       if (error) throw error;
       
       onSave({
-        ...evaluation,
+        ...currentEvaluation,
         score: numScore,
         comments: comments
       });
@@ -86,7 +121,7 @@ const EditEvaluationDialog = ({
       toast.success('Penilaian berhasil diperbarui');
     } catch (error) {
       console.error('Error updating evaluation:', error);
-      toast.error('Failed to update evaluation');
+      toast.error('Gagal memperbarui penilaian');
     } finally {
       setIsSubmitting(false);
     }
