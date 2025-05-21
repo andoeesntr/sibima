@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DialogFooter } from "@/components/ui/dialog";
+import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -63,7 +63,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
         }
       });
       
-      // Destructuring after checking for errors
+      // Get the response data
       const { data, error } = response;
       
       if (error) {
@@ -71,9 +71,13 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
         throw new Error(`Edge function error: ${error.message}`);
       }
       
-      if (!data || data.success === false) {
+      if (!data) {
+        throw new Error("No response data from create-user function");
+      }
+      
+      if (data.success === false) {
         console.error("Failed response from create-user function:", data);
-        throw new Error(data?.error || "Failed to create user");
+        throw new Error(data.error || "Failed to create user");
       }
       
       console.log("User created successfully:", data);
@@ -83,7 +87,16 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
       onClose();
     } catch (error: any) {
       console.error('Error adding user:', error);
-      toast.error(`Gagal menambahkan pengguna: ${error.message}`);
+      
+      // More descriptive error message
+      let errorMessage = 'Gagal menambahkan pengguna';
+      if (error.message && error.message.includes('Email already in use')) {
+        errorMessage = `Email ${email} sudah digunakan. Gunakan email lain.`;
+      } else if (error.message) {
+        errorMessage += `: ${error.message}`;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -91,6 +104,10 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
   
   return (
     <div className="space-y-4 py-2">
+      <DialogHeader>
+        <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+      </DialogHeader>
+
       <div className="space-y-2">
         <Label htmlFor="role">Role</Label>
         <Select

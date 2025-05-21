@@ -32,6 +32,54 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Check if the email already exists in the profiles table
+    const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+      .from('profiles')
+      .select('email')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (profileCheckError) {
+      console.error("Error checking for existing profile:", profileCheckError);
+      throw profileCheckError;
+    }
+
+    if (existingProfile) {
+      console.error("Email already exists in profiles table:", email);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Email already in use: ${email}`
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
+    // Check if the email already exists in auth.users
+    const { data: existingUsers, error: authCheckError } = await supabaseAdmin.auth.admin.listUsers();
+    if (authCheckError) {
+      console.error("Error checking for existing auth users:", authCheckError);
+      throw authCheckError;
+    }
+
+    const emailExists = existingUsers.users.some(user => user.email === email);
+    if (emailExists) {
+      console.error("Email already exists in auth.users:", email);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Email already in use: ${email}`
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
     // 1. Create the user in auth.users
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
