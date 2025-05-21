@@ -16,28 +16,31 @@ serve(async (req) => {
   }
 
   try {
-    // Get the request body
+    // Get userId from the request
     const { userId } = await req.json();
+    
+    if (!userId) {
+      throw new Error("User ID is required");
+    }
 
-    // Create a Supabase client with the service role key (to bypass RLS)
+    // Create a Supabase client with the service role key
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Delete the user from auth.users
-    const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(
-      userId
-    );
+    // Delete the auth user
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
-    if (deleteUserError) {
-      console.error("Error deleting auth user:", deleteUserError);
-      throw deleteUserError;
+    if (error) {
+      throw error;
     }
 
-    // Return a success response
     return new Response(
-      JSON.stringify({ success: true, message: "User successfully deleted" }),
+      JSON.stringify({ 
+        success: true, 
+        message: "User successfully deleted" 
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

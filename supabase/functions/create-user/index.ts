@@ -48,13 +48,14 @@ serve(async (req) => {
     console.log("Auth user created:", authData.user.id, "with role:", role);
 
     // 2. Create the user profile with the service role (bypassing RLS)
+    // Setting appropriate fields based on role
     const profileData = {
       id: authData.user.id,
       email,
       full_name,
       role,
       nim: role === 'student' ? nim : null,
-      nid: role === 'supervisor' ? nid : null, // Using nid instead of nip
+      nid: role === 'supervisor' ? nid : null,
       faculty: role === 'student' ? faculty : null,
       department: role === 'student' || role === 'supervisor' ? department : null
     };

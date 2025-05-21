@@ -20,7 +20,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('student');
   const [nim, setNim] = useState('');
-  const [nid, setNid] = useState(''); // Changed from nip to nid
+  const [nid, setNid] = useState('');
   const [faculty, setFaculty] = useState('');
   const [department, setDepartment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,8 +38,8 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
     }
     
     // Validate supervisor specific fields
-    if (role === 'supervisor' && !nid) { // Changed from nip to nid
-      toast.error('NID diperlukan untuk dosen'); // Changed from NIP to NID
+    if (role === 'supervisor' && !nid) {
+      toast.error('NID diperlukan untuk dosen');
       return;
     }
     
@@ -56,13 +56,21 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
           full_name: name,
           role,
           nim: role === 'student' ? nim : null,
-          nid: role === 'supervisor' ? nid : null, // Changed from nip to nid
+          nid: role === 'supervisor' ? nid : null,
           faculty: role === 'student' ? faculty : null,
           department: role === 'student' || role === 'supervisor' ? department : null
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error from create-user function:", error);
+        throw error;
+      }
+      
+      if (!data?.success) {
+        console.error("Failed response from create-user function:", data);
+        throw new Error(data?.message || "Failed to create user");
+      }
       
       console.log("User created successfully:", data);
       
