@@ -13,12 +13,21 @@ const ProposalReview = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { proposals, loading } = useProposals();
 
+  console.log("All proposals for review:", proposals.map(p => ({ 
+    id: p.id,
+    title: p.title, 
+    status: p.status, 
+    rejectionReason: p.rejectionReason 
+  })));
+
   const filteredProposals = proposals.filter(proposal => {
     // Filter by tab selection
     if (activeTab !== 'all') {
       if (activeTab === 'revision') {
-        // For "revision" tab, check if status is submitted and has rejection_reason
-        return proposal.status === 'submitted' && proposal.rejectionReason;
+        // For "revision" tab, check if status is 'revision' OR 
+        // (submitted with rejectionReason which indicates it needs revision)
+        return proposal.status === 'revision' || 
+               (proposal.status === 'submitted' && proposal.rejectionReason);
       } else {
         // For other tabs, check status normally
         return proposal.status === activeTab;
@@ -32,6 +41,8 @@ const ProposalReview = () => {
     
     return true;
   });
+
+  console.log("Filtered proposals for tab", activeTab, ":", filteredProposals.length);
 
   const handleViewProposal = (proposalId: string) => {
     navigate(`/coordinator/proposal-detail/${proposalId}`);
