@@ -48,7 +48,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
     try {
       console.log("Adding user with role:", role);
       
-      // Use our edge function to create a new user with proper permissions
+      // Use our create-user edge function to create a new user with proper permissions
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email,

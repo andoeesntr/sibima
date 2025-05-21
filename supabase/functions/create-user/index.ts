@@ -37,6 +37,7 @@ serve(async (req) => {
     });
 
     if (authError) {
+      console.error("Auth user creation error:", authError);
       throw authError;
     }
 
@@ -66,6 +67,7 @@ serve(async (req) => {
 
     if (profileError) {
       // Try to delete the auth user if profile creation fails
+      console.error("Profile creation error:", profileError);
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       throw profileError;
     }
