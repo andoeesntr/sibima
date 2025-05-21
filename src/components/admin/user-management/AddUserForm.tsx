@@ -26,6 +26,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const handleSubmit = async () => {
+    // Validation checks
     if (!name || !email || !role || !password) {
       toast.error('Harap isi semua bidang yang diperlukan');
       return;
@@ -46,7 +47,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
     setIsSubmitting(true);
     
     try {
-      console.log("Adding user with role:", role);
+      console.log(`Adding user with role: ${role}, email: ${email}`);
       
       // Use our create-user edge function to create a new user with proper permissions
       const { data, error } = await supabase.functions.invoke('create-user', {
@@ -63,13 +64,13 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
       });
       
       if (error) {
-        console.error("Error from create-user function:", error);
-        throw error;
+        console.error("Edge function error:", error);
+        throw new Error(`Edge function error: ${error.message}`);
       }
       
-      if (!data?.success) {
+      if (!data || data.success === false) {
         console.error("Failed response from create-user function:", data);
-        throw new Error(data?.message || "Failed to create user");
+        throw new Error(data?.error || "Failed to create user");
       }
       
       console.log("User created successfully:", data);
@@ -79,7 +80,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
       onClose();
     } catch (error: any) {
       console.error('Error adding user:', error);
-      toast.error(`Failed to add user: ${error.message}`);
+      toast.error(`Gagal menambahkan pengguna: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -92,7 +93,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
         <Select
           value={role}
           onValueChange={(value) => {
-            console.log("Role selected:", value); // Debug log
+            console.log("Role selected:", value);
             setRole(value as UserRole);
           }}
         >
@@ -181,7 +182,6 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
       {role === 'supervisor' && (
         <>
           <div className="space-y-2">
-            {/* Changed from nip to nid */}
             <Label htmlFor="nid">NID</Label>
             <Input
               id="nid"
