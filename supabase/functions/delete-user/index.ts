@@ -23,18 +23,36 @@ serve(async (req) => {
       throw new Error("User ID is required");
     }
 
+    console.log(`Attempting to delete user with ID: ${userId}`);
+
     // Create a Supabase client with the service role key
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Delete the auth user
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    // First delete the profile record
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
 
-    if (error) {
-      throw error;
+    if (profileError) {
+      console.error("Error deleting profile:", profileError);
+      throw profileError;
     }
+
+    console.log("Profile deleted successfully");
+
+    // Then delete the auth user
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (authError) {
+      console.error("Error deleting auth user:", authError);
+      throw authError;
+    }
+
+    console.log("Auth user deleted successfully");
 
     return new Response(
       JSON.stringify({ 
@@ -49,7 +67,10 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in delete-user function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message 
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,

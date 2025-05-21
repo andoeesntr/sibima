@@ -50,7 +50,7 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
       console.log(`Adding user with role: ${role}, email: ${email}`);
       
       // Use our create-user edge function to create a new user with proper permissions
-      const { data, error } = await supabase.functions.invoke('create-user', {
+      const response = await supabase.functions.invoke('create-user', {
         body: {
           email,
           password,
@@ -62,6 +62,9 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
           department: role === 'student' || role === 'supervisor' ? department : null
         }
       });
+      
+      // Destructuring after checking for errors
+      const { data, error } = response;
       
       if (error) {
         console.error("Edge function error:", error);

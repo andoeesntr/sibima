@@ -55,12 +55,13 @@ serve(async (req) => {
     console.log("Auth user created successfully:", authData.user.id, "with role:", role);
 
     // 2. Create the user profile with the service role (bypassing RLS)
-    // Setting appropriate fields based on role
+    // For admin role, create a basic profile with just the required fields
     const profileData = {
       id: authData.user.id,
       email,
       full_name,
       role,
+      // Only include role-specific fields for student and supervisor roles
       nim: role === 'student' ? nim : null,
       nid: role === 'supervisor' ? nid : null,
       faculty: role === 'student' ? faculty : null,
