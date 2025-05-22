@@ -4,10 +4,11 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProposals, Proposal } from '@/hooks/useProposals';
 import { formatDate as formatProposalDate } from '@/utils/dateUtils';
+import { saveProposalFeedback } from '@/services/proposalService';
 
 export function useSupervisorProposals() {
   const { user } = useAuth();
-  const { proposals, loading: proposalsLoading, saveFeedback } = useProposals();
+  const { proposals, loading: proposalsLoading, refreshProposals } = useProposals();
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [activeTab, setActiveTab] = useState<string>('detail');
   const [activeStatus, setActiveStatus] = useState<string>('all');
@@ -42,6 +43,17 @@ export function useSupervisorProposals() {
   const filterProposals = (proposalList: Proposal[], status: string): Proposal[] => {
     if (status === 'all') return proposalList;
     return proposalList.filter(p => p.status === status);
+  };
+
+  const saveFeedback = async (proposalId: string, supervisorId: string, content: string) => {
+    try {
+      await saveProposalFeedback(proposalId, supervisorId, content);
+      refreshProposals();
+      return true;
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+      throw error;
+    }
   };
 
   const submitFeedback = async () => {
@@ -96,6 +108,7 @@ export function useSupervisorProposals() {
     submitFeedback,
     filterProposals,
     handleStatusChange,
-    activeStatus
+    activeStatus,
+    saveFeedback
   };
 }

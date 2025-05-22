@@ -24,8 +24,7 @@ export const useCoordinatorProposalDetail = () => {
 
   const handleDownloadFile = (url: string, fileName: string) => {
     window.open(url, '_blank');
-    toast({
-      title: "Downloading file",
+    toast("Downloading file", {
       description: `Downloading ${fileName}`
     });
   };
@@ -46,16 +45,14 @@ export const useCoordinatorProposalDetail = () => {
         
       if (error) throw error;
       
-      toast({
-        title: "Success",
-        description: "Proposal berhasil disetujui",
-        variant: "default"
+      toast("Success", {
+        description: "Proposal berhasil disetujui"
       });
+      
       setIsApproveDialogOpen(false);
     } catch (error: any) {
       console.error("Error approving proposal:", error);
-      toast({
-        title: "Error",
+      toast("Error", {
         description: `Failed to approve proposal: ${error.message}`,
         variant: "destructive"
       });
@@ -68,8 +65,7 @@ export const useCoordinatorProposalDetail = () => {
     if (!proposal) return;
     
     if (!rejectionReason.trim()) {
-      toast({
-        title: "Error",
+      toast("Error", {
         description: "Harap berikan alasan penolakan",
         variant: "destructive"
       });
@@ -90,16 +86,13 @@ export const useCoordinatorProposalDetail = () => {
         
       if (error) throw error;
       
-      toast({
-        title: "Success",
-        description: "Proposal berhasil ditolak",
-        variant: "default"
+      toast("Success", {
+        description: "Proposal berhasil ditolak"
       });
       setIsRejectDialogOpen(false);
     } catch (error: any) {
       console.error("Error rejecting proposal:", error);
-      toast({
-        title: "Error",
+      toast("Error", {
         description: `Failed to reject proposal: ${error.message}`,
         variant: "destructive"
       });
@@ -112,8 +105,7 @@ export const useCoordinatorProposalDetail = () => {
     if (!proposal) return;
     
     if (!revisionFeedback.trim()) {
-      toast({
-        title: "Error",
+      toast("Error", {
         description: "Harap berikan catatan revisi",
         variant: "destructive"
       });
@@ -135,16 +127,13 @@ export const useCoordinatorProposalDetail = () => {
         
       if (proposalError) throw proposalError;
       
-      toast({
-        title: "Success",
-        description: "Permintaan revisi berhasil dikirim",
-        variant: "default"
+      toast("Success", {
+        description: "Permintaan revisi berhasil dikirim"
       });
       setIsRevisionDialogOpen(false);
     } catch (error: any) {
       console.error("Error requesting revision:", error);
-      toast({
-        title: "Error",
+      toast("Error", {
         description: `Failed to request revision: ${error.message}`,
         variant: "destructive"
       });

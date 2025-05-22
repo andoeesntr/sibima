@@ -2,7 +2,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { fetchProposalsList, fetchProposalDocuments, fetchSupervisorName, fetchTeamSupervisors, fetchMainSupervisor } from '@/services/proposalService';
+import { 
+  fetchProposalsList, 
+  fetchProposalDocuments, 
+  fetchSupervisorName, 
+  fetchTeamSupervisors, 
+  fetchMainSupervisor,
+  saveProposalFeedback
+} from '@/services/proposalService';
 
 export interface Proposal {
   id: string;
@@ -105,5 +112,23 @@ export const useProposals = () => {
     fetchProposals();
   };
 
-  return { proposals, loading, refreshProposals };
+  // Method to save feedback directly from this hook
+  const saveFeedback = async (proposalId: string, supervisorId: string, content: string) => {
+    try {
+      await saveProposalFeedback(proposalId, supervisorId, content);
+      // After saving feedback, refresh the proposals list
+      await fetchProposals();
+      return true;
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+      throw error;
+    }
+  };
+
+  return { 
+    proposals, 
+    loading, 
+    refreshProposals,
+    saveFeedback
+  };
 };
