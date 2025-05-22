@@ -33,6 +33,43 @@ export const registerUser = async (userData: {
   }
 };
 
+// New function to handle creating users via admin panel
+export const createUser = async (userData: {
+  email: string;
+  password: string;
+  full_name?: string;
+  nim?: string;
+  nid?: string;
+  faculty?: string;
+  department?: string;
+  role: 'student' | 'coordinator' | 'admin' | 'supervisor';
+}) => {
+  try {
+    console.log("Creating user with data:", userData);
+    // Use the invoke method to call the edge function
+    const response = await supabase.functions.invoke('create-user', {
+      body: userData
+    });
+    
+    const { data, error } = response;
+    
+    if (error) {
+      console.error("Edge function error:", error);
+      throw new Error(`Edge function error: ${error.message}`);
+    }
+    
+    if (!data || data.success === false) {
+      console.error("Failed response from create-user function:", data);
+      throw new Error(data?.error || "Failed to create user");
+    }
+    
+    return data;
+  } catch (error: any) {
+    console.error("Error creating user:", error);
+    throw error;
+  }
+};
+
 // New function to handle login with email or NIM/NID
 export const loginUser = async (identifier: string, password: string) => {
   try {

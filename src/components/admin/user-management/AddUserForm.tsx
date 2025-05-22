@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Label } from "@/components/ui/label";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UserRole } from '@/types';
-import { supabase } from '@/integrations/supabase/client';
+import { createUser } from '@/utils/auth';
 
 interface AddUserFormProps {
   onClose: () => void;
@@ -49,38 +48,19 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
     try {
       console.log(`Adding user with role: ${role}, email: ${email}`);
       
-      // Use our create-user edge function to create a new user with proper permissions
-      const response = await supabase.functions.invoke('create-user', {
-        body: {
-          email,
-          password,
-          full_name: name,
-          role,
-          nim: role === 'student' ? nim : null,
-          nid: role === 'supervisor' ? nid : null,
-          faculty: role === 'student' ? faculty : null,
-          department: role === 'student' || role === 'supervisor' ? department : null
-        }
+      // Use our createUser function to create a new user with proper permissions
+      const result = await createUser({
+        email,
+        password,
+        full_name: name,
+        role,
+        nim: role === 'student' ? nim : undefined,
+        nid: role === 'supervisor' ? nid : undefined,
+        faculty: role === 'student' ? faculty : undefined,
+        department: role === 'student' || role === 'supervisor' ? department : undefined
       });
       
-      // Get the response data
-      const { data, error } = response;
-      
-      if (error) {
-        console.error("Edge function error:", error);
-        throw new Error(`Edge function error: ${error.message}`);
-      }
-      
-      if (!data) {
-        throw new Error("No response data from create-user function");
-      }
-      
-      if (data.success === false) {
-        console.error("Failed response from create-user function:", data);
-        throw new Error(data.error || "Failed to create user");
-      }
-      
-      console.log("User created successfully:", data);
+      console.log("User created successfully:", result);
       
       toast.success('Pengguna berhasil ditambahkan');
       onSuccess();
