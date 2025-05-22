@@ -112,6 +112,7 @@ const ProposalDetail = () => {
         handleReject={handleReject}
         handleRevision={handleRevision}
         isSubmitting={isSubmitting}
+        proposalId={proposal.id}
       />
 
       <DocumentPreview
