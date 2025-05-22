@@ -83,6 +83,7 @@ export async function handleProposalSubmission({
     }
 
     let finalProposalId = proposalId;
+    let proposalStatus = 'submitted';
     
     if (isEditMode && proposalId) {
       // Update existing proposal
@@ -103,7 +104,7 @@ export async function handleProposalSubmission({
         throw proposalUpdateError;
       }
     } else {
-      // Create new proposal
+      // Create new proposal for the submitting user
       const { data: proposalData, error: proposalError } = await supabase
         .from('proposals')
         .insert({
@@ -122,6 +123,32 @@ export async function handleProposalSubmission({
       }
       
       finalProposalId = proposalData[0].id;
+      
+      // Create proposals for all team members excluding the current user
+      if (teamMembers.length > 1) {
+        const otherMembers = teamMembers.filter(member => member.id !== user.id);
+        
+        if (otherMembers.length > 0) {
+          const teamProposals = otherMembers.map(member => ({
+            student_id: member.id,
+            title,
+            description,
+            company_name: companyName,
+            supervisor_id: selectedSupervisors[0],
+            status: 'submitted',
+            team_id: teamId
+          }));
+          
+          const { error: teamProposalsError } = await supabase
+            .from('proposals')
+            .insert(teamProposals);
+            
+          if (teamProposalsError) {
+            console.error("Error creating proposals for team members:", teamProposalsError);
+            // Continue execution even if there's an error for team members
+          }
+        }
+      }
     }
 
     // Upload new file if provided

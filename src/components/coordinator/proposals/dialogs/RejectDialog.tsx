@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { XCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { syncProposalStatusWithTeam } from '@/services/proposalService';
 
@@ -20,13 +20,13 @@ const RejectDialog = ({ onCancel, onReject, proposalId }: RejectDialogProps) => 
   
   const handleReject = async () => {
     if (!rejectionReason.trim()) {
-      toast.error("Alasan penolakan harus diisi");
+      toast.error("Harap berikan alasan penolakan");
       return;
     }
     
     setIsSubmitting(true);
     try {
-      // Update proposal status and rejection reason
+      // Update proposal status
       const { error } = await supabase
         .from('proposals')
         .update({
@@ -43,14 +43,14 @@ const RejectDialog = ({ onCancel, onReject, proposalId }: RejectDialogProps) => 
         action: 'rejected',
         target_type: 'proposal',
         target_id: proposalId,
-        user_id: 'coordinator', // Ideally this should be the actual coordinator ID
-        user_name: 'Coordinator' // Ideally this should be the actual coordinator name
+        user_id: 'coordinator',
+        user_name: 'Coordinator'
       });
       
       // Sync status with team members
       await syncProposalStatusWithTeam(proposalId, 'rejected', rejectionReason);
       
-      toast.success("Proposal telah ditolak");
+      toast.success("Proposal berhasil ditolak");
       onReject();
     } catch (error) {
       console.error('Error rejecting proposal:', error);
@@ -65,22 +65,29 @@ const RejectDialog = ({ onCancel, onReject, proposalId }: RejectDialogProps) => 
       <DialogHeader>
         <DialogTitle>Tolak Proposal</DialogTitle>
         <DialogDescription>
-          Berikan alasan mengapa proposal ini ditolak.
+          Berikan alasan penolakan untuk proposal ini
         </DialogDescription>
       </DialogHeader>
-      <div className="flex flex-col items-center justify-center my-4 p-4 bg-red-50 rounded-md border border-red-100">
-        <XCircle className="h-12 w-12 text-red-500 mb-2" />
-        <p className="text-center text-gray-600">
-          Mahasiswa perlu mengajukan proposal baru setelah proposal ini ditolak.
-        </p>
-      </div>
-      <div className="mt-4">
-        <Textarea
-          placeholder="Masukkan alasan penolakan proposal..."
-          value={rejectionReason}
-          onChange={(e) => setRejectionReason(e.target.value)}
-          rows={4}
-        />
+      <div className="space-y-4 my-4">
+        <div className="flex flex-col items-center justify-center p-4 bg-red-50 rounded-md border border-red-100 mb-4">
+          <XCircle className="h-12 w-12 text-red-500 mb-2" />
+          <p className="text-center text-gray-600">
+            Proposal yang ditolak akan memerlukan mahasiswa untuk mengajukan proposal baru.
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <label htmlFor="rejection-reason" className="text-sm font-medium">
+            Alasan Penolakan
+          </label>
+          <Textarea
+            id="rejection-reason"
+            placeholder="Tuliskan alasan penolakan proposal ini..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            rows={4}
+          />
+        </div>
       </div>
       <div className="flex justify-end gap-2 mt-4">
         <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
@@ -91,7 +98,7 @@ const RejectDialog = ({ onCancel, onReject, proposalId }: RejectDialogProps) => 
           disabled={isSubmitting || !rejectionReason.trim()}
           onClick={handleReject}
         >
-          {isSubmitting ? "Memproses..." : "Tolak"}
+          {isSubmitting ? "Memproses..." : "Tolak Proposal"}
         </Button>
       </div>
     </>

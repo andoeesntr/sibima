@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileEdit } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { FileEdit } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { syncProposalStatusWithTeam } from '@/services/proposalService';
 
@@ -20,56 +20,37 @@ const RevisionDialog = ({ onCancel, onRevision, proposalId }: RevisionDialogProp
   
   const handleRevision = async () => {
     if (!revisionFeedback.trim()) {
-      toast.error("Feedback revisi harus diisi");
+      toast.error("Harap berikan catatan revisi");
       return;
     }
     
     setIsSubmitting(true);
     try {
       // Update proposal status
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('proposals')
         .update({
           status: 'revision',
-          rejection_reason: revisionFeedback,  // Using the rejection_reason field for revision feedback
+          rejection_reason: revisionFeedback, // Using rejection_reason field for revision feedback
           updated_at: new Date().toISOString()
         })
         .eq('id', proposalId);
         
-      if (updateError) throw updateError;
-
-      // Get coordinator info to attach to feedback
-      const { data: coordinatorData } = await supabase
-        .auth.getUser();
-      
-      const coordinatorId = coordinatorData?.user?.id || 'unknown';
-      
-      // Add feedback to proposal_feedback table
-      const { error: feedbackError } = await supabase
-        .from('proposal_feedback')
-        .insert({
-          proposal_id: proposalId,
-          supervisor_id: coordinatorId,  // Using coordinator ID as feedback provider
-          content: revisionFeedback
-        });
-        
-      if (feedbackError) {
-        console.error('Error adding feedback:', feedbackError);
-      }
+      if (error) throw error;
       
       // Log the activity
       await supabase.from('activity_logs').insert({
-        action: 'revision',
+        action: 'revision_requested',
         target_type: 'proposal',
         target_id: proposalId,
-        user_id: coordinatorId,
-        user_name: 'Coordinator'  // Ideally would be the actual name
+        user_id: 'coordinator',
+        user_name: 'Coordinator'
       });
       
       // Sync status with team members
       await syncProposalStatusWithTeam(proposalId, 'revision', revisionFeedback);
       
-      toast.success("Proposal memerlukan revisi");
+      toast.success("Permintaan revisi berhasil dikirim");
       onRevision();
     } catch (error) {
       console.error('Error requesting revision:', error);
@@ -84,22 +65,29 @@ const RevisionDialog = ({ onCancel, onRevision, proposalId }: RevisionDialogProp
       <DialogHeader>
         <DialogTitle>Minta Revisi Proposal</DialogTitle>
         <DialogDescription>
-          Berikan feedback untuk revisi proposal ini.
+          Berikan catatan revisi untuk proposal ini
         </DialogDescription>
       </DialogHeader>
-      <div className="flex flex-col items-center justify-center my-4 p-4 bg-amber-50 rounded-md border border-amber-100">
-        <FileEdit className="h-12 w-12 text-amber-500 mb-2" />
-        <p className="text-center text-gray-600">
-          Mahasiswa perlu merevisi proposal berdasarkan feedback yang Anda berikan.
-        </p>
-      </div>
-      <div className="mt-4">
-        <Textarea
-          placeholder="Masukkan feedback untuk revisi..."
-          value={revisionFeedback}
-          onChange={(e) => setRevisionFeedback(e.target.value)}
-          rows={4}
-        />
+      <div className="space-y-4 my-4">
+        <div className="flex flex-col items-center justify-center p-4 bg-amber-50 rounded-md border border-amber-100 mb-4">
+          <FileEdit className="h-12 w-12 text-amber-500 mb-2" />
+          <p className="text-center text-gray-600">
+            Mahasiswa perlu merevisi proposal sesuai dengan catatan yang diberikan.
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <label htmlFor="revision-feedback" className="text-sm font-medium">
+            Catatan Revisi
+          </label>
+          <Textarea
+            id="revision-feedback"
+            placeholder="Tuliskan catatan revisi untuk proposal ini..."
+            value={revisionFeedback}
+            onChange={(e) => setRevisionFeedback(e.target.value)}
+            rows={4}
+          />
+        </div>
       </div>
       <div className="flex justify-end gap-2 mt-4">
         <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
