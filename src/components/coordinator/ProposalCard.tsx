@@ -1,120 +1,118 @@
 
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Check, FileEdit, FileText, User, X } from 'lucide-react';
-import { formatDate } from '@/services/mockData';
+import { Button } from "@/components/ui/button";
+import { Check, FileText, X, FileEdit } from "lucide-react";
 import { Proposal } from '@/hooks/useProposals';
 
-const statusColors = {
-  draft: "bg-gray-500",
-  submitted: "bg-yellow-500",
-  revision: "bg-amber-500",
-  reviewed: "bg-blue-500",
-  approved: "bg-green-500",
-  rejected: "bg-red-500",
-};
-
-const statusLabels = {
-  draft: "Draft",
-  submitted: "Diajukan",
-  revision: "Perlu Revisi",
-  reviewed: "Ditinjau",
-  approved: "Disetujui",
-  rejected: "Ditolak",
-};
-
-type ProposalCardProps = {
+interface ProposalCardProps {
   proposal: Proposal;
   onView: (proposalId: string) => void;
+  onApprove?: (proposalId: string) => void;
+  onReject?: (proposalId: string) => void;
+  onRevision?: (proposalId: string) => void;
+}
+
+const statusColors: Record<string, string> = {
+  submitted: "bg-blue-100 text-blue-800",
+  revision: "bg-amber-100 text-amber-800",
+  approved: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800"
 };
 
-const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
+const statusLabels: Record<string, string> = {
+  submitted: "Menunggu Review",
+  revision: "Perlu Revisi",
+  approved: "Disetujui",
+  rejected: "Ditolak"
+};
+
+const ProposalCard = ({ proposal, onView, onApprove, onReject, onRevision }: ProposalCardProps) => {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('id-ID', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    }).format(date);
+  };
+
+  const showActions = proposal.status === 'submitted' && onApprove && onReject && onRevision;
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg">{proposal.title}</CardTitle>
-        <Badge className={statusColors[proposal.status as keyof typeof statusColors]}>
-          {statusLabels[proposal.status as keyof typeof statusLabels] || proposal.status}
-        </Badge>
-      </CardHeader>
-      <CardContent>
-        <div className="text-sm text-gray-600 mb-4">
-          {proposal.description.substring(0, 100)}
-          {proposal.description.length > 100 ? '...' : ''}
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      <CardContent className="p-6">
+        <div className="flex justify-between mb-2">
+          <div className="space-y-1">
+            <h3 className="font-semibold text-lg">{proposal.title}</h3>
+            <p className="text-sm text-gray-500">
+              Diajukan: {formatDate(proposal.submissionDate)}
+            </p>
+          </div>
+          <Badge className={statusColors[proposal.status]}>
+            {statusLabels[proposal.status]}
+          </Badge>
         </div>
         
-        {/* Show rejection reason or revision feedback */}
-        {(proposal.status === 'rejected' || proposal.status === 'revision') && proposal.rejectionReason && (
-          <div className={`${proposal.status === 'rejected' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'} border rounded p-2 mb-4`}>
-            <p className={`text-xs font-medium ${proposal.status === 'rejected' ? 'text-red-800' : 'text-amber-800'}`}>
-              {proposal.status === 'rejected' ? 'Alasan ditolak: ' : 'Catatan revisi: '}
-              {proposal.rejectionReason.substring(0, 70)}
-              {proposal.rejectionReason.length > 70 ? '...' : ''}
+        <p className="text-gray-700 my-2 line-clamp-2">
+          {proposal.description || "Tidak ada deskripsi"}
+        </p>
+        
+        {proposal.rejectionReason && proposal.status !== 'approved' && (
+          <div className="mt-3 p-3 bg-red-50 rounded-md">
+            <p className="text-sm text-red-800">
+              <span className="font-medium">Catatan: </span>
+              {proposal.rejectionReason}
             </p>
           </div>
         )}
-        
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
-          <div className="flex items-center">
-            <User size={14} className="mr-1" />
-            <span>{proposal.supervisorIds.length} Pembimbing</span>
-          </div>
-          {proposal.studentName && (
-            <div>
-              Student: {proposal.studentName}
-            </div>
-          )}
-          <div>
-            Submitted: {formatDate(proposal.submissionDate)}
-          </div>
-          {proposal.reviewDate && (
-            <div>
-              Reviewed: {formatDate(proposal.reviewDate)}
-            </div>
-          )}
-          <div className="flex items-center text-gray-500">
-            <FileText size={14} className="mr-1" />
-            <span>{proposal.documents && proposal.documents.length > 0 
-              ? `${proposal.documents.length} dokumen` 
-              : 'Tidak ada dokumen'}</span>
-          </div>
-        </div>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        {proposal.status === 'submitted' && (
-          <>
-            <Button 
-              onClick={() => onView(proposal.id)}
-              className="bg-primary hover:bg-primary/90 flex-1 mr-2"
-            >
-              <Check size={16} className="mr-1" /> Setuju
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => onView(proposal.id)}
-              className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:text-amber-800 flex-1 mr-2"
-            >
-              <FileEdit size={16} className="mr-1" /> Revisi
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => onView(proposal.id)}
-              className="flex-1"
-            >
-              <X size={16} className="mr-1" /> Tolak
-            </Button>
-          </>
-        )}
-        {(proposal.status === 'approved' || proposal.status === 'rejected' || proposal.status === 'revision') && (
+      
+      <CardFooter className="bg-gray-50 px-6 py-3 flex justify-between">
+        <div className="flex items-center">
+          <FileText className="h-4 w-4 mr-1 text-gray-500" />
+          <span className="text-sm text-gray-500">
+            Mahasiswa: {proposal.studentName || '-'}
+          </span>
+        </div>
+        
+        <div className="flex space-x-2">
           <Button 
             variant="outline" 
+            size="sm" 
             onClick={() => onView(proposal.id)}
-            className="w-full"
           >
-            <ArrowRight size={16} className="mr-1" /> Lihat Detail
+            Detail
           </Button>
-        )}
+          
+          {showActions && (
+            <>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => onReject(proposal.id)}
+              >
+                <X size={16} className="mr-1" /> Tolak
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:text-amber-800"
+                onClick={() => onRevision(proposal.id)}
+              >
+                <FileEdit size={16} className="mr-1" /> Revisi
+              </Button>
+              <Button 
+                size="sm"
+                className="bg-primary hover:bg-primary/90"
+                onClick={() => onApprove(proposal.id)}
+              >
+                <Check size={16} className="mr-1" /> Setuju
+              </Button>
+            </>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );

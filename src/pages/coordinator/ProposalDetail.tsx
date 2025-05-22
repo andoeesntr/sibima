@@ -8,7 +8,6 @@ import TeamInfo from '@/components/coordinator/proposals/TeamInfo';
 import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
-import SupervisorEditDialog from '@/components/coordinator/proposals/SupervisorEditDialog';
 import { useCoordinatorProposalDetail } from '@/hooks/useCoordinatorProposalDetail';
 import { statusColors, statusLabels } from '@/constants/proposalStatus';
 
@@ -32,8 +31,6 @@ const ProposalDetail = () => {
     setPreviewDialogOpen,
     previewUrl,
     previewName,
-    isEditSupervisorDialogOpen,
-    setIsEditSupervisorDialogOpen,
     handleUpdateSupervisors,
     handlePreviewDocument,
     handleDownloadFile,
@@ -94,8 +91,9 @@ const ProposalDetail = () => {
           team={proposal.team}
           student={proposal.student}
           supervisors={supervisors}
-          onEditSupervisor={() => setIsEditSupervisorDialogOpen(true)}
           isCoordinator={true}
+          proposalId={proposal.id}
+          onSupervisorsUpdated={handleUpdateSupervisors}
         />
       </div>
       
@@ -122,16 +120,6 @@ const ProposalDetail = () => {
         url={previewUrl}
         name={previewName}
         onDownload={handleDownloadFile}
-      />
-      
-      {/* Supervisor Edit Dialog */}
-      <SupervisorEditDialog
-        isOpen={isEditSupervisorDialogOpen}
-        setIsOpen={setIsEditSupervisorDialogOpen}
-        proposalId={proposal.id}
-        teamId={proposal.team_id}
-        currentSupervisors={supervisors}
-        onSupervisorsUpdated={handleUpdateSupervisors}
       />
     </div>
   );

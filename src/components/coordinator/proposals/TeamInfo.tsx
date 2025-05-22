@@ -1,8 +1,8 @@
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Pencil, User, Users } from "lucide-react";
+import { User, Users } from "lucide-react";
 import { Supervisor } from "@/services/supervisorService";
+import SupervisorSelectionButton from "./SupervisorSelectionButton";
 
 interface TeamMember {
   id: string;
@@ -25,9 +25,18 @@ interface TeamInfoProps {
   supervisors: Supervisor[];
   onEditSupervisor?: () => void;
   isCoordinator?: boolean;
+  proposalId?: string;
+  onSupervisorsUpdated?: (supervisors: Supervisor[]) => void;
 }
 
-const TeamInfo = ({ team, student, supervisors, onEditSupervisor, isCoordinator = false }: TeamInfoProps) => {
+const TeamInfo = ({ 
+  team, 
+  student, 
+  supervisors, 
+  isCoordinator = false,
+  proposalId,
+  onSupervisorsUpdated
+}: TeamInfoProps) => {
   return (
     <Card>
       <CardHeader>
@@ -72,21 +81,10 @@ const TeamInfo = ({ team, student, supervisors, onEditSupervisor, isCoordinator 
         <div>
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-medium">Dosen Pembimbing</h3>
-            {isCoordinator && onEditSupervisor && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={onEditSupervisor}
-                className="h-8 w-8 p-0"
-              >
-                <Pencil size={16} />
-                <span className="sr-only">Edit Dosen Pembimbing</span>
-              </Button>
-            )}
           </div>
           
           {supervisors.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2 mb-4">
               {supervisors.map((supervisor, index) => (
                 <div 
                   key={supervisor.id}
@@ -99,19 +97,16 @@ const TeamInfo = ({ team, student, supervisors, onEditSupervisor, isCoordinator 
               ))}
             </div>
           ) : (
-            isCoordinator && onEditSupervisor ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onEditSupervisor}
-                className="flex items-center"
-              >
-                <Pencil size={16} className="mr-2" />
-                Tambah Dosen Pembimbing
-              </Button>
-            ) : (
-              <p className="text-gray-500">Belum ada dosen pembimbing</p>
-            )
+            <p className="text-gray-500 mb-4">Belum ada dosen pembimbing</p>
+          )}
+
+          {isCoordinator && proposalId && onSupervisorsUpdated && (
+            <SupervisorSelectionButton
+              proposalId={proposalId}
+              teamId={team?.id}
+              currentSupervisors={supervisors}
+              onSupervisorsUpdated={onSupervisorsUpdated}
+            />
           )}
         </div>
       </CardContent>

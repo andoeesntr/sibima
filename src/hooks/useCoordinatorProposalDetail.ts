@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProposalData } from '@/hooks/useCoordinatorProposal';
 
@@ -15,7 +15,6 @@ export const useCoordinatorProposalDetail = () => {
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewName, setPreviewName] = useState('');
-  const [isEditSupervisorDialogOpen, setIsEditSupervisorDialogOpen] = useState(false);
 
   const handlePreviewDocument = (url: string, name: string) => {
     setPreviewUrl(url);
@@ -173,8 +172,6 @@ export const useCoordinatorProposalDetail = () => {
     setPreviewDialogOpen,
     previewUrl,
     previewName,
-    isEditSupervisorDialogOpen,
-    setIsEditSupervisorDialogOpen,
     handleUpdateSupervisors,
     handlePreviewDocument,
     handleDownloadFile,
