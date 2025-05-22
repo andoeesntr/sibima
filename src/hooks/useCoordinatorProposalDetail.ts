@@ -45,17 +45,12 @@ export const useCoordinatorProposalDetail = () => {
         
       if (error) throw error;
       
-      toast("Success", {
-        description: "Proposal berhasil disetujui"
-      });
+      toast.success("Proposal berhasil disetujui");
       
       setIsApproveDialogOpen(false);
     } catch (error: any) {
       console.error("Error approving proposal:", error);
-      toast("Error", {
-        description: `Failed to approve proposal: ${error.message}`,
-        variant: "destructive"
-      });
+      toast.error(`Failed to approve proposal: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -65,10 +60,7 @@ export const useCoordinatorProposalDetail = () => {
     if (!proposal) return;
     
     if (!rejectionReason.trim()) {
-      toast("Error", {
-        description: "Harap berikan alasan penolakan",
-        variant: "destructive"
-      });
+      toast.error("Harap berikan alasan penolakan");
       return;
     }
     
@@ -86,16 +78,11 @@ export const useCoordinatorProposalDetail = () => {
         
       if (error) throw error;
       
-      toast("Success", {
-        description: "Proposal berhasil ditolak"
-      });
+      toast.success("Proposal berhasil ditolak");
       setIsRejectDialogOpen(false);
     } catch (error: any) {
       console.error("Error rejecting proposal:", error);
-      toast("Error", {
-        description: `Failed to reject proposal: ${error.message}`,
-        variant: "destructive"
-      });
+      toast.error(`Failed to reject proposal: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -105,10 +92,7 @@ export const useCoordinatorProposalDetail = () => {
     if (!proposal) return;
     
     if (!revisionFeedback.trim()) {
-      toast("Error", {
-        description: "Harap berikan catatan revisi",
-        variant: "destructive"
-      });
+      toast.error("Harap berikan catatan revisi");
       return;
     }
     
@@ -127,16 +111,11 @@ export const useCoordinatorProposalDetail = () => {
         
       if (proposalError) throw proposalError;
       
-      toast("Success", {
-        description: "Permintaan revisi berhasil dikirim"
-      });
+      toast.success("Permintaan revisi berhasil dikirim");
       setIsRevisionDialogOpen(false);
     } catch (error: any) {
       console.error("Error requesting revision:", error);
-      toast("Error", {
-        description: `Failed to request revision: ${error.message}`,
-        variant: "destructive"
-      });
+      toast.error(`Failed to request revision: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
