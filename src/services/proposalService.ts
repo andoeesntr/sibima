@@ -167,13 +167,13 @@ export async function saveProposalFeedback(proposalId: string, supervisorId: str
   }
 }
 
-// New function to sync proposal status with team members
+// Improved function to sync proposal status with team members
 export async function syncProposalStatusWithTeam(proposalId: string, status: string, rejectionReason?: string) {
   try {
     // First get the proposal to find the team
     const { data: proposalData, error: proposalError } = await supabase
       .from('proposals')
-      .select('team_id, student_id')
+      .select('team_id, student_id, title, description, company_name, supervisor_id')
       .eq('id', proposalId)
       .single();
 
@@ -222,6 +222,8 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       return;
     }
 
+    console.log("Existing proposals for team members:", existingProposals);
+
     // For members who already have proposals, update their status
     if (existingProposals && existingProposals.length > 0) {
       const updatePromises = existingProposals.map(proposal => {
@@ -235,7 +237,8 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
           .eq('id', proposal.id);
       });
 
-      await Promise.all(updatePromises);
+      const updateResults = await Promise.all(updatePromises);
+      console.log("Update results for existing proposals:", updateResults);
     }
 
     // Calculate which member IDs don't have proposals yet
@@ -244,29 +247,31 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       id => !memberIdsWithProposals.includes(id)
     );
 
+    console.log("Members without proposals:", memberIdsWithoutProposals);
+
     // For members who don't have proposals, create new ones
     if (memberIdsWithoutProposals.length > 0) {
-      // Get the original proposal details to copy
-      const { data: originalProposal, error: originalError } = await supabase
+      // Create new proposals for team members without one
+      const newProposals = memberIdsWithoutProposals.map(studentId => ({
+        student_id: studentId,
+        title: proposalData.title,
+        description: proposalData.description,
+        company_name: proposalData.company_name,
+        supervisor_id: proposalData.supervisor_id,
+        status,
+        rejection_reason: rejectionReason || null,
+        team_id: proposalData.team_id
+      }));
+
+      const { data: insertedProposals, error: insertError } = await supabase
         .from('proposals')
-        .select('*')
-        .eq('id', proposalId)
-        .single();
+        .insert(newProposals)
+        .select();
 
-      if (!originalError && originalProposal) {
-        // Create new proposals for team members without one
-        const newProposals = memberIdsWithoutProposals.map(studentId => ({
-          student_id: studentId,
-          title: originalProposal.title,
-          description: originalProposal.description,
-          company_name: originalProposal.company_name,
-          supervisor_id: originalProposal.supervisor_id,
-          status,
-          rejection_reason: rejectionReason || null,
-          team_id: proposalData.team_id
-        }));
-
-        await supabase.from('proposals').insert(newProposals);
+      if (insertError) {
+        console.error("Error creating proposals for team members:", insertError);
+      } else {
+        console.log("Created new proposals for team members:", insertedProposals);
       }
     }
 

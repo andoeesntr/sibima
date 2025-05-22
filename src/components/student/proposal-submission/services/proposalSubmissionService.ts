@@ -82,6 +82,37 @@ export async function handleProposalSubmission({
       }
     }
 
+    // Add team supervisors if provided
+    if (selectedSupervisors.length > 0 && teamId) {
+      // Check if supervisors already exist for this team
+      const { data: existingSupervisors, error: checkError } = await supabase
+        .from('team_supervisors')
+        .select('supervisor_id')
+        .eq('team_id', teamId);
+        
+      if (!checkError) {
+        // Filter out supervisors that are already assigned to this team
+        const existingSupervisorIds = existingSupervisors?.map(s => s.supervisor_id) || [];
+        const newSupervisors = selectedSupervisors.filter(id => !existingSupervisorIds.includes(id));
+        
+        if (newSupervisors.length > 0) {
+          const supervisorsToInsert = newSupervisors.map(supervisorId => ({
+            team_id: teamId,
+            supervisor_id: supervisorId
+          }));
+          
+          const { error: supervisorError } = await supabase
+            .from('team_supervisors')
+            .insert(supervisorsToInsert);
+            
+          if (supervisorError) {
+            console.error("Error adding supervisors:", supervisorError);
+            // Continue execution even if there's an error for supervisors
+          }
+        }
+      }
+    }
+
     let finalProposalId = proposalId;
     let proposalStatus = 'submitted';
     
