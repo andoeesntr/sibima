@@ -45,6 +45,7 @@ const TeamForm = ({
   onBack
 }: TeamFormProps) => {
   const [selectedMember, setSelectedMember] = useState('');
+  const MAX_TEAM_SIZE = 4; // Maximum team size (including the person submitting)
   
   const availableStudents = students.filter(
     student => !teamMembers.some(member => member.id === student.id)
@@ -52,6 +53,12 @@ const TeamForm = ({
   
   const handleAddMember = () => {
     if (!selectedMember) return;
+    
+    // Check if adding this member would exceed the maximum team size
+    if (teamMembers.length >= MAX_TEAM_SIZE) {
+      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang`);
+      return;
+    }
     
     const studentToAdd = students.find(s => s.id === selectedMember);
     if (studentToAdd && !teamMembers.some(member => member.id === selectedMember)) {
@@ -90,7 +97,7 @@ const TeamForm = ({
         <CardDescription>
           {isEditMode && existingTeamId 
             ? 'Tim anggota KP sudah terbentuk dan tidak dapat diubah saat revisi' 
-            : 'Tambahkan anggota tim dan pilih dosen pembimbing'}
+            : `Tambahkan anggota tim (maksimal ${MAX_TEAM_SIZE} orang) dan pilih dosen pembimbing`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -141,11 +148,17 @@ const TeamForm = ({
               variant="outline" 
               className="flex-shrink-0"
               onClick={handleAddMember}
-              disabled={!selectedMember}
+              disabled={!selectedMember || teamMembers.length >= MAX_TEAM_SIZE}
             >
               <UserPlus size={16} className="mr-1" /> Tambah
             </Button>
           </div>
+          
+          {teamMembers.length >= MAX_TEAM_SIZE && (
+            <p className="text-xs text-amber-600">
+              Jumlah maksimal anggota tim ({MAX_TEAM_SIZE}) telah tercapai
+            </p>
+          )}
         </div>
         
         <div className="space-y-3">
