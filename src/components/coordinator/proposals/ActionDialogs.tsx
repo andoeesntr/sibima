@@ -1,4 +1,5 @@
 
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ApproveDialog from "./dialogs/ApproveDialog";
 import RejectDialog from "./dialogs/RejectDialog";
 import RevisionDialog from "./dialogs/RevisionDialog";
@@ -18,6 +19,7 @@ interface ActionDialogsProps {
   handleReject: () => Promise<void>;
   handleRevision: () => Promise<void>;
   isSubmitting: boolean;
+  proposalId: string;
 }
 
 const ActionDialogs = ({
@@ -34,34 +36,49 @@ const ActionDialogs = ({
   handleApprove,
   handleReject,
   handleRevision,
-  isSubmitting
+  isSubmitting,
+  proposalId
 }: ActionDialogsProps) => {
   return (
     <>
-      <ApproveDialog
-        isOpen={isApproveDialogOpen}
-        setIsOpen={setIsApproveDialogOpen}
-        handleApprove={handleApprove}
-        isSubmitting={isSubmitting}
-      />
+      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <DialogContent>
+          <ApproveDialog 
+            onCancel={() => setIsApproveDialogOpen(false)} 
+            onApprove={() => {
+              handleApprove();
+              setIsApproveDialogOpen(false);
+            }}
+            proposalId={proposalId}
+          />
+        </DialogContent>
+      </Dialog>
       
-      <RejectDialog
-        isOpen={isRejectDialogOpen}
-        setIsOpen={setIsRejectDialogOpen}
-        rejectionReason={rejectionReason}
-        setRejectionReason={setRejectionReason}
-        handleReject={handleReject}
-        isSubmitting={isSubmitting}
-      />
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <RejectDialog 
+            onCancel={() => setIsRejectDialogOpen(false)} 
+            onReject={() => {
+              handleReject();
+              setIsRejectDialogOpen(false);
+            }}
+            proposalId={proposalId}
+          />
+        </DialogContent>
+      </Dialog>
 
-      <RevisionDialog
-        isOpen={isRevisionDialogOpen}
-        setIsOpen={setIsRevisionDialogOpen}
-        revisionFeedback={revisionFeedback}
-        setRevisionFeedback={setRevisionFeedback}
-        handleRevision={handleRevision}
-        isSubmitting={isSubmitting}
-      />
+      <Dialog open={isRevisionDialogOpen} onOpenChange={setIsRevisionDialogOpen}>
+        <DialogContent>
+          <RevisionDialog 
+            onCancel={() => setIsRevisionDialogOpen(false)} 
+            onRevision={() => {
+              handleRevision();
+              setIsRevisionDialogOpen(false);
+            }}
+            proposalId={proposalId}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

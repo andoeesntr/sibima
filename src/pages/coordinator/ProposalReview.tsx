@@ -234,22 +234,25 @@ const ProposalReview = () => {
       </Tabs>
 
       {/* Action Dialogs */}
-      <ActionDialogs
-        isApproveDialogOpen={isApproveDialogOpen}
-        setIsApproveDialogOpen={setIsApproveDialogOpen}
-        isRejectDialogOpen={isRejectDialogOpen}
-        setIsRejectDialogOpen={setIsRejectDialogOpen}
-        isRevisionDialogOpen={isRevisionDialogOpen}
-        setIsRevisionDialogOpen={setIsRevisionDialogOpen}
-        rejectionReason={rejectionReason}
-        setRejectionReason={setRejectionReason}
-        revisionFeedback={revisionFeedback}
-        setRevisionFeedback={setRevisionFeedback}
-        handleApprove={handleApprove}
-        handleReject={handleReject}
-        handleRevision={handleRevision}
-        isSubmitting={isSubmitting}
-      />
+      {selectedProposalId && (
+        <ActionDialogs
+          isApproveDialogOpen={isApproveDialogOpen}
+          setIsApproveDialogOpen={setIsApproveDialogOpen}
+          isRejectDialogOpen={isRejectDialogOpen}
+          setIsRejectDialogOpen={setIsRejectDialogOpen}
+          isRevisionDialogOpen={isRevisionDialogOpen}
+          setIsRevisionDialogOpen={setIsRevisionDialogOpen}
+          rejectionReason={rejectionReason}
+          setRejectionReason={setRejectionReason}
+          revisionFeedback={revisionFeedback}
+          setRevisionFeedback={setRevisionFeedback}
+          handleApprove={handleApprove}
+          handleReject={handleReject}
+          handleRevision={handleRevision}
+          isSubmitting={isSubmitting}
+          proposalId={selectedProposalId}
+        />
+      )}
     </div>
   );
 };
