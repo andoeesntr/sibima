@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,7 +39,7 @@ export interface Proposal {
   }[];
   documents?: Document[];
   feedback?: FeedbackEntry[];
-  supervisorIds?: string[]; // Added to satisfy type requirement
+  supervisorIds: string[]; // Changed from optional to required
 }
 
 export const useSupervisorProposals = () => {
@@ -125,11 +124,11 @@ export const useSupervisorProposals = () => {
           }
           
           // Get feedback for this proposal - Fixed query to correctly join with profiles
-          const { data: feedback, error: feedbackError } = await supabase
+          const { data: feedbackData, error: feedbackError } = await supabase
             .from('proposal_feedback')
             .select(`
               id, content, created_at, supervisor_id,
-              profiles!proposal_feedback_supervisor_id_fkey (full_name)
+              profiles:supervisor_id(full_name)
             `)
             .eq('proposal_id', proposal.id)
             .order('created_at', { ascending: false });
@@ -139,7 +138,7 @@ export const useSupervisorProposals = () => {
           }
           
           // Process feedback data safely
-          const processedFeedback = feedback?.map(fb => ({
+          const processedFeedback = feedbackData?.map(fb => ({
             id: fb.id,
             content: fb.content,
             createdAt: fb.created_at,
@@ -171,7 +170,7 @@ export const useSupervisorProposals = () => {
             supervisors: supervisors,
             documents: processedDocuments,
             feedback: processedFeedback,
-            supervisorIds: supervisorIds
+            supervisorIds: supervisorIds // Ensure this is always provided
           });
         }
         

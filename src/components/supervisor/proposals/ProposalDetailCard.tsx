@@ -3,14 +3,34 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { TabsContent, Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, MessageSquare } from "lucide-react";
-import { Proposal } from '@/hooks/useProposals';
 
 import ProposalDetailHeader from './components/ProposalDetailHeader';
 import DetailSection from './components/DetailSection';
 import FeedbackList from './components/FeedbackList';
+import { Document, FeedbackEntry } from "@/hooks/useSupervisorProposals";
+
+// Define a more flexible Proposal type for the component
+interface DetailProposal {
+  id: string;
+  title: string;
+  description?: string;
+  submissionDate: string;
+  status: string;
+  rejectionReason?: string;
+  teamId?: string;
+  teamName?: string;
+  supervisors?: {
+    id: string;
+    full_name: string;
+    profile_image?: string;
+  }[];
+  documents?: Document[];
+  feedback?: FeedbackEntry[];
+  [key: string]: any; // Allow for other properties
+}
 
 interface ProposalDetailCardProps {
-  proposal: Proposal | null;
+  proposal: DetailProposal | null;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   formatDate: (dateString: string) => string;
@@ -60,13 +80,13 @@ const ProposalDetailCard = ({
         <TabsContent value="detail">
           <CardContent>
             <DetailSection 
-              description={proposal.description}
+              description={proposal.description || ''}
               rejectionReason={proposal.rejectionReason}
               status={proposal.status}
               teamId={proposal.teamId}
               teamName={proposal.teamName}
-              supervisors={proposal.supervisors}
-              documents={proposal.documents}
+              supervisors={proposal.supervisors || []}
+              documents={proposal.documents || []}
               handlePreviewFile={handlePreviewFile}
               handleDownloadFile={handleDownloadFile}
             />

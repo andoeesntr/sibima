@@ -4,12 +4,21 @@ import ProposalListItem from './components/ProposalListItem';
 import ProposalsLoading from './components/ProposalsLoading';
 import ProposalsEmpty from './components/ProposalsEmpty';
 
-// Combined type to support both proposal types
+// Create a generic type that works with different proposal structures
+interface CommonProposal {
+  id: string;
+  title: string;
+  submissionDate: string;
+  status: string;
+  studentName?: string;
+  supervisorIds?: string[] | string[];
+}
+
 interface ProposalsListProps {
-  proposals: any[]; // Use any to accept different proposal structures
+  proposals: CommonProposal[]; 
   loading: boolean;
-  selectedProposal: any; // Support both string and object formats
-  onSelectProposal: (proposal: any) => void;
+  selectedProposal: CommonProposal | null; 
+  onSelectProposal: (proposal: CommonProposal) => void;
   formatDate?: (dateString: string) => string;
 }
 
