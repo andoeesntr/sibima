@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface FeedbackDialogProps {
   isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
+  setIsOpen?: (open: boolean) => void; // Made optional
   proposalId?: string;
   onFeedbackSaved?: () => void;
   // New props to match Dashboard and Feedback pages usage
@@ -48,7 +49,7 @@ const FeedbackDialog = ({
   const handleOpenChange = (open: boolean) => {
     if (onOpenChange) {
       onOpenChange(open);
-    } else {
+    } else if (setIsOpen) {
       setIsOpen(open);
     }
   };
@@ -140,7 +141,7 @@ const FeedbackDialog = ({
       toast.success('Feedback berhasil disimpan');
       setFeedback('');
       setFile(null);
-      setIsOpen(false);
+      if (setIsOpen) setIsOpen(false);
       if (onFeedbackSaved) onFeedbackSaved();
       return true;
     } catch (error) {
@@ -188,7 +189,11 @@ const FeedbackDialog = ({
           )}
         </div>
         <DialogFooter className="flex justify-between sm:justify-end">
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isCurrentlySubmitting}>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsOpen ? setIsOpen(false) : handleOpenChange(false)} 
+            disabled={isCurrentlySubmitting}
+          >
             Batal
           </Button>
           <Button 
