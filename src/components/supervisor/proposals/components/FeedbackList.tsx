@@ -1,6 +1,6 @@
 
 import { MessageSquare } from "lucide-react";
-import { FeedbackEntry } from "@/hooks/useSupervisorProposals";
+import { FeedbackEntry } from "@/types/supervisorProposals";
 
 interface FeedbackListProps {
   feedback: FeedbackEntry[];

@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { TabsContent, Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +6,7 @@ import { FileText, MessageSquare } from "lucide-react";
 import ProposalDetailHeader from './components/ProposalDetailHeader';
 import DetailSection from './components/DetailSection';
 import FeedbackList from './components/FeedbackList';
-import { Document, FeedbackEntry } from "@/hooks/useSupervisorProposals";
+import { Document, FeedbackEntry } from "@/types/supervisorProposals";
 
 // Define a more flexible Proposal type for the component
 interface DetailProposal {
