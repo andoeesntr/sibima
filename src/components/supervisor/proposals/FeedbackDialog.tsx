@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,20 +13,53 @@ import { supabase } from '@/integrations/supabase/client';
 interface FeedbackDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  proposalId: string;
-  onFeedbackSaved: () => void;
+  proposalId?: string;
+  onFeedbackSaved?: () => void;
+  // New props to match Dashboard and Feedback pages usage
+  onOpenChange?: (open: boolean) => void;
+  proposalTitle?: string;
+  onSendFeedback?: (feedback: string) => Promise<boolean>;
+  content?: string;
+  setContent?: (content: string) => void;
+  isSubmitting?: boolean;
+  onSubmit?: () => Promise<boolean>;
 }
 
 const FeedbackDialog = ({
   isOpen,
   setIsOpen,
   proposalId,
-  onFeedbackSaved
+  onFeedbackSaved,
+  onOpenChange,
+  proposalTitle,
+  onSendFeedback,
+  content,
+  setContent,
+  isSubmitting: externalIsSubmitting,
+  onSubmit: externalOnSubmit
 }: FeedbackDialogProps) => {
+  // Use internal state if external state is not provided
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const { user } = useAuth();
+
+  // Handle both patterns: controlled externally or internally
+  const handleOpenChange = (open: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(open);
+    } else {
+      setIsOpen(open);
+    }
+  };
+
+  const handleFeedbackChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (setContent) {
+      setContent(e.target.value);
+    } else {
+      setFeedback(e.target.value);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -36,9 +68,22 @@ const FeedbackDialog = ({
   };
 
   const handleSubmit = async () => {
-    if (!feedback.trim() && !file) {
+    // If external submission handler is provided, use that
+    if (externalOnSubmit) {
+      return externalOnSubmit();
+    }
+
+    // Otherwise use internal handler
+    if (onSendFeedback && content !== undefined) {
+      // Use the provided onSendFeedback function with the content
+      await onSendFeedback(content);
+      return true;
+    }
+
+    // Default internal implementation for direct proposal feedback
+    if (!proposalId || (!feedback.trim() && !file)) {
       toast.error('Harap masukkan feedback atau unggah dokumen');
-      return;
+      return false;
     }
 
     setIsSubmitting(true);
@@ -88,7 +133,7 @@ const FeedbackDialog = ({
       }
 
       // Save feedback if provided
-      if (feedback.trim() && user) {
+      if (feedback.trim() && user && proposalId) {
         await saveProposalFeedback(proposalId, user.id, feedback);
       }
 
@@ -96,17 +141,22 @@ const FeedbackDialog = ({
       setFeedback('');
       setFile(null);
       setIsOpen(false);
-      onFeedbackSaved();
+      if (onFeedbackSaved) onFeedbackSaved();
+      return true;
     } catch (error) {
       console.error("Error submitting feedback:", error);
       toast.error('Gagal menyimpan feedback');
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
   
+  const currentFeedback = content !== undefined ? content : feedback;
+  const isCurrentlySubmitting = externalIsSubmitting !== undefined ? externalIsSubmitting : isSubmitting;
+  
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Berikan Feedback</DialogTitle>
@@ -118,33 +168,36 @@ const FeedbackDialog = ({
               id="feedback"
               placeholder="Tuliskan feedback Anda disini..."
               className="min-h-[100px]"
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
+              value={currentFeedback}
+              onChange={handleFeedbackChange}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="document">Unggah Dokumen (opsional)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="document"
-                type="file"
-                onChange={handleFileChange}
-              />
-              {file && <span className="text-sm text-gray-500">{file.name}</span>}
+          {/* Only show file upload if not externally controlled */}
+          {!onSendFeedback && (
+            <div className="space-y-2">
+              <Label htmlFor="document">Unggah Dokumen (opsional)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="document"
+                  type="file"
+                  onChange={handleFileChange}
+                />
+                {file && <span className="text-sm text-gray-500">{file.name}</span>}
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <DialogFooter className="flex justify-between sm:justify-end">
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isCurrentlySubmitting}>
             Batal
           </Button>
           <Button 
             className="bg-primary hover:bg-primary/90" 
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isCurrentlySubmitting}
           >
-            {isSubmitting ? 'Memproses...' : 'Kirim Feedback'}
-            {isSubmitting && <FileUp className="ml-1 h-4 w-4 animate-bounce" />}
+            {isCurrentlySubmitting ? 'Memproses...' : 'Kirim Feedback'}
+            {isCurrentlySubmitting && <FileUp className="ml-1 h-4 w-4 animate-bounce" />}
           </Button>
         </DialogFooter>
       </DialogContent>
