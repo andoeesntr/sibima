@@ -8,7 +8,6 @@ import { useSupervisorProposals } from '@/hooks/useSupervisorProposals';
 import ProposalsList from '@/components/supervisor/proposals/ProposalsList';
 import ProposalDetailCard from '@/components/supervisor/proposals/ProposalDetailCard';
 import FeedbackDialog from '@/components/supervisor/proposals/FeedbackDialog';
-import { formatDate } from '@/utils/proposalConstants';
 
 const SupervisorFeedback = () => {
   const navigate = useNavigate();
@@ -17,11 +16,12 @@ const SupervisorFeedback = () => {
   
   const {
     proposals,
-    proposalsLoading,
+    loading: proposalsLoading,
     selectedProposal,
     setSelectedProposal,
     handleSelectProposal,
-    handleSendFeedback
+    handleSendFeedback,
+    formatDate
   } = useSupervisorProposals();
   
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
@@ -85,6 +85,7 @@ const SupervisorFeedback = () => {
       {/* Feedback Dialog */}
       <FeedbackDialog
         isOpen={isFeedbackDialogOpen}
+        setIsOpen={setIsFeedbackDialogOpen}
         onOpenChange={setIsFeedbackDialogOpen}
         onSendFeedback={handleSendFeedback}
         proposalTitle={selectedProposal?.title}

@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { fetchTeamSupervisors } from '@/services/supervisorService';
+import { formatDate as formatDateUtil } from '@/utils/proposalConstants';
+import { ProposalStatus } from '@/types/proposals';
 
 export interface FeedbackEntry {
   id: string;
@@ -38,6 +40,7 @@ export interface Proposal {
   }[];
   documents?: Document[];
   feedback?: FeedbackEntry[];
+  supervisorIds?: string[]; // Added to satisfy type requirement
 }
 
 export const useSupervisorProposals = () => {
@@ -46,6 +49,9 @@ export const useSupervisorProposals = () => {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [activeTab, setActiveTab] = useState('detail');
+  const [activeStatus, setActiveStatus] = useState<ProposalStatus>('all');
+  const [feedbackContent, setFeedbackContent] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   // Fetch proposals for the supervisor
   useEffect(() => {
@@ -118,12 +124,12 @@ export const useSupervisorProposals = () => {
             console.error("Error fetching documents:", documentsError);
           }
           
-          // Get feedback for this proposal
+          // Get feedback for this proposal - Fixed query to correctly join with profiles
           const { data: feedback, error: feedbackError } = await supabase
             .from('proposal_feedback')
             .select(`
-              id, content, created_at, 
-              supervisor:profiles!supervisor_id (full_name)
+              id, content, created_at, supervisor_id,
+              profiles!proposal_feedback_supervisor_id_fkey (full_name)
             `)
             .eq('proposal_id', proposal.id)
             .order('created_at', { ascending: false });
@@ -132,11 +138,12 @@ export const useSupervisorProposals = () => {
             console.error("Error fetching feedback:", feedbackError);
           }
           
+          // Process feedback data safely
           const processedFeedback = feedback?.map(fb => ({
             id: fb.id,
             content: fb.content,
             createdAt: fb.created_at,
-            supervisorName: fb.supervisor?.full_name || 'Unknown'
+            supervisorName: fb.profiles?.full_name || 'Unknown'
           })) || [];
           
           const processedDocuments = documents?.map(doc => ({
@@ -145,6 +152,9 @@ export const useSupervisorProposals = () => {
             fileUrl: doc.file_url,
             fileType: doc.file_type
           })) || [];
+
+          // Create a supervisorIds array from the supervisors
+          const supervisorIds = supervisors.map(s => s.id);
           
           processedProposals.push({
             id: proposal.id,
@@ -160,7 +170,8 @@ export const useSupervisorProposals = () => {
             companyName: proposal.company_name,
             supervisors: supervisors,
             documents: processedDocuments,
-            feedback: processedFeedback
+            feedback: processedFeedback,
+            supervisorIds: supervisorIds
           });
         }
         
@@ -182,6 +193,66 @@ export const useSupervisorProposals = () => {
     setSelectedProposal(proposal || null);
     setActiveTab('detail');
   };
+  
+  // Handle proposal selection
+  const handleSelectProposal = (proposal: Proposal) => {
+    setSelectedProposal(proposal);
+    setActiveTab('detail');
+  };
+
+  // Filter proposals by status
+  const filterProposals = (proposals: Proposal[], status: string): Proposal[] => {
+    if (status === 'all') return proposals;
+    return proposals.filter(p => p.status === status);
+  };
+  
+  // Handle status tab change
+  const handleStatusChange = (status: string) => {
+    setActiveStatus(status as ProposalStatus);
+  };
+  
+  // Handle sending feedback
+  const handleSendFeedback = async (feedback: string): Promise<boolean> => {
+    if (!selectedProposal || !user || !feedback.trim()) {
+      toast.error('Feedback tidak boleh kosong');
+      return false;
+    }
+
+    setIsSubmittingFeedback(true);
+    try {
+      const { error } = await supabase
+        .from('proposal_feedback')
+        .insert({
+          proposal_id: selectedProposal.id,
+          supervisor_id: user.id,
+          content: feedback.trim()
+        });
+
+      if (error) {
+        console.error('Error saving feedback:', error);
+        toast.error('Gagal menyimpan feedback');
+        return false;
+      }
+
+      toast.success('Feedback berhasil disimpan');
+      setFeedbackContent('');
+      
+      // Refresh proposals to get the updated feedback
+      selectProposal(selectedProposal.id);
+      return true;
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+      toast.error('Gagal menyimpan feedback');
+      return false;
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+  
+  // Submit feedback
+  const submitFeedback = async (): Promise<boolean> => {
+    return await handleSendFeedback(feedbackContent);
+  };
 
   return {
     proposals,
@@ -190,7 +261,18 @@ export const useSupervisorProposals = () => {
     setSelectedProposal,
     selectProposal,
     activeTab,
-    setActiveTab
+    setActiveTab,
+    handleSelectProposal,
+    activeStatus,
+    handleStatusChange,
+    filterProposals,
+    formatDate: formatDateUtil,
+    feedbackContent,
+    setFeedbackContent,
+    isSubmittingFeedback,
+    submitFeedback,
+    handleSendFeedback,
+    proposalsLoading: loading // Alias for loading to match expected prop name
   };
 };
 

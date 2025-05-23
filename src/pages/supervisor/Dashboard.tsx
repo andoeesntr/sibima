@@ -20,7 +20,7 @@ const SupervisorDashboard = () => {
     selectedProposal,
     setSelectedProposal,
     proposals,
-    proposalsLoading,
+    loading: proposalsLoading,
     activeTab,
     setActiveTab,
     formatDate,
@@ -31,7 +31,8 @@ const SupervisorDashboard = () => {
     filterProposals,
     handleStatusChange,
     activeStatus,
-    handleSendFeedback
+    handleSendFeedback,
+    handleSelectProposal
   } = useSupervisorProposals();
   
   const handlePreviewFile = (url: string, name: string = '') => {
@@ -74,7 +75,7 @@ const SupervisorDashboard = () => {
               proposals={filteredProposals}
               loading={proposalsLoading}
               selectedProposal={selectedProposal}
-              onSelectProposal={setSelectedProposal}
+              onSelectProposal={handleSelectProposal}
               formatDate={formatDate}
             />
             
@@ -96,7 +97,7 @@ const SupervisorDashboard = () => {
               proposals={filterProposals(proposals, 'submitted')}
               loading={proposalsLoading}
               selectedProposal={selectedProposal}
-              onSelectProposal={setSelectedProposal}
+              onSelectProposal={handleSelectProposal}
               formatDate={formatDate}
             />
             
@@ -118,7 +119,7 @@ const SupervisorDashboard = () => {
               proposals={filterProposals(proposals, 'revision')}
               loading={proposalsLoading}
               selectedProposal={selectedProposal}
-              onSelectProposal={setSelectedProposal}
+              onSelectProposal={handleSelectProposal}
               formatDate={formatDate}
             />
             
@@ -140,7 +141,7 @@ const SupervisorDashboard = () => {
               proposals={filterProposals(proposals, 'approved')}
               loading={proposalsLoading}
               selectedProposal={selectedProposal}
-              onSelectProposal={setSelectedProposal}
+              onSelectProposal={handleSelectProposal}
               formatDate={formatDate}
             />
             
@@ -162,7 +163,7 @@ const SupervisorDashboard = () => {
               proposals={filterProposals(proposals, 'rejected')}
               loading={proposalsLoading}
               selectedProposal={selectedProposal}
-              onSelectProposal={setSelectedProposal}
+              onSelectProposal={handleSelectProposal}
               formatDate={formatDate}
             />
             
@@ -181,6 +182,7 @@ const SupervisorDashboard = () => {
       
       <FeedbackDialog
         isOpen={isFeedbackDialogOpen}
+        setIsOpen={setIsFeedbackDialogOpen}
         onOpenChange={setIsFeedbackDialogOpen}
         proposalTitle={selectedProposal?.title}
         onSendFeedback={handleSendFeedback}

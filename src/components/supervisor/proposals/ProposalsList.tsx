@@ -1,15 +1,15 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Proposal } from '@/hooks/useProposals';
 import ProposalListItem from './components/ProposalListItem';
 import ProposalsLoading from './components/ProposalsLoading';
 import ProposalsEmpty from './components/ProposalsEmpty';
 
+// Combined type to support both proposal types
 interface ProposalsListProps {
-  proposals: Proposal[];
+  proposals: any[]; // Use any to accept different proposal structures
   loading: boolean;
-  selectedProposal: Proposal | null | string;
-  onSelectProposal: (proposal: Proposal) => void;
+  selectedProposal: any; // Support both string and object formats
+  onSelectProposal: (proposal: any) => void;
   formatDate?: (dateString: string) => string;
 }
 
@@ -20,12 +20,14 @@ const ProposalsList = ({
   onSelectProposal,
   formatDate = (date) => date
 }: ProposalsListProps) => {
-  const selectedId = typeof selectedProposal === 'string' ? selectedProposal : selectedProposal?.id;
+  const selectedId = typeof selectedProposal === 'string' 
+    ? selectedProposal 
+    : selectedProposal?.id;
   
   // Sort proposals by submissionDate in descending order (newest first)
   const sortedProposals = [...proposals].sort((a, b) => {
-    const dateA = a.submissionDate;
-    const dateB = b.submissionDate;
+    const dateA = a.submissionDate || a.created_at;
+    const dateB = b.submissionDate || b.created_at;
     return new Date(dateB).getTime() - new Date(dateA).getTime();
   });
   
