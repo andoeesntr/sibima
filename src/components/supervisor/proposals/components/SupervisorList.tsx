@@ -16,6 +16,9 @@ const SupervisorList = ({ supervisors }: SupervisorListProps) => {
     return <p className="text-gray-500">Belum ada pembimbing</p>;
   }
 
+  // Add console log to help debug
+  console.log("Rendering SupervisorList with:", supervisors);
+
   return (
     <div className="space-y-2">
       {supervisors.map((supervisor, index) => (

@@ -57,6 +57,9 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
         }
       }
       
+      // Enhanced logging to debug the issue
+      console.log('Supervisors loaded:', supervisors);
+      
       // If we have supervisors in the proposal object, use them instead (for backward compatibility)
       if (proposal.supervisors && proposal.supervisors.length > 0) {
         console.log('Using supervisors from proposal object:', proposal.supervisors);
@@ -80,7 +83,6 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
       if (profile && user) {
         const supervisors: TeamSupervisor[] = [];
         if (proposal.supervisors && proposal.supervisors.length > 0) {
-          // Use supervisors from the proposal object
           console.log('Using supervisors from proposal object for temp team:', proposal.supervisors);
           proposal.supervisors.forEach((supervisor: any) => {
             supervisors.push({

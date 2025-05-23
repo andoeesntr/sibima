@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { fetchTeamSupervisors } from './supervisorService';
 import { FeedbackEntry, Document, Proposal } from '@/types/supervisorProposals';
@@ -67,6 +66,7 @@ const processProposalData = async (proposal: any): Promise<Proposal> => {
   // Get supervisors for this proposal
   let supervisors = [];
   if (proposal.team_id) {
+    // Fetch team supervisors - including all supervisors assigned to the team
     supervisors = await fetchTeamSupervisors(proposal.team_id);
   }
   
@@ -91,7 +91,7 @@ const processProposalData = async (proposal: any): Promise<Proposal> => {
     teamName: proposal.team?.name,
     teamId: proposal.team_id,
     companyName: proposal.company_name,
-    supervisors: supervisors,
+    supervisors: supervisors, // Now contains all team supervisors
     documents: documents,
     feedback: feedback,
     supervisorIds: supervisorIds

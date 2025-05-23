@@ -37,6 +37,9 @@ const DetailSection = ({
   // Only show the most recent document
   const displayDocuments = documents.length > 0 ? [documents[0]] : [];
   
+  // Ensure supervisors are displayed correctly
+  console.log("Supervisors in DetailSection:", supervisors);
+  
   return (
     <div className="space-y-6">
       <div>

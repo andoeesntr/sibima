@@ -52,9 +52,12 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
         if (!teamError) {
           teamData = team;
           
-          // Always fetch team supervisors first
+          // Always fetch team supervisors first - ensuring we get all supervisors
           try {
+            console.log("Fetching supervisors for team:", proposal.team_id);
             const teamSupervisors = await fetchTeamSupervisors(proposal.team_id);
+            console.log("Team supervisors result:", teamSupervisors);
+            
             // Add team supervisors to the supervisors array
             if (teamSupervisors && teamSupervisors.length > 0) {
               supervisors = teamSupervisors;
