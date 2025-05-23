@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -8,7 +7,8 @@ import { useFeedbackManagement } from './useFeedbackManagement';
 import { Proposal, FeedbackEntry, Document } from '@/types/supervisorProposals';
 import { ProposalStatus } from '@/types/proposals';
 
-export { Proposal, FeedbackEntry, Document };
+// Export types with the 'export type' syntax for isolatedModules
+export type { Proposal, FeedbackEntry, Document };
 
 export const useSupervisorProposals = () => {
   const { user } = useAuth();
@@ -70,6 +70,15 @@ export const useSupervisorProposals = () => {
     selectProposal(id, proposals);
   };
 
+  // We need to create an adapter for the handleSendFeedback function to match the expected signature
+  const handleSendFeedbackAdapter = async (feedback: string): Promise<boolean> => {
+    if (!selectedProposal || !user) {
+      toast.error('Proposal tidak ditemukan');
+      return false;
+    }
+    return await handleSendFeedback(selectedProposal.id, user.id, feedback);
+  };
+
   return {
     proposals,
     loading,
@@ -87,7 +96,7 @@ export const useSupervisorProposals = () => {
     setFeedbackContent,
     isSubmittingFeedback,
     submitFeedback,
-    handleSendFeedback,
+    handleSendFeedback: handleSendFeedbackAdapter,
     proposalsLoading: loading // Alias for loading to match expected prop name
   };
 };

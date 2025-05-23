@@ -27,7 +27,7 @@ export const useFeedbackManagement = () => {
     return result;
   };
   
-  // Submit feedback
+  // Submit feedback using the content from state
   const submitFeedback = async (
     proposalId: string,
     supervisorId: string
