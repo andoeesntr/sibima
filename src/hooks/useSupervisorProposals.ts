@@ -40,7 +40,7 @@ export interface Proposal {
   }[];
   documents?: Document[];
   feedback?: FeedbackEntry[];
-  supervisorIds: string[]; // Changed from optional to required
+  supervisorIds: string[];
 }
 
 export const useSupervisorProposals = () => {
@@ -124,13 +124,10 @@ export const useSupervisorProposals = () => {
             console.error("Error fetching documents:", documentsError);
           }
           
-          // Get feedback for this proposal with correct relationship
+          // Get feedback for this proposal - with a different approach to get supervisor names
           const { data: feedbackData, error: feedbackError } = await supabase
             .from('proposal_feedback')
-            .select(`
-              id, content, created_at, supervisor_id,
-              supervisor:profiles(full_name)
-            `)
+            .select('id, content, created_at, supervisor_id')
             .eq('proposal_id', proposal.id)
             .order('created_at', { ascending: false });
             
@@ -138,13 +135,26 @@ export const useSupervisorProposals = () => {
             console.error("Error fetching feedback:", feedbackError);
           }
           
-          // Process feedback data safely
-          const processedFeedback = feedbackData?.map(fb => ({
-            id: fb.id,
-            content: fb.content,
-            createdAt: fb.created_at,
-            supervisorName: fb.supervisor?.full_name || 'Unknown'
-          })) || [];
+          // Process feedback data with a separate query for supervisor names
+          const processedFeedback: FeedbackEntry[] = [];
+          
+          if (feedbackData && feedbackData.length > 0) {
+            for (const fb of feedbackData) {
+              // Get supervisor name with a separate query
+              const { data: supervisorData } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', fb.supervisor_id)
+                .single();
+              
+              processedFeedback.push({
+                id: fb.id,
+                content: fb.content,
+                createdAt: fb.created_at,
+                supervisorName: supervisorData?.full_name || 'Unknown'
+              });
+            }
+          }
           
           const processedDocuments = documents?.map(doc => ({
             id: doc.id,
@@ -171,7 +181,7 @@ export const useSupervisorProposals = () => {
             supervisors: supervisors,
             documents: processedDocuments,
             feedback: processedFeedback,
-            supervisorIds: supervisorIds // Ensure this is always provided
+            supervisorIds: supervisorIds
           });
         }
         
