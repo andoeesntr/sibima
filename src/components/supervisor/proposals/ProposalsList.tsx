@@ -11,7 +11,9 @@ interface CommonProposal {
   submissionDate: string;
   status: string;
   studentName?: string;
-  supervisorIds?: string[] | string[];
+  supervisorIds: string[]; // Make required to match other interfaces
+  description?: string;     // Add description field
+  created_at?: string;      // Add created_at for sorting
 }
 
 interface ProposalsListProps {
@@ -35,8 +37,8 @@ const ProposalsList = ({
   
   // Sort proposals by submissionDate in descending order (newest first)
   const sortedProposals = [...proposals].sort((a, b) => {
-    const dateA = a.submissionDate || a.created_at;
-    const dateB = b.submissionDate || b.created_at;
+    const dateA = a.submissionDate || a.created_at || '';
+    const dateB = b.submissionDate || b.created_at || '';
     return new Date(dateB).getTime() - new Date(dateA).getTime();
   });
   

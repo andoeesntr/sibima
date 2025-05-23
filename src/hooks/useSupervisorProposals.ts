@@ -128,7 +128,7 @@ export const useSupervisorProposals = () => {
             .from('proposal_feedback')
             .select(`
               id, content, created_at, supervisor_id,
-              profiles:supervisor_id(full_name)
+              supervisor:profiles!proposal_feedback_supervisor_id_fkey(full_name)
             `)
             .eq('proposal_id', proposal.id)
             .order('created_at', { ascending: false });
@@ -142,7 +142,7 @@ export const useSupervisorProposals = () => {
             id: fb.id,
             content: fb.content,
             createdAt: fb.created_at,
-            supervisorName: fb.profiles?.full_name || 'Unknown'
+            supervisorName: fb.supervisor?.full_name || 'Unknown'
           })) || [];
           
           const processedDocuments = documents?.map(doc => ({

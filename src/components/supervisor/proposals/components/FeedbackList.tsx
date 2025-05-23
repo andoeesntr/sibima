@@ -1,16 +1,9 @@
 
 import { MessageSquare } from "lucide-react";
-
-interface Feedback {
-  id: string;
-  content: string;
-  created_at: string;
-  supervisor_id: string;
-  supervisor_name?: string;
-}
+import { FeedbackEntry } from "@/hooks/useSupervisorProposals";
 
 interface FeedbackListProps {
-  feedback: Feedback[];
+  feedback: FeedbackEntry[];
   formatDate: (dateString: string) => string;
 }
 
@@ -35,10 +28,10 @@ const FeedbackList = ({ feedback, formatDate }: FeedbackListProps) => {
         >
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">
-              {item.supervisor_name || 'Dosen Pembimbing'}
+              {item.supervisorName || 'Dosen Pembimbing'}
             </span>
             <span className="text-xs text-gray-500">
-              {formatDate(item.created_at)}
+              {formatDate(item.createdAt)}
             </span>
           </div>
           <p className="text-gray-700">{item.content}</p>
