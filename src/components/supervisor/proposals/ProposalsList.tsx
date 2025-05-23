@@ -11,9 +11,9 @@ interface CommonProposal {
   submissionDate: string;
   status: string;
   studentName?: string;
-  supervisorIds: string[]; // Make required to match other interfaces
-  description?: string;     // Add description field
-  created_at?: string;      // Add created_at for sorting
+  supervisorIds: string[]; // Required to match other interfaces
+  description: string;     // Changed from optional to required
+  created_at?: string;     // Add created_at for sorting
 }
 
 interface ProposalsListProps {

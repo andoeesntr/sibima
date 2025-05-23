@@ -1,10 +1,19 @@
 
 import { Badge } from "@/components/ui/badge";
-import { Proposal } from '@/hooks/useProposals';
 import { statusColors, statusLabels } from '@/utils/proposalConstants';
 
+// Use a more generic type that matches CommonProposal from ProposalsList
+interface ProposalItem {
+  id: string;
+  title: string;
+  submissionDate: string;
+  status: string;
+  studentName?: string;
+  [key: string]: any; // Allow for other properties
+}
+
 interface ProposalListItemProps {
-  proposal: Proposal;
+  proposal: ProposalItem;
   isSelected: boolean;
   formatDate: (dateString: string) => string;
   onClick: () => void;
