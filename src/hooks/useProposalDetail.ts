@@ -78,9 +78,11 @@ export const useProposalDetail = (proposalId: string | undefined): UseProposalDe
           return;
         }
 
-        // Fetch supervisors - prioritize team supervisors
+        // Always prioritize team supervisors over individual supervisor
         let fetchedSupervisors: Supervisor[] = [];
+        
         if (proposalData.team_id) {
+          // Fetch team supervisors first
           fetchedSupervisors = await fetchTeamSupervisors(proposalData.team_id);
           console.log('Team supervisors:', fetchedSupervisors);
         }
@@ -94,18 +96,43 @@ export const useProposalDetail = (proposalId: string | undefined): UseProposalDe
 
         setSupervisors(fetchedSupervisors);
 
-        // Fetch documents
-        const { data: documentData, error: documentError } = await supabase
-          .from('proposal_documents')
-          .select('id, file_name, file_url, file_type, uploaded_at')
-          .eq('proposal_id', proposalId);
+        // Fetch documents for this proposal and its team
+        let documents = [];
+        if (proposalData.team_id) {
+          // Get all proposals for this team to fetch their documents
+          const { data: teamProposals, error: teamProposalsError } = await supabase
+            .from('proposals')
+            .select('id')
+            .eq('team_id', proposalData.team_id);
+            
+          if (!teamProposalsError && teamProposals && teamProposals.length > 0) {
+            const teamProposalIds = teamProposals.map(p => p.id);
+            
+            // Fetch all documents for these proposals
+            const { data: teamDocuments, error: docsError } = await supabase
+              .from('proposal_documents')
+              .select('id, file_name, file_url, file_type, uploaded_at')
+              .in('proposal_id', teamProposalIds)
+              .order('uploaded_at', { ascending: false });
+              
+            if (!docsError) {
+              documents = teamDocuments || [];
+            }
+          }
+        } else {
+          // If no team, just fetch documents for this proposal
+          const { data: documentData, error: documentError } = await supabase
+            .from('proposal_documents')
+            .select('id, file_name, file_url, file_type, uploaded_at')
+            .eq('proposal_id', proposalId);
 
-        if (documentError) {
-          console.error('Error fetching documents:', documentError);
+          if (!documentError) {
+            documents = documentData || [];
+          }
         }
 
         setProposal(proposalData);
-        setAttachments(documentData || []);
+        setAttachments(documents);
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Gagal memuat data');

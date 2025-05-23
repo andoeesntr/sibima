@@ -41,27 +41,6 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
       let teamData = null;
       let supervisors = [];
       
-      // Fetch supervisor data if exists
-      if (proposal.supervisor_id) {
-        const { data: supervisor, error: supervisorError } = await supabase
-          .from('profiles')
-          .select('id, full_name, profile_image')
-          .eq('id', proposal.supervisor_id)
-          .single();
-          
-        if (!supervisorError) {
-          supervisorData = supervisor;
-          // Add to supervisors array if found
-          if (supervisor) {
-            supervisors.push({
-              id: supervisor.id,
-              full_name: supervisor.full_name,
-              profile_image: supervisor.profile_image
-            });
-          }
-        }
-      }
-      
       // Fetch team data if exists
       if (proposal.team_id) {
         const { data: team, error: teamError } = await supabase
@@ -73,7 +52,7 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
         if (!teamError) {
           teamData = team;
           
-          // Fetch team supervisors if team exists
+          // Always fetch team supervisors first
           try {
             const teamSupervisors = await fetchTeamSupervisors(proposal.team_id);
             // Add team supervisors to the supervisors array
@@ -83,6 +62,25 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
           } catch (error) {
             console.error("Error fetching team supervisors:", error);
           }
+        }
+      }
+      
+      // If no team supervisors found and there's a direct supervisor_id, fetch that as fallback
+      if (supervisors.length === 0 && proposal.supervisor_id) {
+        const { data: supervisor, error: supervisorError } = await supabase
+          .from('profiles')
+          .select('id, full_name, profile_image')
+          .eq('id', proposal.supervisor_id)
+          .single();
+          
+        if (!supervisorError && supervisor) {
+          supervisorData = supervisor;
+          // Add to supervisors array
+          supervisors.push({
+            id: supervisor.id,
+            full_name: supervisor.full_name,
+            profile_image: supervisor.profile_image
+          });
         }
       }
       

@@ -71,3 +71,36 @@ export async function fetchMainSupervisor(supervisorId: string): Promise<Supervi
     return [];
   }
 }
+
+export async function fetchProposalSupervisors(proposalId: string): Promise<Supervisor[]> {
+  try {
+    console.log(`Fetching supervisors for proposal ${proposalId}`);
+    
+    // First get the proposal to find the team and main supervisor
+    const { data: proposalData, error: proposalError } = await supabase
+      .from('proposals')
+      .select('team_id, supervisor_id')
+      .eq('id', proposalId)
+      .single();
+      
+    if (proposalError) {
+      console.error(`Error fetching proposal ${proposalId}:`, proposalError);
+      return [];
+    }
+    
+    // If the proposal has a team, fetch team supervisors
+    if (proposalData.team_id) {
+      return await fetchTeamSupervisors(proposalData.team_id);
+    }
+    
+    // If no team but has supervisor, fetch main supervisor
+    if (proposalData.supervisor_id) {
+      return await fetchMainSupervisor(proposalData.supervisor_id);
+    }
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching proposal supervisors:`, error);
+    return [];
+  }
+}
