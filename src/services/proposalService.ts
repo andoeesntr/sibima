@@ -38,11 +38,57 @@ export async function fetchProposalsList() {
 
 export async function fetchProposalDocuments(proposalId: string) {
   try {
+    // First, we need to check if this proposal is part of a team
+    const { data: proposalData, error: proposalError } = await supabase
+      .from('proposals')
+      .select('team_id')
+      .eq('id', proposalId)
+      .single();
+    
+    if (proposalError) {
+      console.error(`Error fetching proposal ${proposalId} team info:`, proposalError);
+      throw proposalError;
+    }
+
+    // If the proposal is part of a team, we should fetch all documents for all proposals in the team
+    if (proposalData?.team_id) {
+      // Get all proposals for this team
+      const { data: teamProposals, error: teamProposalsError } = await supabase
+        .from('proposals')
+        .select('id')
+        .eq('team_id', proposalData.team_id);
+      
+      if (teamProposalsError) {
+        console.error(`Error fetching team proposals for team ${proposalData.team_id}:`, teamProposalsError);
+        throw teamProposalsError;
+      }
+
+      if (teamProposals && teamProposals.length > 0) {
+        // Get all proposal IDs in the team
+        const teamProposalIds = teamProposals.map(p => p.id);
+        
+        // Fetch documents for all proposals in the team
+        const { data, error } = await supabase
+          .from('proposal_documents')
+          .select('id, file_name, file_url, file_type, uploaded_at')
+          .in('proposal_id', teamProposalIds)
+          .order('uploaded_at', { ascending: false });
+        
+        if (error) {
+          console.error(`Error fetching documents for team proposals:`, error);
+          throw error;
+        }
+
+        return data || [];
+      }
+    }
+
+    // If no team or fallback, just fetch documents for this proposal
     const { data, error } = await supabase
       .from('proposal_documents')
       .select('id, file_name, file_url, file_type, uploaded_at')
       .eq('proposal_id', proposalId)
-      .order('uploaded_at', { ascending: false }); // Sort by upload date, newest first
+      .order('uploaded_at', { ascending: false });
     
     if (error) {
       console.error(`Error fetching documents for proposal ${proposalId}:`, error);
@@ -159,11 +205,61 @@ export async function saveProposalFeedback(proposalId: string, supervisorId: str
       throw error;
     }
 
+    // Get the team ID for the proposal
+    const { data: proposalData } = await supabase
+      .from('proposals')
+      .select('team_id')
+      .eq('id', proposalId)
+      .single();
+
+    // If the proposal is part of a team, sync the feedback to all team members' proposals
+    if (proposalData?.team_id) {
+      await syncFeedbackWithTeam(proposalId, proposalData.team_id, content, supervisorId);
+    }
+
     return data;
   } catch (error: any) {
     console.error("Error saving feedback:", error);
     toast.error("Failed to save feedback");
     throw error;
+  }
+}
+
+// New function to sync feedback across team members' proposals
+async function syncFeedbackWithTeam(sourceProposalId: string, teamId: string, content: string, supervisorId: string) {
+  try {
+    // Get all proposals for this team except the source proposal
+    const { data: teamProposals, error: teamProposalsError } = await supabase
+      .from('proposals')
+      .select('id')
+      .eq('team_id', teamId)
+      .neq('id', sourceProposalId);
+    
+    if (teamProposalsError) {
+      console.error(`Error fetching team proposals for feedback sync:`, teamProposalsError);
+      return;
+    }
+
+    if (teamProposals && teamProposals.length > 0) {
+      // Create feedback entries for all other team members' proposals
+      const feedbackEntries = teamProposals.map(proposal => ({
+        proposal_id: proposal.id,
+        supervisor_id: supervisorId,
+        content: content
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('proposal_feedback')
+        .insert(feedbackEntries);
+      
+      if (insertError) {
+        console.error("Error syncing feedback with team:", insertError);
+      } else {
+        console.log("Successfully synced feedback to all team members");
+      }
+    }
+  } catch (error) {
+    console.error("Error in syncFeedbackWithTeam:", error);
   }
 }
 
@@ -278,6 +374,64 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
     return true;
   } catch (error) {
     console.error("Error syncing proposal status with team:", error);
+    return false;
+  }
+}
+
+// New function to save document to all team members' proposals
+export async function saveDocumentToAllTeamProposals(
+  sourceProposalId: string, 
+  fileUrl: string, 
+  fileName: string, 
+  fileType: string | null, 
+  uploadedBy: string
+) {
+  try {
+    // First get the proposal to find the team
+    const { data: proposalData, error: proposalError } = await supabase
+      .from('proposals')
+      .select('team_id')
+      .eq('id', sourceProposalId)
+      .single();
+
+    if (proposalError || !proposalData?.team_id) {
+      console.error("Error fetching proposal for document sync:", proposalError);
+      return false;
+    }
+
+    // Get all proposals for this team
+    const { data: teamProposals, error: teamProposalsError } = await supabase
+      .from('proposals')
+      .select('id')
+      .eq('team_id', proposalData.team_id);
+
+    if (teamProposalsError || !teamProposals) {
+      console.error("Error fetching team proposals for document sync:", teamProposalsError);
+      return false;
+    }
+
+    // Create document entries for all team proposals
+    const documentEntries = teamProposals.map(proposal => ({
+      proposal_id: proposal.id,
+      file_name: fileName,
+      file_url: fileUrl,
+      file_type: fileType,
+      uploaded_by: uploadedBy
+    }));
+
+    const { error: insertError } = await supabase
+      .from('proposal_documents')
+      .insert(documentEntries);
+
+    if (insertError) {
+      console.error("Error creating documents for team members:", insertError);
+      return false;
+    }
+
+    console.log("Successfully saved document to all team members:", documentEntries.length);
+    return true;
+  } catch (error) {
+    console.error("Error in saveDocumentToAllTeamProposals:", error);
     return false;
   }
 }

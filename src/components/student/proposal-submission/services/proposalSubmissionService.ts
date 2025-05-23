@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { saveDocumentToAllTeamProposals } from '@/services/proposalService';
 
 interface Student {
   id: string;
@@ -184,7 +184,8 @@ export async function handleProposalSubmission({
 
     // Upload new file if provided
     if (file && finalProposalId) {
-      await handleFileUpload(file, user.id, finalProposalId, existingDocumentId);
+      const fileUploadResult = await handleFileUpload(file, user.id, finalProposalId, existingDocumentId, teamId);
+      console.log("File upload result:", fileUploadResult);
     }
 
     await supabase.from('activity_logs').insert({
@@ -202,7 +203,13 @@ export async function handleProposalSubmission({
   }
 }
 
-async function handleFileUpload(file: File, userId: string, proposalId: string, existingDocumentId: string | null) {
+async function handleFileUpload(
+  file: File, 
+  userId: string, 
+  proposalId: string, 
+  existingDocumentId: string | null,
+  teamId: string | null
+) {
   const fileName = `${Date.now()}_${file.name}`;
   const fileExt = fileName.split('.').pop();
   const filePath = `${userId}/${proposalId}/${fileName}`;
@@ -277,19 +284,35 @@ async function handleFileUpload(file: File, userId: string, proposalId: string, 
       throw new Error('Failed to get public URL for uploaded file');
     }
 
-    // Add document record in the database
-    const { error: documentError } = await supabase
-      .from('proposal_documents')
-      .insert({
-        proposal_id: proposalId,
-        file_name: fileName,
-        file_url: publicURLData.publicUrl,
-        file_type: fileExt,
-        uploaded_by: userId
-      });
+    // If we have a team ID, save document to all team members' proposals
+    if (teamId) {
+      const result = await saveDocumentToAllTeamProposals(
+        proposalId,
+        publicURLData.publicUrl,
+        fileName,
+        fileExt || null,
+        userId
+      );
+      
+      if (result) {
+        console.log("Document saved to all team members successfully");
+        return publicURLData.publicUrl;
+      }
+    } else {
+      // If no team, just add document to this proposal
+      const { error: documentError } = await supabase
+        .from('proposal_documents')
+        .insert({
+          proposal_id: proposalId,
+          file_name: fileName,
+          file_url: publicURLData.publicUrl,
+          file_type: fileExt,
+          uploaded_by: userId
+        });
 
-    if (documentError) {
-      throw documentError;
+      if (documentError) {
+        throw documentError;
+      }
     }
 
     return publicURLData.publicUrl;
