@@ -2,6 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { fetchTeamSupervisors } from '../supervisorService';
 import { FeedbackEntry, Document, Proposal } from '@/types/supervisorProposals';
+import { fetchProposalDocuments } from './documentService';
+import { fetchProposalFeedback } from './feedbackService';
 
 // Fetch all proposals for a supervisor
 export const fetchSupervisorProposals = async (userId: string): Promise<Proposal[]> => {
