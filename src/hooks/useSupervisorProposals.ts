@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -123,12 +124,12 @@ export const useSupervisorProposals = () => {
             console.error("Error fetching documents:", documentsError);
           }
           
-          // Get feedback for this proposal with a modified query that works
+          // Get feedback for this proposal with correct relationship
           const { data: feedbackData, error: feedbackError } = await supabase
             .from('proposal_feedback')
             .select(`
               id, content, created_at, supervisor_id,
-              profiles:profiles!proposal_feedback_supervisor_id_fkey(full_name)
+              supervisor:profiles(full_name)
             `)
             .eq('proposal_id', proposal.id)
             .order('created_at', { ascending: false });
@@ -142,7 +143,7 @@ export const useSupervisorProposals = () => {
             id: fb.id,
             content: fb.content,
             createdAt: fb.created_at,
-            supervisorName: fb.profiles?.full_name || 'Unknown'
+            supervisorName: fb.supervisor?.full_name || 'Unknown'
           })) || [];
           
           const processedDocuments = documents?.map(doc => ({
