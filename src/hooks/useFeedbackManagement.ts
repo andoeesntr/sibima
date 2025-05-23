@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { sendProposalFeedback } from '@/services/supervisorProposalService';
+import { sendProposalFeedback } from '@/services/supervisor/feedbackService';
 
 export const useFeedbackManagement = () => {
   const [feedbackContent, setFeedbackContent] = useState('');

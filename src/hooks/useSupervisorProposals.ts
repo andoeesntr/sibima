@@ -1,11 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { fetchSupervisorProposals } from '@/services/supervisorProposalService';
+import { fetchSupervisorProposals } from '@/services/supervisor';
 import { useProposalFilters } from './useProposalFilters';
 import { useFeedbackManagement } from './useFeedbackManagement';
-import { Proposal, FeedbackEntry, Document } from '@/types/supervisorProposals';
-import { ProposalStatus } from '@/types/proposals';
+import type { Proposal, FeedbackEntry, Document } from '@/types/supervisorProposals';
 
 // Export types with the 'export type' syntax for isolatedModules
 export type { Proposal, FeedbackEntry, Document };
