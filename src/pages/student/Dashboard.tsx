@@ -84,12 +84,14 @@ const StudentDashboard = () => {
               <CardContent>
                 <div className="text-center py-6">
                   <p className="text-gray-600">Anda belum memiliki tim KP</p>
-                  <Button 
-                    className="mt-4 bg-primary hover:bg-primary/90"
-                    onClick={navigateToProposalSubmission}
-                  >
-                    Buat Tim KP
-                  </Button>
+                  {!hasActiveProposal && (
+                    <Button 
+                      className="mt-4 bg-primary hover:bg-primary/90"
+                      onClick={navigateToProposalSubmission}
+                    >
+                      Buat Tim KP
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -126,8 +128,8 @@ const StudentDashboard = () => {
         selectedProposal={selectedProposal}
       />
       
-      {/* Submit Proposal Button (if not in a proposal yet) */}
-      {!hasActiveProposal && (
+      {/* Submit Proposal Button (only show if no active proposal) */}
+      {!hasActiveProposal && proposals.length === 0 && (
         <div className="flex justify-center mt-6">
           <Button
             onClick={navigateToProposalSubmission}
