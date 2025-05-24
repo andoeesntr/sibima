@@ -41,28 +41,30 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
         });
       }
       
-      // Fetch all team supervisors using team_supervisors service
+      // Always fetch team supervisors using the team_supervisors service
       let supervisors: TeamSupervisor[] = [];
       if (proposal.team.id) {
         try {
+          console.log('Fetching supervisors for team ID:', proposal.team.id);
           const teamSupervisors = await fetchTeamSupervisors(proposal.team.id);
-          console.log('fetchTeamData - Team supervisors:', teamSupervisors);
+          console.log('Team supervisors fetched:', teamSupervisors);
+          
+          // Map supervisors to the expected format
           supervisors = teamSupervisors.map(supervisor => ({
             id: supervisor.id,
             name: supervisor.full_name,
             profile_image: supervisor.profile_image
           }));
+          
+          console.log('Mapped supervisors:', supervisors);
         } catch (error) {
           console.error("Error fetching team supervisors:", error);
         }
       }
       
-      // Enhanced logging to debug the issue
-      console.log('Supervisors loaded:', supervisors);
-      
-      // If we have supervisors in the proposal object, use them instead (for backward compatibility)
-      if (proposal.supervisors && proposal.supervisors.length > 0) {
-        console.log('Using supervisors from proposal object:', proposal.supervisors);
+      // Fallback: If no team supervisors found, try to use supervisors from proposal
+      if (supervisors.length === 0 && proposal.supervisors && proposal.supervisors.length > 0) {
+        console.log('Using supervisors from proposal object as fallback:', proposal.supervisors);
         supervisors = proposal.supervisors.map(supervisor => ({
           id: supervisor.id,
           name: supervisor.full_name,
@@ -82,6 +84,8 @@ export const fetchTeamData = async (proposal: any, profile: any, user: any): Pro
       // Create a temporary team based on the user
       if (profile && user) {
         const supervisors: TeamSupervisor[] = [];
+        
+        // Try to get supervisors from proposal object
         if (proposal.supervisors && proposal.supervisors.length > 0) {
           console.log('Using supervisors from proposal object for temp team:', proposal.supervisors);
           proposal.supervisors.forEach((supervisor: any) => {

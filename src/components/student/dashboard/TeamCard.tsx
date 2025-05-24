@@ -13,6 +13,8 @@ interface TeamCardProps {
 export const TeamCard = ({ team }: TeamCardProps) => {
   const navigate = useNavigate();
   
+  console.log('TeamCard rendering with team:', team);
+  
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow h-full">
       <CardHeader>

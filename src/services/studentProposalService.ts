@@ -52,7 +52,7 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
         if (!teamError) {
           teamData = team;
           
-          // Always fetch team supervisors first - ensuring we get all supervisors
+          // Always fetch team supervisors first - ensuring we get ALL supervisors
           try {
             console.log("Fetching supervisors for team:", proposal.team_id);
             const teamSupervisors = await fetchTeamSupervisors(proposal.team_id);
@@ -60,7 +60,12 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
             
             // Add team supervisors to the supervisors array
             if (teamSupervisors && teamSupervisors.length > 0) {
-              supervisors = teamSupervisors;
+              supervisors = teamSupervisors.map(supervisor => ({
+                id: supervisor.id,
+                full_name: supervisor.full_name,
+                profile_image: supervisor.profile_image
+              }));
+              console.log("Mapped team supervisors:", supervisors);
             }
           } catch (error) {
             console.error("Error fetching team supervisors:", error);
@@ -70,6 +75,7 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
       
       // If no team supervisors found and there's a direct supervisor_id, fetch that as fallback
       if (supervisors.length === 0 && proposal.supervisor_id) {
+        console.log("No team supervisors found, fetching direct supervisor:", proposal.supervisor_id);
         const { data: supervisor, error: supervisorError } = await supabase
           .from('profiles')
           .select('id, full_name, profile_image')
@@ -86,6 +92,8 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
           });
         }
       }
+      
+      console.log("Final supervisors for proposal:", proposal.id, supervisors);
       
       processedProposals.push({
         id: proposal.id,
