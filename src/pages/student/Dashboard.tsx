@@ -54,7 +54,7 @@ const StudentDashboard = () => {
 
       {/* Timeline at the top */}
       <div className="bg-white p-4 rounded-lg border shadow-sm mb-6">
-        <h2 className="text-lg font-medium mb-2">Timeline KP</h2>
+        <h2 className="text-lg font-medium mb-2">Timeline KP123</h2>
         <KpTimeline readOnly={true} />
       </div>
       
