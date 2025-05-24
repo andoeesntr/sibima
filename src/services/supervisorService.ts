@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Supervisor {
@@ -28,6 +29,8 @@ export async function fetchTeamSupervisors(teamId: string): Promise<Supervisor[]
       // Extract supervisor IDs
       const supervisorIds = teamSupervisors.map(s => s.supervisor_id);
       
+      console.log('Fetching profiles for supervisor IDs:', supervisorIds);
+      
       // Fetch the profile details for these supervisors
       const { data: supervisorProfiles, error: profilesError } = await supabase
         .from('profiles')
@@ -39,7 +42,7 @@ export async function fetchTeamSupervisors(teamId: string): Promise<Supervisor[]
         return [];
       }
       
-      console.log(`Fetched supervisor profiles:`, supervisorProfiles);
+      console.log(`Successfully fetched ${supervisorProfiles?.length || 0} supervisor profiles:`, supervisorProfiles);
       return supervisorProfiles || [];
     }
 

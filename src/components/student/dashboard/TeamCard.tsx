@@ -14,6 +14,8 @@ export const TeamCard = ({ team }: TeamCardProps) => {
   const navigate = useNavigate();
   
   console.log('TeamCard rendering with team:', team);
+  console.log('Team supervisors count:', team?.supervisors?.length || 0);
+  console.log('Team supervisors data:', team?.supervisors);
   
   return (
     <Card className="shadow-sm hover:shadow-md transition-shadow h-full">
@@ -49,16 +51,19 @@ export const TeamCard = ({ team }: TeamCardProps) => {
             <div>
               <span className="font-medium text-gray-700 block mb-2">Dosen Pembimbing:</span>
               <div className="space-y-2">
-                {team.supervisors && team.supervisors.length > 0 ? team.supervisors.map((supervisor, index) => (
-                  <div key={supervisor.id} className="flex items-center p-1.5 bg-gray-50 rounded text-sm">
-                    <Avatar className="h-6 w-6 mr-1.5">
-                      <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.name} />
-                      <AvatarFallback>{supervisor.name ? supervisor.name.charAt(0) : 'P'}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">{supervisor.name}</span>
-                    <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
-                  </div>
-                )) : (
+                {team.supervisors && team.supervisors.length > 0 ? team.supervisors.map((supervisor, index) => {
+                  console.log(`Rendering supervisor ${index + 1}:`, supervisor);
+                  return (
+                    <div key={supervisor.id} className="flex items-center p-1.5 bg-gray-50 rounded text-sm">
+                      <Avatar className="h-6 w-6 mr-1.5">
+                        <AvatarImage src={supervisor.profile_image || "/placeholder.svg"} alt={supervisor.name} />
+                        <AvatarFallback>{supervisor.name ? supervisor.name.charAt(0) : 'P'}</AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{supervisor.name}</span>
+                      <span className="ml-auto text-xs text-gray-500">Pembimbing {index + 1}</span>
+                    </div>
+                  );
+                }) : (
                   <div className="p-2 text-gray-500 text-xs">Belum ada dosen pembimbing</div>
                 )}
               </div>
