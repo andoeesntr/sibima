@@ -52,7 +52,11 @@ const StudentDashboard = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-  
+      {/* Timeline at the top */}
+      <div className="bg-white p-4 rounded-lg border shadow-sm mb-6">
+        
+        <KpTimeline readOnly={true} />
+      </div>
       
       {/* Status and Team Cards in a grid with adjusted proportions */}
       <div className="grid grid-cols-12 gap-6">
