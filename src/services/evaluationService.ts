@@ -35,7 +35,7 @@ export const fetchAllEvaluations = async (): Promise<Evaluation[]> => {
       throw error;
     }
 
-    return data || [];
+    return (data || []) as Evaluation[];
   } catch (error) {
     console.error('Error in fetchAllEvaluations:', error);
     throw error;
@@ -59,7 +59,7 @@ export const fetchStudentEvaluations = async (studentId: string): Promise<Evalua
       throw error;
     }
 
-    return data || [];
+    return (data || []) as Evaluation[];
   } catch (error) {
     console.error('Error in fetchStudentEvaluations:', error);
     throw error;
@@ -114,7 +114,7 @@ export const createEvaluation = async (evaluationData: {
       user_name: profile?.full_name || 'Coordinator'
     });
 
-    return data;
+    return data as Evaluation;
   } catch (error) {
     console.error('Error in createEvaluation:', error);
     throw error;
@@ -166,7 +166,7 @@ export const updateEvaluation = async (
       user_name: profile?.full_name || 'Coordinator'
     });
 
-    return data;
+    return data as Evaluation;
   } catch (error) {
     console.error('Error in updateEvaluation:', error);
     throw error;

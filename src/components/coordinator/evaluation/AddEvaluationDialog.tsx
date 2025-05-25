@@ -55,7 +55,7 @@ const AddEvaluationDialog = ({
       
       // Filter out students who already have evaluations
       const studentsWithEvaluations = new Set(
-        existingEvaluations.map(eval => eval.student_id)
+        existingEvaluations.map(evaluation => evaluation.student_id)
       );
       
       const availableStudents = (data || []).filter(
