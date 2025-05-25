@@ -1,10 +1,11 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Evaluation {
   id: string;
   student_id: string;
   evaluator_id: string;
-  evaluator_type: 'supervisor' | 'company';
+  evaluator_type: 'supervisor' | 'field_supervisor';
   score: number;
   comments?: string;
   evaluation_date: string;
@@ -41,10 +42,34 @@ export const fetchAllEvaluations = async (): Promise<Evaluation[]> => {
   }
 };
 
+export const fetchStudentEvaluations = async (studentId: string): Promise<Evaluation[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('evaluations')
+      .select(`
+        *,
+        student:profiles!student_id(full_name, nim),
+        evaluator:profiles!evaluator_id(full_name)
+      `)
+      .eq('student_id', studentId)
+      .order('evaluation_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching student evaluations:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in fetchStudentEvaluations:', error);
+    throw error;
+  }
+};
+
 export const createEvaluation = async (evaluationData: {
   student_id: string;
   evaluator_id: string;
-  evaluator_type: 'supervisor' | 'company';
+  evaluator_type: 'supervisor' | 'field_supervisor';
   score: number;
   comments?: string;
   document_url?: string;
