@@ -31,6 +31,15 @@ export const fetchUserProfile = async (userId: string): Promise<Profile | null> 
 export const updateUserProfile = async (userId: string, updates: Partial<Profile>): Promise<boolean> => {
   try {
     console.log('Updating profile with:', updates);
+    
+    // Get current user info for activity log
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', userId)
+      .single();
+
     const { error } = await supabase
       .from('profiles')
       .update(updates)
@@ -38,6 +47,17 @@ export const updateUserProfile = async (userId: string, updates: Partial<Profile
       
     if (error) {
       throw error;
+    }
+
+    // Log the activity if it's a coordinator updating profile
+    if (currentProfile?.role === 'coordinator') {
+      await supabase.from('activity_logs').insert({
+        action: `Memperbarui profil`,
+        target_type: 'profile',
+        target_id: userId,
+        user_id: user?.id || userId,
+        user_name: updates.full_name || currentProfile?.full_name || 'Coordinator'
+      });
     }
     
     toast.success('Profile updated successfully');

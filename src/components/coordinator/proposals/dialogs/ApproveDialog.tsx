@@ -19,6 +19,21 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
+      // Get current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      // Get proposal info for activity log
+      const { data: proposal } = await supabase
+        .from('proposals')
+        .select('title, student_id, profiles!student_id(full_name)')
+        .eq('id', proposalId)
+        .single();
+
       // Update proposal status
       const { error } = await supabase
         .from('proposals')
@@ -32,11 +47,11 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
       
       // Log the activity
       await supabase.from('activity_logs').insert({
-        action: 'approved',
+        action: `Menyetujui proposal "${proposal?.title}" dari ${proposal?.profiles?.full_name}`,
         target_type: 'proposal',
         target_id: proposalId,
-        user_id: 'coordinator', // Ideally this should be the actual coordinator ID
-        user_name: 'Coordinator' // Ideally this should be the actual coordinator name
+        user_id: user?.id || 'coordinator',
+        user_name: profile?.full_name || 'Coordinator'
       });
       
       // Sync status with team members
