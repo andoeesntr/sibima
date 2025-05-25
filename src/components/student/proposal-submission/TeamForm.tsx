@@ -54,9 +54,9 @@ const TeamForm = ({
   const handleAddMember = () => {
     if (!selectedMember) return;
     
-    // Check if adding this member would exceed the maximum team size
+    // Strict validation: Check if adding this member would exceed the maximum team size
     if (teamMembers.length >= MAX_TEAM_SIZE) {
-      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang`);
+      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang (termasuk Anda)`);
       return;
     }
     
@@ -64,15 +64,23 @@ const TeamForm = ({
     if (studentToAdd && !teamMembers.some(member => member.id === selectedMember)) {
       setTeamMembers([...teamMembers, studentToAdd]);
       setSelectedMember('');
+      toast.success(`${studentToAdd.full_name} berhasil ditambahkan ke tim`);
     }
   };
 
   const handleRemoveMember = (id: string) => {
+    // Prevent removing the first member (team leader/submitter)
     if (id === teamMembers[0]?.id) {
       toast.error('Anda tidak dapat menghapus diri sendiri dari tim');
       return;
     }
+    
+    const memberToRemove = teamMembers.find(member => member.id === id);
     setTeamMembers(teamMembers.filter(member => member.id !== id));
+    
+    if (memberToRemove) {
+      toast.success(`${memberToRemove.full_name} berhasil dihapus dari tim`);
+    }
   };
 
   const handleAddSupervisor = (id: string) => {
@@ -83,11 +91,39 @@ const TeamForm = ({
     
     if (!selectedSupervisors.includes(id)) {
       setSelectedSupervisors([...selectedSupervisors, id]);
+      const supervisor = supervisors.find(s => s.id === id);
+      if (supervisor) {
+        toast.success(`${supervisor.full_name} berhasil ditambahkan sebagai dosen pembimbing`);
+      }
     }
   };
 
   const handleRemoveSupervisor = (id: string) => {
+    const supervisor = supervisors.find(s => s.id === id);
     setSelectedSupervisors(selectedSupervisors.filter(supervisorId => supervisorId !== id));
+    if (supervisor) {
+      toast.success(`${supervisor.full_name} berhasil dihapus dari dosen pembimbing`);
+    }
+  };
+
+  const handleNext = () => {
+    // Validate team size before proceeding
+    if (teamMembers.length === 0) {
+      toast.error('Tim harus memiliki minimal 1 anggota');
+      return;
+    }
+    
+    if (teamMembers.length > MAX_TEAM_SIZE) {
+      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang (termasuk Anda)`);
+      return;
+    }
+    
+    if (selectedSupervisors.length === 0) {
+      toast.error('Pilih minimal 1 dosen pembimbing');
+      return;
+    }
+    
+    onNext();
   };
   
   return (
@@ -97,12 +133,17 @@ const TeamForm = ({
         <CardDescription>
           {isEditMode && existingTeamId 
             ? 'Tim anggota KP sudah terbentuk dan tidak dapat diubah saat revisi' 
-            : `Tambahkan anggota tim (maksimal ${MAX_TEAM_SIZE} orang) dan pilih dosen pembimbing`}
+            : `Tambahkan anggota tim (maksimal ${MAX_TEAM_SIZE} orang termasuk Anda) dan pilih dosen pembimbing`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-3">
           <Label>Anggota Tim <span className="text-red-500">*</span></Label>
+          
+          {/* Team size indicator */}
+          <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
+            Anggota saat ini: {teamMembers.length}/{MAX_TEAM_SIZE}
+          </div>
           
           <div className="space-y-2">
             {teamMembers.map((member, index) => (
@@ -113,11 +154,12 @@ const TeamForm = ({
                 <div className="flex items-center gap-2">
                   <User size={18} />
                   <span>
-                    {member.full_name || 'Unnamed'} {member.nim ? `(${member.nim})` : ''} {index === 0 && <Badge className="ml-1">Ketua</Badge>}
+                    {member.full_name || 'Unnamed'} {member.nim ? `(${member.nim})` : ''} 
+                    {index === 0 && <Badge className="ml-2">Ketua</Badge>}
                   </span>
                 </div>
                 
-                {index !== 0 && (
+                {index !== 0 && !isEditMode && (
                   <Button 
                     variant="ghost" 
                     size="icon"
@@ -130,33 +172,35 @@ const TeamForm = ({
             ))}
           </div>
           
-          <div className="flex gap-2">
-            <Select value={selectedMember} onValueChange={setSelectedMember}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Pilih mahasiswa" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableStudents.map(student => (
-                  <SelectItem key={student.id} value={student.id}>
-                    {student.full_name} {student.nim ? `(${student.nim})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Button 
-              variant="outline" 
-              className="flex-shrink-0"
-              onClick={handleAddMember}
-              disabled={!selectedMember || teamMembers.length >= MAX_TEAM_SIZE}
-            >
-              <UserPlus size={16} className="mr-1" /> Tambah
-            </Button>
-          </div>
+          {!isEditMode && (
+            <div className="flex gap-2">
+              <Select value={selectedMember} onValueChange={setSelectedMember}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Pilih mahasiswa" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableStudents.map(student => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.full_name} {student.nim ? `(${student.nim})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                variant="outline" 
+                className="flex-shrink-0"
+                onClick={handleAddMember}
+                disabled={!selectedMember || teamMembers.length >= MAX_TEAM_SIZE}
+              >
+                <UserPlus size={16} className="mr-1" /> Tambah
+              </Button>
+            </div>
+          )}
           
           {teamMembers.length >= MAX_TEAM_SIZE && (
-            <p className="text-xs text-amber-600">
-              Jumlah maksimal anggota tim ({MAX_TEAM_SIZE}) telah tercapai
+            <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
+              ⚠️ Jumlah maksimal anggota tim ({MAX_TEAM_SIZE}) telah tercapai
             </p>
           )}
         </div>
@@ -223,7 +267,7 @@ const TeamForm = ({
           Kembali
         </Button>
         <Button 
-          onClick={onNext}
+          onClick={handleNext}
           className="bg-primary hover:bg-primary/90"
         >
           Selanjutnya

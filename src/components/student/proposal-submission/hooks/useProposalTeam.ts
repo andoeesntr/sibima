@@ -27,6 +27,8 @@ interface UseProposalTeamReturn {
   addCurrentUserToTeam: (userId: string) => Promise<void>;
 }
 
+const MAX_TEAM_SIZE = 4;
+
 export const useProposalTeam = (initialMembers: Student[] = [], initialSupervisors: string[] = []) => {
   const [teamMembers, setTeamMembers] = useState<Student[]>(initialMembers);
   const [selectedSupervisors, setSelectedSupervisors] = useState<string[]>(initialSupervisors);
@@ -34,9 +36,12 @@ export const useProposalTeam = (initialMembers: Student[] = [], initialSuperviso
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [teamStepValid, setTeamStepValid] = useState(false);
   
-  // Update team validation state
+  // Enhanced team validation with size checking
   useEffect(() => {
-    setTeamStepValid(teamMembers.length > 0 && selectedSupervisors.length > 0);
+    const isValidTeamSize = teamMembers.length > 0 && teamMembers.length <= MAX_TEAM_SIZE;
+    const hasValidSupervisors = selectedSupervisors.length > 0 && selectedSupervisors.length <= 2;
+    
+    setTeamStepValid(isValidTeamSize && hasValidSupervisors);
   }, [teamMembers, selectedSupervisors]);
   
   const fetchStudents = async () => {
@@ -81,12 +86,30 @@ export const useProposalTeam = (initialMembers: Student[] = [], initialSuperviso
       setTeamMembers([currentUser]);
     }
   };
+
+  // Enhanced setTeamMembers with validation
+  const setTeamMembersWithValidation = (members: Student[]) => {
+    if (members.length > MAX_TEAM_SIZE) {
+      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang (termasuk Anda)`);
+      return;
+    }
+    setTeamMembers(members);
+  };
+
+  // Enhanced setSelectedSupervisors with validation
+  const setSelectedSupervisorsWithValidation = (supervisors: string[]) => {
+    if (supervisors.length > 2) {
+      toast.error('Maksimal 2 dosen pembimbing');
+      return;
+    }
+    setSelectedSupervisors(supervisors);
+  };
   
   return {
     teamMembers,
-    setTeamMembers,
+    setTeamMembers: setTeamMembersWithValidation,
     selectedSupervisors,
-    setSelectedSupervisors,
+    setSelectedSupervisors: setSelectedSupervisorsWithValidation,
     students,
     supervisors,
     teamStepValid,
