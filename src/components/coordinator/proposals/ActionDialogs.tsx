@@ -29,14 +29,6 @@ const ActionDialogs = ({
   setIsRejectDialogOpen,
   isRevisionDialogOpen,
   setIsRevisionDialogOpen,
-  rejectionReason,
-  setRejectionReason,
-  revisionFeedback,
-  setRevisionFeedback,
-  handleApprove,
-  handleReject,
-  handleRevision,
-  isSubmitting,
   proposalId
 }: ActionDialogsProps) => {
   return (
@@ -45,9 +37,8 @@ const ActionDialogs = ({
         <DialogContent>
           <ApproveDialog 
             onCancel={() => setIsApproveDialogOpen(false)} 
-            onApprove={handleApprove}
+            onApprove={() => setIsApproveDialogOpen(false)}
             proposalId={proposalId}
-            isSubmitting={isSubmitting}
           />
         </DialogContent>
       </Dialog>
@@ -56,11 +47,8 @@ const ActionDialogs = ({
         <DialogContent>
           <RejectDialog 
             onCancel={() => setIsRejectDialogOpen(false)} 
-            onReject={handleReject}
+            onReject={() => setIsRejectDialogOpen(false)}
             proposalId={proposalId}
-            rejectionReason={rejectionReason}
-            setRejectionReason={setRejectionReason}
-            isSubmitting={isSubmitting}
           />
         </DialogContent>
       </Dialog>
@@ -69,11 +57,8 @@ const ActionDialogs = ({
         <DialogContent>
           <RevisionDialog 
             onCancel={() => setIsRevisionDialogOpen(false)} 
-            onRevision={handleRevision}
+            onRevision={() => setIsRevisionDialogOpen(false)}
             proposalId={proposalId}
-            revisionFeedback={revisionFeedback}
-            setRevisionFeedback={setRevisionFeedback}
-            isSubmitting={isSubmitting}
           />
         </DialogContent>
       </Dialog>
