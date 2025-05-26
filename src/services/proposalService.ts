@@ -21,7 +21,8 @@ export async function fetchProposalsList() {
         rejection_reason,
         student:profiles!student_id (full_name, nim),
         team:teams (id, name)
-      `);
+      `)
+      .order('created_at', { ascending: false });
     
     if (error) {
       console.error("Error fetching proposals:", error);
@@ -392,7 +393,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
   }
 }
 
-// New function to save document to all team members' proposals
+// Enhanced function to save document to all team members' proposals during initial submission
 export async function saveDocumentToAllTeamProposals(
   sourceProposalId: string, 
   fileUrl: string, 
@@ -447,5 +448,47 @@ export async function saveDocumentToAllTeamProposals(
   } catch (error) {
     console.error("Error in saveDocumentToAllTeamProposals:", error);
     return false;
+  }
+}
+
+// New function to create individual proposals for each team member during submission
+export async function createProposalsForAllTeamMembers(
+  teamId: string,
+  teamMembers: any[],
+  proposalData: {
+    title: string;
+    description: string;
+    company_name: string;
+    status: string;
+  }
+) {
+  try {
+    console.log(`Creating proposals for all ${teamMembers.length} team members`);
+    
+    // Create proposal entries for all team members
+    const proposalEntries = teamMembers.map(member => ({
+      student_id: member.id,
+      team_id: teamId,
+      title: proposalData.title,
+      description: proposalData.description,
+      company_name: proposalData.company_name,
+      status: proposalData.status
+    }));
+
+    const { data: createdProposals, error: insertError } = await supabase
+      .from('proposals')
+      .insert(proposalEntries)
+      .select();
+
+    if (insertError) {
+      console.error("Error creating proposals for team members:", insertError);
+      throw insertError;
+    }
+
+    console.log(`Successfully created ${createdProposals?.length || 0} proposals for team members`);
+    return createdProposals;
+  } catch (error) {
+    console.error("Error in createProposalsForAllTeamMembers:", error);
+    throw error;
   }
 }

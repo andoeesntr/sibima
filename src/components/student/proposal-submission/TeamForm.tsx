@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, UserPlus, X, AlertTriangle } from 'lucide-react';
+import { User, UserPlus, X, AlertTriangle, Lock } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -49,6 +50,9 @@ const TeamForm = ({
   // Check if current team already exceeds limit (for existing data)
   const isTeamOversized = teamMembers.length > MAX_TEAM_SIZE;
   
+  // Calculate how many more members can be added (submitter counts as 1)
+  const remainingSlots = MAX_TEAM_SIZE - teamMembers.length;
+  
   const availableStudents = students.filter(
     student => !teamMembers.some(member => member.id === student.id)
   );
@@ -61,7 +65,8 @@ const TeamForm = ({
     
     // Pre-check: Ensure we won't exceed the limit
     if (teamMembers.length >= MAX_TEAM_SIZE) {
-      toast.error(`Tim sudah mencapai batas maksimal ${MAX_TEAM_SIZE} anggota (termasuk Anda)`);
+      const submitterName = teamMembers[0]?.full_name || 'Anda';
+      toast.error(`Tim sudah mencapai batas maksimal ${MAX_TEAM_SIZE} anggota total (termasuk ${submitterName} sebagai pengaju)`);
       return;
     }
     
@@ -71,7 +76,7 @@ const TeamForm = ({
       
       // Double-check before actually adding
       if (newTeamMembers.length > MAX_TEAM_SIZE) {
-        toast.error(`Tidak dapat menambahkan anggota. Tim sudah mencapai batas maksimal ${MAX_TEAM_SIZE} orang`);
+        toast.error(`Tidak dapat menambahkan anggota. Tim sudah mencapai batas maksimal ${MAX_TEAM_SIZE} orang total`);
         return;
       }
       
@@ -128,7 +133,7 @@ const TeamForm = ({
     }
     
     if (teamMembers.length > MAX_TEAM_SIZE) {
-      toast.error(`Tim melebihi batas maksimal ${MAX_TEAM_SIZE} anggota. Silakan hapus ${teamMembers.length - MAX_TEAM_SIZE} anggota sebelum melanjutkan.`);
+      toast.error(`Tim melebihi batas maksimal ${MAX_TEAM_SIZE} anggota total. Silakan hapus ${teamMembers.length - MAX_TEAM_SIZE} anggota sebelum melanjutkan.`);
       return;
     }
     
@@ -149,11 +154,14 @@ const TeamForm = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isEditMode ? 'Tim KP (Revisi)' : 'Tim KP'}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          {isEditMode ? 'Tim KP (Revisi)' : 'Tim KP'}
+          {isEditMode && existingTeamId && <Lock size={16} className="text-gray-500" />}
+        </CardTitle>
         <CardDescription>
           {isEditMode && existingTeamId 
             ? 'Tim anggota KP sudah terbentuk dan tidak dapat diubah saat revisi' 
-            : `Tambahkan anggota tim (maksimal ${MAX_TEAM_SIZE} orang termasuk Anda) dan pilih dosen pembimbing`}
+            : `Tambahkan anggota tim (maksimal ${MAX_TEAM_SIZE} orang total termasuk Anda sebagai pengaju) dan pilih dosen pembimbing`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -164,7 +172,7 @@ const TeamForm = ({
             <div>
               <h4 className="text-red-800 font-medium">Tim Melebihi Batas Maksimal</h4>
               <p className="text-red-700 text-sm mt-1">
-                Tim Anda memiliki {teamMembers.length} anggota, melebihi batas maksimal {MAX_TEAM_SIZE} orang. 
+                Tim Anda memiliki {teamMembers.length} anggota, melebihi batas maksimal {MAX_TEAM_SIZE} orang total. 
                 Silakan hapus {teamMembers.length - MAX_TEAM_SIZE} anggota untuk melanjutkan.
               </p>
             </div>
@@ -182,7 +190,10 @@ const TeamForm = ({
                 ? 'text-amber-700 bg-amber-50 border border-amber-200'
                 : 'text-blue-700 bg-blue-50 border border-blue-200'
           }`}>
-            Anggota saat ini: {teamMembers.length}/{MAX_TEAM_SIZE}
+            Anggota saat ini: {teamMembers.length}/{MAX_TEAM_SIZE} (termasuk pengaju)
+            {remainingSlots > 0 && !isEditMode && (
+              <span className="ml-2">• Sisa slot: {remainingSlots}</span>
+            )}
             {isTeamOversized && (
               <span className="ml-2 font-medium">⚠️ MELEBIHI BATAS</span>
             )}
@@ -200,12 +211,12 @@ const TeamForm = ({
                   <User size={18} />
                   <span>
                     {member.full_name || 'Unnamed'} {member.nim ? `(${member.nim})` : ''} 
-                    {index === 0 && <Badge className="ml-2">Ketua</Badge>}
+                    {index === 0 && <Badge className="ml-2">Pengaju</Badge>}
                     {index >= MAX_TEAM_SIZE && <Badge variant="destructive" className="ml-2">Melebihi Batas</Badge>}
                   </span>
                 </div>
                 
-                {index !== 0 && !isEditMode && (
+                {index !== 0 && !isEditMode && !existingTeamId && (
                   <Button 
                     variant="ghost" 
                     size="icon"
@@ -215,11 +226,15 @@ const TeamForm = ({
                     <X size={16} />
                   </Button>
                 )}
+                
+                {isEditMode && existingTeamId && index !== 0 && (
+                  <Lock size={16} className="text-gray-400" />
+                )}
               </div>
             ))}
           </div>
           
-          {!isEditMode && (
+          {!isEditMode && !existingTeamId && (
             <div className="flex gap-2">
               <Select value={selectedMember} onValueChange={setSelectedMember}>
                 <SelectTrigger className="flex-1">
@@ -245,15 +260,22 @@ const TeamForm = ({
             </div>
           )}
           
-          {teamMembers.length >= MAX_TEAM_SIZE && (
+          {teamMembers.length >= MAX_TEAM_SIZE && !isEditMode && (
             <p className={`text-xs p-2 rounded ${
               isTeamOversized 
                 ? 'text-red-600 bg-red-50' 
                 : 'text-amber-600 bg-amber-50'
             }`}>
               {isTeamOversized 
-                ? `❌ Tim melebihi batas maksimal ${MAX_TEAM_SIZE} orang` 
-                : `⚠️ Jumlah maksimal anggota tim (${MAX_TEAM_SIZE}) telah tercapai`}
+                ? `❌ Tim melebihi batas maksimal ${MAX_TEAM_SIZE} orang total` 
+                : `✅ Jumlah maksimal anggota tim (${MAX_TEAM_SIZE}) telah tercapai`}
+            </p>
+          )}
+          
+          {isEditMode && existingTeamId && (
+            <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded flex items-center gap-2">
+              <Lock size={14} />
+              Anggota tim tidak dapat diubah saat melakukan revisi proposal
             </p>
           )}
         </div>

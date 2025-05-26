@@ -94,17 +94,18 @@ export const useProposalTeam = (initialMembers: Student[] = [], initialSuperviso
     }
   };
 
-  // Enhanced setTeamMembers with strict validation
+  // Enhanced setTeamMembers with strict validation - submitter counts as 1 member
   const setTeamMembersWithValidation = (members: Student[]) => {
     console.log(`Attempting to set team members. Current: ${teamMembers.length}, New: ${members.length}, Max: ${MAX_TEAM_SIZE}`);
     
     if (members.length > MAX_TEAM_SIZE) {
-      toast.error(`Tim tidak boleh melebihi ${MAX_TEAM_SIZE} anggota (termasuk Anda). Saat ini ada ${members.length} anggota.`);
+      const currentSubmitter = members[0] ? members[0].full_name : 'Anda';
+      toast.error(`Tim tidak boleh melebihi ${MAX_TEAM_SIZE} anggota total (termasuk ${currentSubmitter} sebagai pengaju). Saat ini ada ${members.length} anggota.`);
       return;
     }
     
     setTeamMembers(members);
-    console.log(`Team members updated successfully. New count: ${members.length}`);
+    console.log(`Team members updated successfully. New count: ${members.length}/${MAX_TEAM_SIZE}`);
   };
 
   // Enhanced setSelectedSupervisors with validation

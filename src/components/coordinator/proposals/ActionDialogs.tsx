@@ -11,14 +11,6 @@ interface ActionDialogsProps {
   setIsRejectDialogOpen: (isOpen: boolean) => void;
   isRevisionDialogOpen: boolean;
   setIsRevisionDialogOpen: (isOpen: boolean) => void;
-  rejectionReason: string;
-  setRejectionReason: (reason: string) => void;
-  revisionFeedback: string;
-  setRevisionFeedback: (feedback: string) => void;
-  handleApprove: () => Promise<void>;
-  handleReject: () => Promise<void>;
-  handleRevision: () => Promise<void>;
-  isSubmitting: boolean;
   proposalId: string;
 }
 

@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { createProposalsForAllTeamMembers, saveDocumentToAllTeamProposals } from '@/services/proposalService';
 
 interface SubmissionData {
   user: any;
@@ -106,41 +107,49 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
       console.log('Successfully saved all supervisors');
     }
 
-    // Create or update proposal
-    const proposalData = {
-      student_id: user.id,
-      title,
-      description,
-      company_name: companyName,
-      team_id: teamId,
-      status: 'submitted'
-    };
-
-    let finalProposalId = proposalId;
+    // Create proposals for all team members (NEW APPROACH)
+    let createdProposals: any[] = [];
+    let mainProposalId = proposalId;
 
     if (isEditMode && proposalId) {
+      // Update existing proposal
       const { error: updateError } = await supabase
         .from('proposals')
-        .update(proposalData)
+        .update({
+          title,
+          description,
+          company_name: companyName,
+          status: 'submitted'
+        })
         .eq('id', proposalId);
 
       if (updateError) throw updateError;
+      mainProposalId = proposalId;
     } else {
-      const { data: newProposal, error: proposalError } = await supabase
-        .from('proposals')
-        .insert(proposalData)
-        .select()
-        .single();
+      // Create proposals for ALL team members
+      const proposalData = {
+        title,
+        description,
+        company_name: companyName,
+        status: 'submitted'
+      };
 
-      if (proposalError) throw proposalError;
-      finalProposalId = newProposal.id;
+      createdProposals = await createProposalsForAllTeamMembers(
+        teamId,
+        teamMembers,
+        proposalData
+      );
+
+      // Use the first created proposal as the main one (usually the submitter's)
+      const submitterProposal = createdProposals.find(p => p.student_id === user.id);
+      mainProposalId = submitterProposal?.id || createdProposals[0]?.id;
     }
 
-    // Handle file upload
-    if (file && finalProposalId) {
+    // Handle file upload - save to all team proposals
+    if (file && mainProposalId) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `proposals/${finalProposalId}/${fileName}`;
+      const filePath = `proposals/${mainProposalId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -152,19 +161,32 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
         .from('documents')
         .getPublicUrl(filePath);
 
-      const { error: docError } = await supabase
-        .from('proposal_documents')
-        .insert({
-          proposal_id: finalProposalId,
-          file_name: file.name,
-          file_url: publicUrl,
-          file_type: file.type,
-          uploaded_by: user.id
-        });
+      // Save document to all team members' proposals
+      if (!isEditMode) {
+        await saveDocumentToAllTeamProposals(
+          mainProposalId,
+          publicUrl,
+          file.name,
+          file.type,
+          user.id
+        );
+      } else {
+        // For edit mode, just save to the current proposal
+        const { error: docError } = await supabase
+          .from('proposal_documents')
+          .insert({
+            proposal_id: mainProposalId,
+            file_name: file.name,
+            file_url: publicUrl,
+            file_type: file.type,
+            uploaded_by: user.id
+          });
 
-      if (docError) throw docError;
+        if (docError) throw docError;
+      }
     }
 
+    console.log(`Successfully handled proposal submission. Created ${createdProposals.length} proposals for team members.`);
     return { success: true };
   } catch (error) {
     console.error('Submission error:', error);
