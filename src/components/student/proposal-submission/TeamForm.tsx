@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -234,7 +235,7 @@ const TeamForm = ({
                 
                 {/* Show lock icon for submitter to indicate they cannot be removed */}
                 {index === 0 && (
-                  <Lock size={16} className="text-gray-400" title="Pengaju tidak dapat dihapus" />
+                  <Lock size={16} className="text-gray-400" />
                 )}
               </div>
             ))}
