@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,7 +88,7 @@ const TeamForm = ({
   const handleRemoveMember = (id: string) => {
     // Prevent removing the first member (team leader/submitter)
     if (id === teamMembers[0]?.id) {
-      toast.error('Anda tidak dapat menghapus diri sendiri dari tim');
+      toast.error('Anda tidak dapat menghapus pengaju dari tim');
       return;
     }
     
@@ -216,6 +215,7 @@ const TeamForm = ({
                   </span>
                 </div>
                 
+                {/* Only show remove button for non-submitters and in non-edit mode */}
                 {index !== 0 && !isEditMode && !existingTeamId && (
                   <Button 
                     variant="ghost" 
@@ -227,8 +227,14 @@ const TeamForm = ({
                   </Button>
                 )}
                 
+                {/* Show lock icon for edit mode */}
                 {isEditMode && existingTeamId && index !== 0 && (
                   <Lock size={16} className="text-gray-400" />
+                )}
+                
+                {/* Show lock icon for submitter to indicate they cannot be removed */}
+                {index === 0 && (
+                  <Lock size={16} className="text-gray-400" title="Pengaju tidak dapat dihapus" />
                 )}
               </div>
             ))}

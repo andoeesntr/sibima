@@ -50,14 +50,34 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
       if (teamError) throw teamError;
       teamId = newTeam.id;
 
-      // Add team members - IMPORTANT: Add the current user as leader FIRST
-      const teamMemberInserts = teamMembers.map(member => ({
+      // Ensure the current user is the first member (team leader)
+      // This is critical for maintaining the submitter as the first member
+      const currentUserMember = teamMembers.find(member => member.id === user.id);
+      const otherMembers = teamMembers.filter(member => member.id !== user.id);
+      
+      let orderedTeamMembers;
+      if (currentUserMember) {
+        // Current user exists in team members, put them first
+        orderedTeamMembers = [currentUserMember, ...otherMembers];
+      } else {
+        // Current user not in team members (shouldn't happen, but as failsafe)
+        console.error('Current user not found in team members, adding them as leader');
+        const currentUserProfile = {
+          id: user.id,
+          full_name: profile.full_name || 'Unknown User',
+          nim: profile.nim
+        };
+        orderedTeamMembers = [currentUserProfile, ...teamMembers];
+      }
+
+      // Add team members with current user as leader FIRST
+      const teamMemberInserts = orderedTeamMembers.map((member, index) => ({
         team_id: teamId,
         user_id: member.id,
-        role: member.id === user.id ? 'leader' : 'member'
+        role: index === 0 ? 'leader' : 'member' // First member is always leader (submitter)
       }));
 
-      console.log('Inserting team members:', teamMemberInserts);
+      console.log('Inserting team members with leader first:', teamMemberInserts);
 
       const { error: membersError } = await supabase
         .from('team_members')
@@ -68,7 +88,7 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
         throw membersError;
       }
 
-      console.log('Successfully created team members');
+      console.log('Successfully created team members with current user as leader');
     }
 
     // Handle team supervisors - this is the key fix
@@ -134,13 +154,18 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
         status: 'submitted'
       };
 
+      // Ensure ordered team members for proposal creation
+      const currentUserMember = teamMembers.find(member => member.id === user.id);
+      const otherMembers = teamMembers.filter(member => member.id !== user.id);
+      const orderedMembersForProposal = currentUserMember ? [currentUserMember, ...otherMembers] : teamMembers;
+
       createdProposals = await createProposalsForAllTeamMembers(
         teamId,
-        teamMembers,
+        orderedMembersForProposal,
         proposalData
       );
 
-      // Use the first created proposal as the main one (usually the submitter's)
+      // Use the submitter's proposal as the main one (should be first)
       const submitterProposal = createdProposals.find(p => p.student_id === user.id);
       mainProposalId = submitterProposal?.id || createdProposals[0]?.id;
     }
