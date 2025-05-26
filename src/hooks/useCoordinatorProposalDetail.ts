@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useProposalData } from '@/hooks/useCoordinatorProposal';
+import { syncProposalStatusWithTeam } from '@/services/proposalService';
 
 export const useCoordinatorProposalDetail = () => {
   const { proposal, loading, supervisors, handleUpdateSupervisors } = useProposalData();
@@ -35,6 +36,7 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
+      // Update the current proposal
       const { error } = await supabase
         .from('proposals')
         .update({ 
@@ -44,9 +46,11 @@ export const useCoordinatorProposalDetail = () => {
         .eq('id', proposal.id);
         
       if (error) throw error;
+
+      // Sync with team members
+      await syncProposalStatusWithTeam(proposal.id, 'approved');
       
-      toast.success("Proposal berhasil disetujui");
-      
+      toast.success("Proposal berhasil disetujui untuk seluruh tim");
       setIsApproveDialogOpen(false);
     } catch (error: any) {
       console.error("Error approving proposal:", error);
@@ -67,6 +71,7 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
+      // Update the current proposal
       const { error } = await supabase
         .from('proposals')
         .update({ 
@@ -77,8 +82,11 @@ export const useCoordinatorProposalDetail = () => {
         .eq('id', proposal.id);
         
       if (error) throw error;
+
+      // Sync with team members
+      await syncProposalStatusWithTeam(proposal.id, 'rejected', rejectionReason);
       
-      toast.success("Proposal berhasil ditolak");
+      toast.success("Proposal berhasil ditolak untuk seluruh tim");
       setIsRejectDialogOpen(false);
     } catch (error: any) {
       console.error("Error rejecting proposal:", error);
@@ -99,7 +107,7 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      // Now we can use the proper 'revision' status since it's allowed in the database
+      // Update the current proposal
       const { error: proposalError } = await supabase
         .from('proposals')
         .update({ 
@@ -110,8 +118,11 @@ export const useCoordinatorProposalDetail = () => {
         .eq('id', proposal.id);
         
       if (proposalError) throw proposalError;
+
+      // Sync with team members
+      await syncProposalStatusWithTeam(proposal.id, 'revision', revisionFeedback);
       
-      toast.success("Permintaan revisi berhasil dikirim");
+      toast.success("Permintaan revisi berhasil dikirim ke seluruh tim");
       setIsRevisionDialogOpen(false);
     } catch (error: any) {
       console.error("Error requesting revision:", error);
