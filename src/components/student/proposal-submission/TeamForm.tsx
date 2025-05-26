@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, UserPlus, X } from 'lucide-react';
+import { User, UserPlus, X, AlertTriangle } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -45,26 +44,40 @@ const TeamForm = ({
   onBack
 }: TeamFormProps) => {
   const [selectedMember, setSelectedMember] = useState('');
-  const MAX_TEAM_SIZE = 4; // Maximum team size (including the person submitting)
+  const MAX_TEAM_SIZE = 4;
+  
+  // Check if current team already exceeds limit (for existing data)
+  const isTeamOversized = teamMembers.length > MAX_TEAM_SIZE;
   
   const availableStudents = students.filter(
     student => !teamMembers.some(member => member.id === student.id)
   );
   
   const handleAddMember = () => {
-    if (!selectedMember) return;
+    if (!selectedMember) {
+      toast.error('Pilih mahasiswa terlebih dahulu');
+      return;
+    }
     
-    // Strict validation: Check if adding this member would exceed the maximum team size
+    // Pre-check: Ensure we won't exceed the limit
     if (teamMembers.length >= MAX_TEAM_SIZE) {
-      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang (termasuk Anda)`);
+      toast.error(`Tim sudah mencapai batas maksimal ${MAX_TEAM_SIZE} anggota (termasuk Anda)`);
       return;
     }
     
     const studentToAdd = students.find(s => s.id === selectedMember);
     if (studentToAdd && !teamMembers.some(member => member.id === selectedMember)) {
-      setTeamMembers([...teamMembers, studentToAdd]);
+      const newTeamMembers = [...teamMembers, studentToAdd];
+      
+      // Double-check before actually adding
+      if (newTeamMembers.length > MAX_TEAM_SIZE) {
+        toast.error(`Tidak dapat menambahkan anggota. Tim sudah mencapai batas maksimal ${MAX_TEAM_SIZE} orang`);
+        return;
+      }
+      
+      setTeamMembers(newTeamMembers);
       setSelectedMember('');
-      toast.success(`${studentToAdd.full_name} berhasil ditambahkan ke tim`);
+      toast.success(`${studentToAdd.full_name} berhasil ditambahkan ke tim (${newTeamMembers.length}/${MAX_TEAM_SIZE})`);
     }
   };
 
@@ -76,10 +89,11 @@ const TeamForm = ({
     }
     
     const memberToRemove = teamMembers.find(member => member.id === id);
-    setTeamMembers(teamMembers.filter(member => member.id !== id));
+    const newTeamMembers = teamMembers.filter(member => member.id !== id);
+    setTeamMembers(newTeamMembers);
     
     if (memberToRemove) {
-      toast.success(`${memberToRemove.full_name} berhasil dihapus dari tim`);
+      toast.success(`${memberToRemove.full_name} berhasil dihapus dari tim (${newTeamMembers.length}/${MAX_TEAM_SIZE})`);
     }
   };
 
@@ -107,14 +121,14 @@ const TeamForm = ({
   };
 
   const handleNext = () => {
-    // Validate team size before proceeding
+    // Strict validation before proceeding
     if (teamMembers.length === 0) {
       toast.error('Tim harus memiliki minimal 1 anggota');
       return;
     }
     
     if (teamMembers.length > MAX_TEAM_SIZE) {
-      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang (termasuk Anda)`);
+      toast.error(`Tim melebihi batas maksimal ${MAX_TEAM_SIZE} anggota. Silakan hapus ${teamMembers.length - MAX_TEAM_SIZE} anggota sebelum melanjutkan.`);
       return;
     }
     
@@ -123,6 +137,12 @@ const TeamForm = ({
       return;
     }
     
+    if (selectedSupervisors.length > 2) {
+      toast.error('Maksimal 2 dosen pembimbing');
+      return;
+    }
+    
+    console.log(`Team validation passed. Members: ${teamMembers.length}/${MAX_TEAM_SIZE}, Supervisors: ${selectedSupervisors.length}/2`);
     onNext();
   };
   
@@ -137,25 +157,51 @@ const TeamForm = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Warning for oversized teams */}
+        {isTeamOversized && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+            <div>
+              <h4 className="text-red-800 font-medium">Tim Melebihi Batas Maksimal</h4>
+              <p className="text-red-700 text-sm mt-1">
+                Tim Anda memiliki {teamMembers.length} anggota, melebihi batas maksimal {MAX_TEAM_SIZE} orang. 
+                Silakan hapus {teamMembers.length - MAX_TEAM_SIZE} anggota untuk melanjutkan.
+              </p>
+            </div>
+          </div>
+        )}
+        
         <div className="space-y-3">
           <Label>Anggota Tim <span className="text-red-500">*</span></Label>
           
-          {/* Team size indicator */}
-          <div className="text-sm text-gray-600 bg-blue-50 p-2 rounded">
+          {/* Team size indicator with warning colors */}
+          <div className={`text-sm p-2 rounded ${
+            isTeamOversized 
+              ? 'text-red-700 bg-red-50 border border-red-200' 
+              : teamMembers.length === MAX_TEAM_SIZE 
+                ? 'text-amber-700 bg-amber-50 border border-amber-200'
+                : 'text-blue-700 bg-blue-50 border border-blue-200'
+          }`}>
             Anggota saat ini: {teamMembers.length}/{MAX_TEAM_SIZE}
+            {isTeamOversized && (
+              <span className="ml-2 font-medium">⚠️ MELEBIHI BATAS</span>
+            )}
           </div>
           
           <div className="space-y-2">
             {teamMembers.map((member, index) => (
               <div 
                 key={member.id}
-                className="flex items-center justify-between p-3 border rounded-md"
+                className={`flex items-center justify-between p-3 border rounded-md ${
+                  index >= MAX_TEAM_SIZE ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                }`}
               >
                 <div className="flex items-center gap-2">
                   <User size={18} />
                   <span>
                     {member.full_name || 'Unnamed'} {member.nim ? `(${member.nim})` : ''} 
                     {index === 0 && <Badge className="ml-2">Ketua</Badge>}
+                    {index >= MAX_TEAM_SIZE && <Badge variant="destructive" className="ml-2">Melebihi Batas</Badge>}
                   </span>
                 </div>
                 
@@ -164,6 +210,7 @@ const TeamForm = ({
                     variant="ghost" 
                     size="icon"
                     onClick={() => handleRemoveMember(member.id)}
+                    className={index >= MAX_TEAM_SIZE ? 'text-red-600 hover:text-red-700' : ''}
                   >
                     <X size={16} />
                   </Button>
@@ -199,8 +246,14 @@ const TeamForm = ({
           )}
           
           {teamMembers.length >= MAX_TEAM_SIZE && (
-            <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded">
-              ⚠️ Jumlah maksimal anggota tim ({MAX_TEAM_SIZE}) telah tercapai
+            <p className={`text-xs p-2 rounded ${
+              isTeamOversized 
+                ? 'text-red-600 bg-red-50' 
+                : 'text-amber-600 bg-amber-50'
+            }`}>
+              {isTeamOversized 
+                ? `❌ Tim melebihi batas maksimal ${MAX_TEAM_SIZE} orang` 
+                : `⚠️ Jumlah maksimal anggota tim (${MAX_TEAM_SIZE}) telah tercapai`}
             </p>
           )}
         </div>
@@ -269,6 +322,7 @@ const TeamForm = ({
         <Button 
           onClick={handleNext}
           className="bg-primary hover:bg-primary/90"
+          disabled={isTeamOversized}
         >
           Selanjutnya
         </Button>

@@ -30,7 +30,14 @@ interface UseProposalTeamReturn {
 const MAX_TEAM_SIZE = 4;
 
 export const useProposalTeam = (initialMembers: Student[] = [], initialSupervisors: string[] = []) => {
-  const [teamMembers, setTeamMembers] = useState<Student[]>(initialMembers);
+  // Ensure initial members don't exceed the limit
+  const validInitialMembers = initialMembers.slice(0, MAX_TEAM_SIZE);
+  if (initialMembers.length > MAX_TEAM_SIZE) {
+    console.warn(`Initial team members (${initialMembers.length}) exceed maximum (${MAX_TEAM_SIZE}). Truncating to ${MAX_TEAM_SIZE} members.`);
+    toast.warning(`Tim awal melebihi batas maksimal ${MAX_TEAM_SIZE} orang. Hanya ${MAX_TEAM_SIZE} anggota pertama yang akan digunakan.`);
+  }
+
+  const [teamMembers, setTeamMembers] = useState<Student[]>(validInitialMembers);
   const [selectedSupervisors, setSelectedSupervisors] = useState<string[]>(initialSupervisors);
   const [students, setStudents] = useState<Student[]>([]);
   const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
@@ -87,13 +94,17 @@ export const useProposalTeam = (initialMembers: Student[] = [], initialSuperviso
     }
   };
 
-  // Enhanced setTeamMembers with validation
+  // Enhanced setTeamMembers with strict validation
   const setTeamMembersWithValidation = (members: Student[]) => {
+    console.log(`Attempting to set team members. Current: ${teamMembers.length}, New: ${members.length}, Max: ${MAX_TEAM_SIZE}`);
+    
     if (members.length > MAX_TEAM_SIZE) {
-      toast.error(`Maksimal anggota tim adalah ${MAX_TEAM_SIZE} orang (termasuk Anda)`);
+      toast.error(`Tim tidak boleh melebihi ${MAX_TEAM_SIZE} anggota (termasuk Anda). Saat ini ada ${members.length} anggota.`);
       return;
     }
+    
     setTeamMembers(members);
+    console.log(`Team members updated successfully. New count: ${members.length}`);
   };
 
   // Enhanced setSelectedSupervisors with validation
