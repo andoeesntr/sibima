@@ -51,7 +51,7 @@ const KpGuidanceSchedule = () => {
         .from('kp_guidance_schedule')
         .select(`
           *,
-          supervisor:supervisor_id (
+          supervisor:profiles!kp_guidance_schedule_supervisor_id_fkey (
             full_name
           )
         `)
@@ -77,7 +77,7 @@ const KpGuidanceSchedule = () => {
         .from('team_supervisors')
         .select(`
           supervisor_id,
-          profiles!inner (
+          supervisor:profiles!team_supervisors_supervisor_id_fkey (
             id,
             full_name
           ),
@@ -93,7 +93,7 @@ const KpGuidanceSchedule = () => {
 
       const supervisorsList = data?.map(item => ({
         id: item.supervisor_id,
-        full_name: item.profiles.full_name
+        full_name: item.supervisor?.full_name || 'Unknown'
       })) || [];
 
       setSupervisors(supervisorsList);
@@ -127,7 +127,7 @@ const KpGuidanceSchedule = () => {
         })
         .select(`
           *,
-          supervisor:supervisor_id (
+          supervisor:profiles!kp_guidance_schedule_supervisor_id_fkey (
             full_name
           )
         `)
@@ -328,7 +328,7 @@ const KpGuidanceSchedule = () => {
                       </span>
                       <span className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        {schedule.supervisor.full_name}
+                        {schedule.supervisor?.full_name || 'Unknown Supervisor'}
                       </span>
                     </CardDescription>
                   </div>

@@ -51,7 +51,7 @@ const KpJournal = () => {
         .from('kp_journal_entries')
         .select(`
           *,
-          supervisor:supervisor_id (
+          supervisor:profiles!kp_journal_entries_supervisor_id_fkey (
             full_name
           )
         `)
@@ -77,7 +77,7 @@ const KpJournal = () => {
         .from('team_supervisors')
         .select(`
           supervisor_id,
-          profiles!inner (
+          supervisor:profiles!team_supervisors_supervisor_id_fkey (
             id,
             full_name
           ),
@@ -93,7 +93,7 @@ const KpJournal = () => {
 
       const supervisorsList = data?.map(item => ({
         id: item.supervisor_id,
-        full_name: item.profiles.full_name
+        full_name: item.supervisor?.full_name || 'Unknown'
       })) || [];
 
       setSupervisors(supervisorsList);
@@ -127,7 +127,7 @@ const KpJournal = () => {
         })
         .select(`
           *,
-          supervisor:supervisor_id (
+          supervisor:profiles!kp_journal_entries_supervisor_id_fkey (
             full_name
           )
         `)

@@ -56,7 +56,7 @@ const KpDiscussions = () => {
         .from('kp_discussions')
         .select(`
           *,
-          author:author_id (
+          author:profiles!kp_discussions_author_id_fkey (
             full_name,
             role
           )
@@ -74,7 +74,7 @@ const KpDiscussions = () => {
             .from('kp_discussions')
             .select(`
               *,
-              author:author_id (
+              author:profiles!kp_discussions_author_id_fkey (
                 full_name,
                 role
               )
@@ -113,7 +113,7 @@ const KpDiscussions = () => {
         })
         .select(`
           *,
-          author:author_id (
+          author:profiles!kp_discussions_author_id_fkey (
             full_name,
             role
           )
@@ -148,7 +148,7 @@ const KpDiscussions = () => {
         })
         .select(`
           *,
-          author:author_id (
+          author:profiles!kp_discussions_author_id_fkey (
             full_name,
             role
           )
@@ -293,7 +293,7 @@ const KpDiscussions = () => {
                     <CardDescription className="flex items-center gap-4 mt-1">
                       <span className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        {discussion.author.full_name}
+                        {discussion.author?.full_name || 'Unknown User'}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
@@ -317,9 +317,9 @@ const KpDiscussions = () => {
                         <div key={reply.id} className="bg-gray-50 p-3 rounded-lg">
                           <div className="flex items-center gap-2 mb-2">
                             <User className="h-4 w-4" />
-                            <span className="font-medium text-sm">{reply.author.full_name}</span>
+                            <span className="font-medium text-sm">{reply.author?.full_name || 'Unknown User'}</span>
                             <Badge variant="outline" className="text-xs">
-                              {reply.author.role === 'supervisor' ? 'Dosen' : 'Mahasiswa'}
+                              {reply.author?.role === 'supervisor' ? 'Dosen' : 'Mahasiswa'}
                             </Badge>
                             <span className="text-xs text-gray-500">
                               {format(new Date(reply.created_at), 'dd MMM HH:mm', { locale: id })}
