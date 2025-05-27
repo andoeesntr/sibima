@@ -4,20 +4,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-interface StudentProgress {
-  id: string;
-  full_name: string;
-  nim: string;
-  overall_progress: number;
+interface StudentProgressData {
+  student_id: string;
+  student_name: string;
   current_stage: string;
+  overall_progress: number;
+  proposal_status: string;
   guidance_sessions_completed: number;
+  report_status: string;
+  presentation_status: string;
   last_activity: string;
   pendingReviews: number;
   todayGuidance: boolean;
 }
 
 export const useSupervisorKpProgress = () => {
-  const [studentsProgress, setStudentsProgress] = useState<StudentProgress[]>([]);
+  const [studentsProgress, setStudentsProgress] = useState<StudentProgressData[]>([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -104,12 +106,14 @@ export const useSupervisorKpProgress = () => {
         const hasTodayGuidance = todayGuidance?.some(g => g.student_id === tm.user_id) || false;
 
         return {
-          id: tm.user_id,
-          full_name: profile?.full_name || 'Unknown',
-          nim: profile?.nim || '',
-          overall_progress: progress?.overall_progress || 0,
+          student_id: tm.user_id,
+          student_name: profile?.full_name || 'Unknown',
           current_stage: progress?.current_stage || 'proposal',
+          overall_progress: progress?.overall_progress || 0,
+          proposal_status: progress?.proposal_status || 'pending',
           guidance_sessions_completed: progress?.guidance_sessions_completed || 0,
+          report_status: progress?.report_status || 'not_started',
+          presentation_status: progress?.presentation_status || 'not_scheduled',
           last_activity: progress?.last_activity || progress?.created_at || '',
           pendingReviews,
           todayGuidance: hasTodayGuidance
