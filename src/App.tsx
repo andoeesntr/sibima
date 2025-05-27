@@ -1,165 +1,127 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./contexts/auth";
+import { AuthProvider } from "@/contexts/AuthContext";
+import DashboardLayout from "@/layouts/DashboardLayout";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
-// Auth Pages
+// Page imports
+import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
-// Layout Components
-import DashboardLayout from "./layouts/DashboardLayout";
-
-// Student Pages
+// Student pages
 import StudentDashboard from "./pages/student/Dashboard";
 import StudentProfile from "./pages/student/Profile";
 import ProposalSubmission from "./pages/student/ProposalSubmission";
-import StudentGuide from "./pages/student/Guide";
-import DigitalSignature from "./pages/student/DigitalSignature";
 import ProposalDetail from "./pages/student/ProposalDetail";
+import DigitalSignature from "./pages/student/DigitalSignature";
+import Guide from "./pages/student/Guide";
+import KpProgress from "./pages/student/KpProgress";
 
-// Coordinator Pages
+// Coordinator pages
 import CoordinatorDashboard from "./pages/coordinator/Dashboard";
 import CoordinatorProfile from "./pages/coordinator/Profile";
-import ProposalReview from "./pages/coordinator/ProposalReview";
 import ProposalList from "./pages/coordinator/ProposalList";
+import ProposalReview from "./pages/coordinator/ProposalReview";
 import CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
-import GuidanceManagement from "./pages/coordinator/GuidanceManagement";
 import StudentEvaluation from "./pages/coordinator/StudentEvaluation";
+import GuidanceManagement from "./pages/coordinator/GuidanceManagement";
 
-// SuperAdmin Pages
+// Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProfile from "./pages/admin/Profile";
 import UserManagement from "./pages/admin/UserManagement";
 import GuideManagement from "./pages/admin/GuideManagement";
 import DigitalSignatureManagement from "./pages/admin/DigitalSignatureManagement";
 
-// Supervisor Pages
+// Supervisor pages
 import SupervisorDashboard from "./pages/supervisor/Dashboard";
 import SupervisorProfile from "./pages/supervisor/Profile";
 import DigitalSignatureUpload from "./pages/supervisor/DigitalSignatureUpload";
-import SupervisorFeedback from "./pages/supervisor/Feedback";
-import Index from "./pages/Index";
+import Feedback from "./pages/supervisor/Feedback";
+import KpProgressSupervision from "./pages/supervisor/KpProgressSupervision";
 
 const queryClient = new QueryClient();
 
-// Protected route component
-const ProtectedRoute = ({ 
-  children, 
-  requiredRole 
-}: { 
-  children: React.ReactNode, 
-  requiredRole?: string 
-}) => {
-  const { user, profile, loading } = useAuth();
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (requiredRole && profile?.role !== requiredRole) {
-    return <Navigate to={`/${profile?.role || ''}`} replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const AppRoutes = () => {
+function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      
-      {/* Student Routes */}
-      <Route 
-        path="/student" 
-        element={
-          <ProtectedRoute requiredRole="student">
-            <DashboardLayout role="student" />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<StudentDashboard />} />
-        <Route path="profile" element={<StudentProfile />} />
-        <Route path="proposal-submission" element={<ProposalSubmission />} />
-        <Route path="proposal-detail/:id" element={<ProposalDetail />} />
-        <Route path="guide" element={<StudentGuide />} />
-        <Route path="digital-signature" element={<DigitalSignature />} />
-      </Route>
-      
-      {/* Coordinator Routes */}
-      <Route 
-        path="/coordinator" 
-        element={
-          <ProtectedRoute requiredRole="coordinator">
-            <DashboardLayout role="coordinator" />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<CoordinatorDashboard />} />
-        <Route path="profile" element={<CoordinatorProfile />} />
-        <Route path="proposal-list" element={<ProposalList />} />
-        <Route path="proposal-review" element={<ProposalReview />} />
-        <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
-        <Route path="guidance-management" element={<GuidanceManagement />} />
-        <Route path="student-evaluation" element={<StudentEvaluation />} />
-      </Route>
-      
-      {/* SuperAdmin Routes */}
-      <Route 
-        path="/admin" 
-        element={
-          <ProtectedRoute requiredRole="admin">
-            <DashboardLayout role="admin" />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<AdminDashboard />} />
-        <Route path="profile" element={<AdminProfile />} />
-        <Route path="user-management" element={<UserManagement />} />
-        <Route path="guide-management" element={<GuideManagement />} />
-        <Route path="digital-signatures" element={<DigitalSignatureManagement />} />
-      </Route>
-      
-      {/* Supervisor Routes */}
-      <Route 
-        path="/supervisor" 
-        element={
-          <ProtectedRoute requiredRole="supervisor">
-            <DashboardLayout role="supervisor" />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<SupervisorDashboard />} />
-        <Route path="profile" element={<SupervisorProfile />} />
-        <Route path="digital-signature" element={<DigitalSignatureUpload />} />
-        <Route path="feedback" element={<SupervisorFeedback />} />
-      </Route>
-      
-      {/* Catch all for 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-};
-
-const App = () => (
-  <BrowserRouter>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
-          <Sonner />
-          <AppRoutes />
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+
+              {/* Student routes */}
+              <Route path="/student" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <DashboardLayout role="student" />
+                </ProtectedRoute>
+              }>
+                <Route index element={<StudentDashboard />} />
+                <Route path="profile" element={<StudentProfile />} />
+                <Route path="proposal-submission" element={<ProposalSubmission />} />
+                <Route path="proposal-detail/:id" element={<ProposalDetail />} />
+                <Route path="digital-signature" element={<DigitalSignature />} />
+                <Route path="guide" element={<Guide />} />
+                <Route path="kp-progress" element={<KpProgress />} />
+              </Route>
+
+              {/* Coordinator routes */}
+              <Route path="/coordinator" element={
+                <ProtectedRoute allowedRoles={['coordinator']}>
+                  <DashboardLayout role="coordinator" />
+                </ProtectedRoute>
+              }>
+                <Route index element={<CoordinatorDashboard />} />
+                <Route path="profile" element={<CoordinatorProfile />} />
+                <Route path="proposal-list" element={<ProposalList />} />
+                <Route path="proposal-review" element={<ProposalReview />} />
+                <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
+                <Route path="student-evaluation" element={<StudentEvaluation />} />
+                <Route path="guidance-management" element={<GuidanceManagement />} />
+              </Route>
+
+              {/* Admin routes */}
+              <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <DashboardLayout role="admin" />
+                </ProtectedRoute>
+              }>
+                <Route index element={<AdminDashboard />} />
+                <Route path="profile" element={<AdminProfile />} />
+                <Route path="user-management" element={<UserManagement />} />
+                <Route path="guide-management" element={<GuideManagement />} />
+                <Route path="digital-signature-management" element={<DigitalSignatureManagement />} />
+              </Route>
+
+              {/* Supervisor routes */}
+              <Route path="/supervisor" element={
+                <ProtectedRoute allowedRoles={['supervisor']}>
+                  <DashboardLayout role="supervisor" />
+                </ProtectedRoute>
+              }>
+                <Route index element={<SupervisorDashboard />} />
+                <Route path="profile" element={<SupervisorProfile />} />
+                <Route path="digital-signature" element={<DigitalSignatureUpload />} />
+                <Route path="feedback" element={<Feedback />} />
+                <Route path="kp-progress" element={<KpProgressSupervision />} />
+              </Route>
+
+              {/* 404 page */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
-  </BrowserRouter>
-);
+  );
+}
 
 export default App;
