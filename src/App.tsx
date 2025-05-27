@@ -8,7 +8,6 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 // Page imports
-import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -54,8 +53,8 @@ function App() {
           <AuthProvider>
             <Toaster />
             <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
+              {/* Redirect root to login */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
 
               {/* Student routes */}
