@@ -86,27 +86,33 @@ const KpJournal = () => {
       // Then get supervisors for that team
       const { data: teamSupervisors, error: supervisorError } = await supabase
         .from('team_supervisors')
-        .select(`
-          supervisor_id,
-          supervisor:profiles!team_supervisors_supervisor_id_fkey (
-            id,
-            full_name
-          )
-        `)
+        .select('supervisor_id')
         .eq('team_id', teamMember.team_id);
 
       if (supervisorError) throw supervisorError;
 
-      const supervisorsList = teamSupervisors?.map(item => ({
-        id: item.supervisor_id,
-        full_name: item.supervisor?.full_name || 'Unknown'
-      })) || [];
+      if (teamSupervisors && teamSupervisors.length > 0) {
+        // Get supervisor details from profiles table
+        const supervisorIds = teamSupervisors.map(ts => ts.supervisor_id);
+        
+        const { data: supervisorProfiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', supervisorIds);
 
-      setSupervisors(supervisorsList);
-      
-      // Set default supervisor if only one
-      if (supervisorsList.length === 1) {
-        setNewEntry(prev => ({ ...prev, supervisor_id: supervisorsList[0].id }));
+        if (profileError) throw profileError;
+
+        const supervisorsList = supervisorProfiles?.map(profile => ({
+          id: profile.id,
+          full_name: profile.full_name || 'Unknown'
+        })) || [];
+
+        setSupervisors(supervisorsList);
+        
+        // Set default supervisor if only one
+        if (supervisorsList.length === 1) {
+          setNewEntry(prev => ({ ...prev, supervisor_id: supervisorsList[0].id }));
+        }
       }
     } catch (error) {
       console.error('Error fetching supervisors:', error);
