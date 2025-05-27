@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MessageSquare, User, Clock, Reply } from 'lucide-react';
+import { Plus, MessageSquare, Reply, User, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -15,38 +15,34 @@ import { id } from 'date-fns/locale';
 
 interface Discussion {
   id: string;
+  stage: string;
   title: string;
   content: string;
-  stage: string;
+  author_id: string;
+  parent_id: string | null;
   created_at: string;
+  updated_at: string;
   author: {
     full_name: string;
     role: string;
-  };
+  } | null;
   replies?: Discussion[];
 }
 
 const KpDiscussions = () => {
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const { user } = useAuth();
 
   const [newDiscussion, setNewDiscussion] = useState({
+    stage: 'general',
     title: '',
-    content: '',
-    stage: 'proposal'
+    content: ''
   });
 
   const [replyContent, setReplyContent] = useState('');
-
-  const stages = [
-    { value: 'proposal', label: 'Proposal' },
-    { value: 'guidance', label: 'Bimbingan' },
-    { value: 'report', label: 'Laporan' },
-    { value: 'presentation', label: 'Presentasi' }
-  ];
 
   const fetchDiscussions = async () => {
     if (!user?.id) return;
@@ -70,7 +66,7 @@ const KpDiscussions = () => {
       // Fetch replies for each discussion
       const discussionsWithReplies = await Promise.all(
         (data || []).map(async (discussion) => {
-          const { data: replies } = await supabase
+          const { data: replies, error: repliesError } = await supabase
             .from('kp_discussions')
             .select(`
               *,
@@ -81,6 +77,8 @@ const KpDiscussions = () => {
             `)
             .eq('parent_id', discussion.id)
             .order('created_at', { ascending: true });
+
+          if (repliesError) throw repliesError;
 
           return {
             ...discussion,
@@ -99,7 +97,10 @@ const KpDiscussions = () => {
   };
 
   const handleCreateDiscussion = async () => {
-    if (!user?.id) return;
+    if (!user?.id || !newDiscussion.title.trim() || !newDiscussion.content.trim()) {
+      toast.error('Judul dan konten diskusi harus diisi');
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -107,9 +108,9 @@ const KpDiscussions = () => {
         .insert({
           student_id: user.id,
           author_id: user.id,
+          stage: newDiscussion.stage,
           title: newDiscussion.title,
-          content: newDiscussion.content,
-          stage: newDiscussion.stage
+          content: newDiscussion.content
         })
         .select(`
           *,
@@ -123,7 +124,7 @@ const KpDiscussions = () => {
       if (error) throw error;
 
       setDiscussions(prev => [{ ...data, replies: [] }, ...prev]);
-      setNewDiscussion({ title: '', content: '', stage: 'proposal' });
+      setNewDiscussion({ stage: 'general', title: '', content: '' });
       setIsCreating(false);
       toast.success('Diskusi berhasil dibuat');
     } catch (error) {
@@ -133,7 +134,10 @@ const KpDiscussions = () => {
   };
 
   const handleReply = async (discussionId: string) => {
-    if (!user?.id || !replyContent.trim()) return;
+    if (!user?.id || !replyContent.trim()) {
+      toast.error('Konten balasan harus diisi');
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -141,10 +145,10 @@ const KpDiscussions = () => {
         .insert({
           student_id: user.id,
           author_id: user.id,
-          title: `Re: ${discussions.find(d => d.id === discussionId)?.title}`,
-          content: replyContent,
-          stage: discussions.find(d => d.id === discussionId)?.stage || 'proposal',
-          parent_id: discussionId
+          parent_id: discussionId,
+          stage: 'reply',
+          title: 'Reply',
+          content: replyContent
         })
         .select(`
           *,
@@ -157,7 +161,7 @@ const KpDiscussions = () => {
 
       if (error) throw error;
 
-      // Update the discussion with the new reply
+      // Update the discussions state
       setDiscussions(prev => prev.map(discussion => 
         discussion.id === discussionId 
           ? { ...discussion, replies: [...(discussion.replies || []), data] }
@@ -168,23 +172,33 @@ const KpDiscussions = () => {
       setReplyingTo(null);
       toast.success('Balasan berhasil dikirim');
     } catch (error) {
-      console.error('Error replying to discussion:', error);
+      console.error('Error creating reply:', error);
       toast.error('Gagal mengirim balasan');
     }
   };
 
+  const getStageLabel = (stage: string) => {
+    const stages = {
+      general: 'Umum',
+      proposal: 'Proposal',
+      guidance: 'Bimbingan',
+      report: 'Laporan',
+      presentation: 'Sidang',
+      reply: 'Balasan'
+    };
+    return stages[stage as keyof typeof stages] || stage;
+  };
+
   const getStageColor = (stage: string) => {
     const colors = {
+      general: 'bg-gray-500',
       proposal: 'bg-blue-500',
       guidance: 'bg-green-500',
       report: 'bg-orange-500',
-      presentation: 'bg-purple-500'
+      presentation: 'bg-purple-500',
+      reply: 'bg-gray-400'
     };
     return colors[stage as keyof typeof colors] || 'bg-gray-500';
-  };
-
-  const getStageLabel = (stage: string) => {
-    return stages.find(s => s.value === stage)?.label || stage;
   };
 
   useEffect(() => {
@@ -203,8 +217,8 @@ const KpDiscussions = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold">Forum Diskusi</h2>
-          <p className="text-gray-600">Diskusi dengan dosen pembimbing untuk setiap tahapan KP</p>
+          <h2 className="text-xl font-semibold">Diskusi & Forum</h2>
+          <p className="text-gray-600">Diskusi dengan dosen pembimbing dan sesama mahasiswa</p>
         </div>
         <Button onClick={() => setIsCreating(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -217,24 +231,22 @@ const KpDiscussions = () => {
         <Card>
           <CardHeader>
             <CardTitle>Buat Diskusi Baru</CardTitle>
-            <CardDescription>
-              Mulai diskusi baru dengan dosen pembimbing Anda
-            </CardDescription>
+            <CardDescription>Mulai diskusi dengan dosen pembimbing Anda</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="stage">Tahapan</Label>
+              <Label htmlFor="stage">Kategori</Label>
               <select
                 id="stage"
                 className="w-full p-2 border border-gray-300 rounded-md"
                 value={newDiscussion.stage}
                 onChange={(e) => setNewDiscussion(prev => ({ ...prev, stage: e.target.value }))}
               >
-                {stages.map(stage => (
-                  <option key={stage.value} value={stage.value}>
-                    {stage.label}
-                  </option>
-                ))}
+                <option value="general">Umum</option>
+                <option value="proposal">Proposal</option>
+                <option value="guidance">Bimbingan</option>
+                <option value="report">Laporan</option>
+                <option value="presentation">Sidang</option>
               </select>
             </div>
 
@@ -249,10 +261,10 @@ const KpDiscussions = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="content">Isi Diskusi</Label>
+              <Label htmlFor="content">Konten</Label>
               <Textarea
                 id="content"
-                placeholder="Tuliskan pertanyaan atau topik yang ingin didiskusikan..."
+                placeholder="Tuliskan pertanyaan atau topik diskusi..."
                 value={newDiscussion.content}
                 onChange={(e) => setNewDiscussion(prev => ({ ...prev, content: e.target.value }))}
                 rows={4}
@@ -293,10 +305,10 @@ const KpDiscussions = () => {
                     <CardDescription className="flex items-center gap-4 mt-1">
                       <span className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        {discussion.author?.full_name || 'Unknown User'}
+                        {discussion.author?.full_name || 'Unknown'}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
+                        <Calendar className="h-4 w-4" />
                         {format(new Date(discussion.created_at), 'dd MMM yyyy HH:mm', { locale: id })}
                       </span>
                     </CardDescription>
@@ -309,23 +321,23 @@ const KpDiscussions = () => {
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-gray-700 whitespace-pre-wrap">{discussion.content}</p>
-                  
+
                   {/* Replies */}
                   {discussion.replies && discussion.replies.length > 0 && (
                     <div className="space-y-3 pl-4 border-l-2 border-gray-200">
                       {discussion.replies.map((reply) => (
                         <div key={reply.id} className="bg-gray-50 p-3 rounded-lg">
                           <div className="flex items-center gap-2 mb-2">
-                            <User className="h-4 w-4" />
-                            <span className="font-medium text-sm">{reply.author?.full_name || 'Unknown User'}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {reply.author?.role === 'supervisor' ? 'Dosen' : 'Mahasiswa'}
-                            </Badge>
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium text-sm">{reply.author?.full_name}</span>
                             <span className="text-xs text-gray-500">
                               {format(new Date(reply.created_at), 'dd MMM HH:mm', { locale: id })}
                             </span>
+                            {reply.author?.role === 'supervisor' && (
+                              <Badge variant="outline" className="text-xs">Dosen</Badge>
+                            )}
                           </div>
-                          <p className="text-gray-700 whitespace-pre-wrap text-sm">{reply.content}</p>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>
                         </div>
                       ))}
                     </div>
@@ -349,9 +361,12 @@ const KpDiscussions = () => {
                           Kirim Balasan
                         </Button>
                         <Button 
-                          variant="outline" 
                           size="sm" 
-                          onClick={() => setReplyingTo(null)}
+                          variant="outline" 
+                          onClick={() => {
+                            setReplyingTo(null);
+                            setReplyContent('');
+                          }}
                         >
                           Batal
                         </Button>
@@ -359,11 +374,12 @@ const KpDiscussions = () => {
                     </div>
                   ) : (
                     <Button 
-                      variant="outline" 
                       size="sm" 
+                      variant="outline" 
                       onClick={() => setReplyingTo(discussion.id)}
+                      className="flex items-center gap-2"
                     >
-                      <Reply className="h-4 w-4 mr-2" />
+                      <Reply className="h-4 w-4" />
                       Balas
                     </Button>
                   )}

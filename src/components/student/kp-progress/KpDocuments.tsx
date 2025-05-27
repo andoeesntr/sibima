@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, Download, Eye, Plus, X } from 'lucide-react';
+import { Upload, FileText, Download, Eye, Plus, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -14,12 +14,13 @@ import { id } from 'date-fns/locale';
 
 interface KpDocument {
   id: string;
+  student_id: string;
   document_type: string;
   file_name: string;
   file_url: string;
-  version: number;
   status: string;
   supervisor_feedback: string | null;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -27,17 +28,17 @@ interface KpDocument {
 const KpDocuments = () => {
   const [documents, setDocuments] = useState<KpDocument[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [documentType, setDocumentType] = useState('draft_report');
   const { user } = useAuth();
 
   const documentTypes = [
-    { value: 'draft_report', label: 'Draft Laporan' },
-    { value: 'revision', label: 'Revisi Laporan' },
-    { value: 'final_report', label: 'Laporan Final' },
-    { value: 'presentation', label: 'Presentasi' },
-    { value: 'other', label: 'Lainnya' }
+    { key: 'proposal', label: 'Proposal KP' },
+    { key: 'logbook', label: 'Logbook' },
+    { key: 'report_draft', label: 'Draft Laporan' },
+    { key: 'final_report', label: 'Laporan Akhir' },
+    { key: 'presentation', label: 'Slide Presentasi' },
+    { key: 'attachment', label: 'Lampiran' }
   ];
 
   const fetchDocuments = async () => {
@@ -60,19 +61,20 @@ const KpDocuments = () => {
     }
   };
 
-  const handleFileUpload = async () => {
-    if (!selectedFile || !user?.id) return;
+  const handleFileUpload = async (file: File, documentType: string) => {
+    if (!user?.id) return;
 
     try {
       setIsUploading(true);
 
-      // Upload file to Supabase Storage
-      const fileExt = selectedFile.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      // Create file path
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${documentType}/${Date.now()}.${fileExt}`;
 
+      // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('kp-documents')
-        .upload(fileName, selectedFile);
+        .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
@@ -81,16 +83,20 @@ const KpDocuments = () => {
         .from('kp-documents')
         .getPublicUrl(fileName);
 
-      // Save document record
+      // Check if document type already exists
+      const existingDoc = documents.find(doc => doc.document_type === documentType);
+      const version = existingDoc ? existingDoc.version + 1 : 1;
+
+      // Save document record to database
       const { data, error } = await supabase
         .from('kp_documents')
         .insert({
           student_id: user.id,
           uploaded_by: user.id,
           document_type: documentType,
-          file_name: selectedFile.name,
+          file_name: file.name,
           file_url: publicUrl,
-          version: 1,
+          version: version,
           status: 'pending'
         })
         .select()
@@ -99,13 +105,13 @@ const KpDocuments = () => {
       if (error) throw error;
 
       setDocuments(prev => [data, ...prev]);
-      setSelectedFile(null);
-      setIsUploading(false);
-      toast.success('Dokumen berhasil diupload');
+      toast.success('Dokumen berhasil diunggah');
     } catch (error) {
       console.error('Error uploading document:', error);
-      toast.error('Gagal mengupload dokumen');
+      toast.error('Gagal mengunggah dokumen');
+    } finally {
       setIsUploading(false);
+      setUploadingType(null);
     }
   };
 
@@ -113,7 +119,8 @@ const KpDocuments = () => {
     const statusConfig = {
       pending: { label: 'Menunggu Review', className: 'bg-yellow-500' },
       approved: { label: 'Disetujui', className: 'bg-green-500' },
-      needs_revision: { label: 'Perlu Revisi', className: 'bg-orange-500' }
+      revision_needed: { label: 'Perlu Revisi', className: 'bg-orange-500' },
+      rejected: { label: 'Ditolak', className: 'bg-red-500' }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
@@ -121,17 +128,27 @@ const KpDocuments = () => {
   };
 
   const getDocumentTypeLabel = (type: string) => {
-    return documentTypes.find(dt => dt.value === type)?.label || type;
+    const docType = documentTypes.find(dt => dt.key === type);
+    return docType ? docType.label : type;
   };
 
-  const handleDownload = (url: string, fileName: string) => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (fileUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Gagal mengunduh file');
+    }
   };
 
   useEffect(() => {
@@ -150,142 +167,113 @@ const KpDocuments = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold">Upload Dokumen Terkontrol</h2>
-          <p className="text-gray-600">Upload draft laporan, revisi, dan dokumen lainnya</p>
+          <h2 className="text-xl font-semibold">Dokumen KP</h2>
+          <p className="text-gray-600">Unggah dan kelola dokumen KP Anda</p>
         </div>
       </div>
 
-      {/* Upload Form */}
+      {/* Upload Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Upload Dokumen Baru</CardTitle>
-          <CardDescription>
-            Pilih file dan jenis dokumen yang akan diupload
-          </CardDescription>
+          <CardTitle>Unggah Dokumen</CardTitle>
+          <CardDescription>Pilih jenis dokumen dan unggah file</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="document_type">Jenis Dokumen</Label>
-              <select
-                id="document_type"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                value={documentType}
-                onChange={(e) => setDocumentType(e.target.value)}
-              >
-                {documentTypes.map(type => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="file">Pilih File</Label>
-              <Input
-                id="file"
-                type="file"
-                accept=".pdf,.doc,.docx,.ppt,.pptx"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              />
-            </div>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {documentTypes.map((docType) => (
+              <div key={docType.key} className="border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-5 w-5 text-blue-500" />
+                  <h3 className="font-medium">{docType.label}</h3>
+                </div>
+                <div className="space-y-2">
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setUploadingType(docType.key);
+                        handleFileUpload(file, docType.key);
+                      }
+                    }}
+                    disabled={isUploading && uploadingType === docType.key}
+                  />
+                  {isUploading && uploadingType === docType.key && (
+                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      Mengunggah...
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-
-          {selectedFile && (
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-500" />
-              <span className="text-sm">{selectedFile.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedFile(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
-          <Button 
-            onClick={handleFileUpload} 
-            disabled={!selectedFile || isUploading}
-          >
-            {isUploading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Mengupload...
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Dokumen
-              </>
-            )}
-          </Button>
         </CardContent>
       </Card>
 
       {/* Documents List */}
       <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Dokumen Anda</h3>
+        
         {documents.length === 0 ? (
           <Card>
             <CardContent className="pt-6 text-center">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Belum ada dokumen yang diupload</p>
+              <p className="text-gray-500">Belum ada dokumen yang diunggah</p>
             </CardContent>
           </Card>
         ) : (
-          documents.map((document) => (
-            <Card key={document.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      {document.file_name}
-                    </CardTitle>
-                    <CardDescription>
-                      {getDocumentTypeLabel(document.document_type)} • 
-                      Version {document.version} • 
-                      {format(new Date(document.created_at), 'dd MMM yyyy HH:mm', { locale: id })}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(document.status)}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {document.supervisor_feedback && (
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h4 className="font-medium mb-2 text-blue-800">Feedback Dosen:</h4>
-                      <p className="text-blue-700 whitespace-pre-wrap">{document.supervisor_feedback}</p>
-                    </div>
-                  )}
+          <div className="grid gap-4">
+            {documents.map((document) => (
+              <Card key={document.id}>
+                <CardContent className="pt-6">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="h-5 w-5 text-blue-500" />
+                        <h4 className="font-medium">{getDocumentTypeLabel(document.document_type)}</h4>
+                        <Badge variant="outline">v{document.version}</Badge>
+                        {getStatusBadge(document.status)}
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-1">{document.file_name}</p>
+                      <p className="text-xs text-gray-500">
+                        Diunggah: {format(new Date(document.created_at), 'dd MMM yyyy HH:mm', { locale: id })}
+                      </p>
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(document.file_url, '_blank')}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Lihat
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(document.file_url, document.file_name)}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
+                      {document.supervisor_feedback && (
+                        <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                          <div className="flex items-center gap-2 mb-1">
+                            <AlertCircle className="h-4 w-4 text-orange-600" />
+                            <span className="font-medium text-orange-800 text-sm">Feedback Dosen:</span>
+                          </div>
+                          <p className="text-sm text-orange-700">{document.supervisor_feedback}</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(document.file_url, '_blank')}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownload(document.file_url, document.file_name)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
     </div>

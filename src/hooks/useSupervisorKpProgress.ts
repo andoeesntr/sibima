@@ -4,22 +4,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-interface StudentProgressData {
-  student_id: string;
-  student_name: string;
-  current_stage: string;
+interface StudentProgress {
+  id: string;
+  full_name: string;
+  nim: string;
   overall_progress: number;
-  proposal_status: string;
+  current_stage: string;
   guidance_sessions_completed: number;
-  report_status: string;
-  presentation_status: string;
   last_activity: string;
   pendingReviews: number;
   todayGuidance: boolean;
 }
 
 export const useSupervisorKpProgress = () => {
-  const [studentsProgress, setStudentsProgress] = useState<StudentProgressData[]>([]);
+  const [studentsProgress, setStudentsProgress] = useState<StudentProgress[]>([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -30,89 +28,95 @@ export const useSupervisorKpProgress = () => {
     try {
       setLoading(true);
 
-      // Get students supervised by this supervisor
-      const { data: supervisedStudents, error: studentsError } = await supabase
+      // Get teams supervised by this supervisor
+      const { data: supervisorTeams, error: teamsError } = await supabase
         .from('team_supervisors')
-        .select(`
-          team_id,
-          teams!inner (
-            id,
-            team_members!inner (
-              user_id,
-              profiles!inner (
-                id,
-                full_name
-              )
-            )
-          )
-        `)
+        .select('team_id')
         .eq('supervisor_id', user.id);
 
-      if (studentsError) throw studentsError;
+      if (teamsError) throw teamsError;
 
-      // Extract unique student IDs
-      const studentIds = new Set<string>();
-      const studentNames: { [key: string]: string } = {};
+      if (!supervisorTeams || supervisorTeams.length === 0) {
+        setStudentsProgress([]);
+        setTotalStudents(0);
+        return;
+      }
 
-      supervisedStudents?.forEach(team => {
-        team.teams.team_members.forEach(member => {
-          studentIds.add(member.user_id);
-          studentNames[member.user_id] = member.profiles.full_name;
-        });
-      });
+      const teamIds = supervisorTeams.map(t => t.team_id);
 
-      setTotalStudents(studentIds.size);
+      // Get students in those teams
+      const { data: teamMembers, error: membersError } = await supabase
+        .from('team_members')
+        .select(`
+          user_id,
+          profiles!team_members_user_id_fkey (
+            id,
+            full_name,
+            nim
+          )
+        `)
+        .in('team_id', teamIds);
 
-      // Get progress data for each student
-      const progressPromises = Array.from(studentIds).map(async (studentId) => {
-        const { data: progress } = await supabase
-          .from('kp_progress')
-          .select('*')
-          .eq('student_id', studentId)
-          .maybeSingle();
+      if (membersError) throw membersError;
 
-        // Count pending reviews (documents and journal entries)
-        const { count: pendingDocs } = await supabase
-          .from('kp_documents')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .eq('status', 'pending');
+      const studentIds = teamMembers?.map(tm => tm.user_id) || [];
+      setTotalStudents(studentIds.length);
 
-        const { count: pendingJournals } = await supabase
-          .from('kp_journal_entries')
-          .select('*', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .eq('status', 'draft');
+      if (studentIds.length === 0) {
+        setStudentsProgress([]);
+        return;
+      }
 
-        // Check for today's guidance sessions
-        const today = new Date().toISOString().split('T')[0];
-        const { data: todayGuidance } = await supabase
-          .from('kp_guidance_schedule')
-          .select('*')
-          .eq('student_id', studentId)
-          .eq('supervisor_id', user.id)
-          .gte('requested_date', today)
-          .lt('requested_date', `${today}T23:59:59`)
-          .eq('status', 'approved');
+      // Get progress data for students
+      const { data: progressData, error: progressError } = await supabase
+        .from('kp_progress')
+        .select('*')
+        .in('student_id', studentIds);
+
+      if (progressError) throw progressError;
+
+      // Get pending reviews count
+      const { data: pendingDocs, error: docsError } = await supabase
+        .from('kp_documents')
+        .select('student_id')
+        .in('student_id', studentIds)
+        .eq('status', 'pending');
+
+      if (docsError) throw docsError;
+
+      // Get today's guidance sessions
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todayGuidance, error: guidanceError } = await supabase
+        .from('kp_guidance_schedule')
+        .select('student_id')
+        .in('student_id', studentIds)
+        .gte('requested_date', today)
+        .lt('requested_date', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+        .eq('status', 'approved');
+
+      if (guidanceError) throw guidanceError;
+
+      // Combine data
+      const studentsWithProgress = teamMembers?.map(tm => {
+        const profile = tm.profiles;
+        const progress = progressData?.find(p => p.student_id === tm.user_id);
+        const pendingReviews = pendingDocs?.filter(d => d.student_id === tm.user_id).length || 0;
+        const hasTodayGuidance = todayGuidance?.some(g => g.student_id === tm.user_id) || false;
 
         return {
-          student_id: studentId,
-          student_name: studentNames[studentId],
-          current_stage: progress?.current_stage || 'proposal',
+          id: tm.user_id,
+          full_name: profile?.full_name || 'Unknown',
+          nim: profile?.nim || '',
           overall_progress: progress?.overall_progress || 0,
-          proposal_status: progress?.proposal_status || 'pending',
+          current_stage: progress?.current_stage || 'proposal',
           guidance_sessions_completed: progress?.guidance_sessions_completed || 0,
-          report_status: progress?.report_status || 'not_started',
-          presentation_status: progress?.presentation_status || 'not_scheduled',
-          last_activity: progress?.last_activity || '',
-          pendingReviews: (pendingDocs || 0) + (pendingJournals || 0),
-          todayGuidance: (todayGuidance?.length || 0) > 0
+          last_activity: progress?.last_activity || progress?.created_at || '',
+          pendingReviews,
+          todayGuidance: hasTodayGuidance
         };
-      });
+      }) || [];
 
-      const progressData = await Promise.all(progressPromises);
-      setStudentsProgress(progressData);
-
+      setStudentsProgress(studentsWithProgress);
     } catch (error) {
       console.error('Error fetching students progress:', error);
       toast.error('Gagal mengambil data progress mahasiswa');
