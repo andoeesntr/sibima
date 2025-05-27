@@ -50,9 +50,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
+            <Toaster />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
@@ -117,8 +117,8 @@ function App() {
               {/* 404 page */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </AuthProvider>
+          </AuthProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
