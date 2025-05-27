@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,26 +71,33 @@ const KpJournal = () => {
     if (!user?.id) return;
 
     try {
-      // Get supervisors for this student's team
-      const { data, error } = await supabase
+      // First, get the user's team
+      const { data: teamMember, error: teamError } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (teamError || !teamMember) {
+        console.log('No team found for user');
+        return;
+      }
+
+      // Then get supervisors for that team
+      const { data: teamSupervisors, error: supervisorError } = await supabase
         .from('team_supervisors')
         .select(`
           supervisor_id,
           supervisor:profiles!team_supervisors_supervisor_id_fkey (
             id,
             full_name
-          ),
-          teams!inner (
-            team_members!inner (
-              user_id
-            )
           )
         `)
-        .eq('teams.team_members.user_id', user.id);
+        .eq('team_id', teamMember.team_id);
 
-      if (error) throw error;
+      if (supervisorError) throw supervisorError;
 
-      const supervisorsList = data?.map(item => ({
+      const supervisorsList = teamSupervisors?.map(item => ({
         id: item.supervisor_id,
         full_name: item.supervisor?.full_name || 'Unknown'
       })) || [];
