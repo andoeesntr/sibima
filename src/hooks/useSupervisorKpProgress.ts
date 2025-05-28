@@ -77,7 +77,7 @@ export const useSupervisorKpProgress = () => {
 
       if (progressError) throw progressError;
 
-      // Get pending reviews count
+      // Get pending reviews count from kp_documents
       const { data: pendingDocs, error: docsError } = await supabase
         .from('kp_documents')
         .select('student_id')
@@ -88,12 +88,14 @@ export const useSupervisorKpProgress = () => {
 
       // Get today's guidance sessions
       const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
       const { data: todayGuidance, error: guidanceError } = await supabase
         .from('kp_guidance_schedule')
         .select('student_id')
         .in('student_id', studentIds)
         .gte('requested_date', today)
-        .lt('requested_date', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+        .lt('requested_date', tomorrow)
         .eq('status', 'approved');
 
       if (guidanceError) throw guidanceError;

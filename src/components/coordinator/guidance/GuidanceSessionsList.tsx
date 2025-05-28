@@ -1,8 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { GuidanceSession } from '@/services/guidanceService';
+import { GuidanceSession, fetchAllGuidanceSessions } from '@/services/guidanceService';
 import { 
   Table, 
   TableBody, 
@@ -11,7 +11,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Calendar, FileText, Plus } from 'lucide-react';
+import { Calendar, FileText, Plus, Loader } from 'lucide-react';
 import { formatDate } from '@/utils/dateUtils';
 
 interface GuidanceSessionsListProps {
@@ -20,39 +20,19 @@ interface GuidanceSessionsListProps {
 }
 
 const GuidanceSessionsList = ({ onAddSession, onViewReport }: GuidanceSessionsListProps) => {
-  // Sample data - would typically be fetched from API
-  const [sessions] = useState<GuidanceSession[]>([
-    {
-      id: '1',
-      student_id: 'student1',
-      supervisor_id: 'supervisor1',
-      session_date: '2023-05-15T10:00:00Z',
-      session_type: 'Proposal Review',
-      status: 'completed',
-      student: {
-        full_name: 'Budi Santoso',
-        nim: '12345678'
-      },
-      supervisor: {
-        full_name: 'Dr. Ahmad Wijaya'
-      }
-    },
-    {
-      id: '2',
-      student_id: 'student2',
-      supervisor_id: 'supervisor2',
-      session_date: '2023-05-20T14:00:00Z',
-      session_type: 'Progress Update',
-      status: 'scheduled',
-      student: {
-        full_name: 'Siti Rahma',
-        nim: '87654321'
-      },
-      supervisor: {
-        full_name: 'Dr. Kartika Dewi'
-      }
-    }
-  ]);
+  const [sessions, setSessions] = useState<GuidanceSession[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadSessions = async () => {
+    setLoading(true);
+    const data = await fetchAllGuidanceSessions();
+    setSessions(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadSessions();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -66,6 +46,14 @@ const GuidanceSessionsList = ({ onAddSession, onViewReport }: GuidanceSessionsLi
         return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">{status}</span>;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-32">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -101,15 +89,15 @@ const GuidanceSessionsList = ({ onAddSession, onViewReport }: GuidanceSessionsLi
                 <TableCell>
                   <div className="flex items-center space-x-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback>{session.student?.full_name.charAt(0) || 'S'}</AvatarFallback>
+                      <AvatarFallback>{session.student?.full_name?.charAt(0) || 'S'}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium">{session.student?.full_name}</div>
-                      <div className="text-xs text-gray-500">{session.student?.nim}</div>
+                      <div className="font-medium">{session.student?.full_name || 'Unknown Student'}</div>
+                      <div className="text-xs text-gray-500">{session.student?.nim || 'No NIM'}</div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{session.supervisor?.full_name}</TableCell>
+                <TableCell>{session.supervisor?.full_name || 'Unknown Supervisor'}</TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-1">
                     <Calendar className="h-4 w-4 text-gray-500" />

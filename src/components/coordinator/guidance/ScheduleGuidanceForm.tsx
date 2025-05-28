@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -28,8 +28,8 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
-import { createGuidanceSession } from '@/services/guidanceService';
+import { CalendarIcon, Loader } from 'lucide-react';
+import { createGuidanceSession, fetchStudentsAndSupervisors } from '@/services/guidanceService';
 
 interface ScheduleGuidanceFormProps {
   onSuccess: () => void;
@@ -52,6 +52,9 @@ const formSchema = z.object({
 
 const ScheduleGuidanceForm = ({ onSuccess }: ScheduleGuidanceFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<any[]>([]);
+  const [supervisors, setSupervisors] = useState<any[]>([]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -59,6 +62,18 @@ const ScheduleGuidanceForm = ({ onSuccess }: ScheduleGuidanceFormProps) => {
       session_type: "proposal-review",
     },
   });
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const { students, supervisors } = await fetchStudentsAndSupervisors();
+      setStudents(students);
+      setSupervisors(supervisors);
+      setLoading(false);
+    };
+
+    loadData();
+  }, []);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
@@ -87,6 +102,14 @@ const ScheduleGuidanceForm = ({ onSuccess }: ScheduleGuidanceFormProps) => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-32">
+        <Loader className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -103,9 +126,11 @@ const ScheduleGuidanceForm = ({ onSuccess }: ScheduleGuidanceFormProps) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="student1">Budi Santoso (12345678)</SelectItem>
-                  <SelectItem value="student2">Siti Rahma (87654321)</SelectItem>
-                  <SelectItem value="student3">Dian Anggoro (23456789)</SelectItem>
+                  {students.map((student) => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.full_name} ({student.nim})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -126,9 +151,11 @@ const ScheduleGuidanceForm = ({ onSuccess }: ScheduleGuidanceFormProps) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="supervisor1">Dr. Ahmad Wijaya</SelectItem>
-                  <SelectItem value="supervisor2">Dr. Kartika Dewi</SelectItem>
-                  <SelectItem value="supervisor3">Prof. Bambang Sutejo</SelectItem>
+                  {supervisors.map((supervisor) => (
+                    <SelectItem key={supervisor.id} value={supervisor.id}>
+                      {supervisor.full_name} {supervisor.nip && `(${supervisor.nip})`}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormMessage />

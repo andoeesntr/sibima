@@ -35,8 +35,8 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
       .from('guidance_sessions')
       .select(`
         *,
-        student:profiles!student_id (full_name, nim),
-        supervisor:profiles!supervisor_id (full_name)
+        student:profiles!guidance_sessions_student_id_fkey (full_name, nim),
+        supervisor:profiles!guidance_sessions_supervisor_id_fkey (full_name)
       `)
       .order('created_at', { ascending: false });
 
@@ -52,6 +52,66 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
   }
 };
 
+// Fetch guidance sessions for a specific supervisor
+export const fetchSupervisorGuidanceSessions = async (supervisorId: string): Promise<GuidanceSession[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('guidance_sessions')
+      .select(`
+        *,
+        student:profiles!guidance_sessions_student_id_fkey (full_name, nim),
+        supervisor:profiles!guidance_sessions_supervisor_id_fkey (full_name)
+      `)
+      .eq('supervisor_id', supervisorId)
+      .order('session_date', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return data as GuidanceSession[] || [];
+  } catch (error: any) {
+    console.error('Error fetching supervisor guidance sessions:', error);
+    toast.error(`Failed to load guidance sessions: ${error.message}`);
+    return [];
+  }
+};
+
+// Fetch students and supervisors for dropdowns
+export const fetchStudentsAndSupervisors = async () => {
+  try {
+    // Get students (users with role 'student')
+    const { data: students, error: studentsError } = await supabase
+      .from('profiles')
+      .select('id, full_name, nim')
+      .eq('role', 'student')
+      .order('full_name');
+
+    if (studentsError) throw studentsError;
+
+    // Get supervisors (users with role 'supervisor')
+    const { data: supervisors, error: supervisorsError } = await supabase
+      .from('profiles')
+      .select('id, full_name, nip')
+      .eq('role', 'supervisor')
+      .order('full_name');
+
+    if (supervisorsError) throw supervisorsError;
+
+    return {
+      students: students || [],
+      supervisors: supervisors || []
+    };
+  } catch (error: any) {
+    console.error('Error fetching students and supervisors:', error);
+    toast.error(`Failed to load students and supervisors: ${error.message}`);
+    return {
+      students: [],
+      supervisors: []
+    };
+  }
+};
+
 // Create a new guidance session
 export const createGuidanceSession = async (session: Omit<GuidanceSession, 'id' | 'created_at' | 'updated_at'>): Promise<GuidanceSession | null> => {
   try {
@@ -64,7 +124,11 @@ export const createGuidanceSession = async (session: Omit<GuidanceSession, 'id' 
         session_type: session.session_type,
         status: session.status
       })
-      .select()
+      .select(`
+        *,
+        student:profiles!guidance_sessions_student_id_fkey (full_name, nim),
+        supervisor:profiles!guidance_sessions_supervisor_id_fkey (full_name)
+      `)
       .single();
 
     if (error) {
