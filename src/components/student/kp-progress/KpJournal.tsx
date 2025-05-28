@@ -93,7 +93,7 @@ const KpJournal = () => {
         return;
       }
 
-      // Fallback: Get supervisors from team_supervisors table
+      // Fallback: Get supervisors from team_supervisors table using separate queries
       const { data: teamMember, error: teamError } = await supabase
         .from('team_members')
         .select('team_id')
@@ -101,34 +101,40 @@ const KpJournal = () => {
         .single();
 
       if (teamError || !teamMember) {
-        console.log('No team found for user, trying direct supervisor lookup');
+        console.log('No team found for user');
         return;
       }
 
+      // Get team supervisors
       const { data: teamSupervisors, error: supervisorError } = await supabase
         .from('team_supervisors')
-        .select(`
-          supervisor_id,
-          supervisor:profiles!team_supervisors_supervisor_id_fkey (
-            id,
-            full_name
-          )
-        `)
+        .select('supervisor_id')
         .eq('team_id', teamMember.team_id);
 
       if (supervisorError) throw supervisorError;
 
       if (teamSupervisors && teamSupervisors.length > 0) {
-        const supervisorsList = teamSupervisors.map(ts => ({
-          id: ts.supervisor.id,
-          full_name: ts.supervisor.full_name || 'Unknown'
-        }));
+        // Get supervisor profiles separately
+        const supervisorIds = teamSupervisors.map(ts => ts.supervisor_id);
+        const { data: supervisorProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', supervisorIds);
 
-        console.log('Found supervisors from team:', supervisorsList);
-        setSupervisors(supervisorsList);
-        
-        if (supervisorsList.length === 1) {
-          setNewEntry(prev => ({ ...prev, supervisor_id: supervisorsList[0].id }));
+        if (profilesError) throw profilesError;
+
+        if (supervisorProfiles && supervisorProfiles.length > 0) {
+          const supervisorsList = supervisorProfiles.map(profile => ({
+            id: profile.id,
+            full_name: profile.full_name || 'Unknown'
+          }));
+
+          console.log('Found supervisors from team:', supervisorsList);
+          setSupervisors(supervisorsList);
+          
+          if (supervisorsList.length === 1) {
+            setNewEntry(prev => ({ ...prev, supervisor_id: supervisorsList[0].id }));
+          }
         }
       }
     } catch (error) {
