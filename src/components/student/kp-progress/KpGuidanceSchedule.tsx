@@ -1,51 +1,39 @@
+
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Video, Plus, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Clock, MapPin, Plus, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 
-interface GuidanceSchedule {
+interface GuidanceSession {
   id: string;
+  supervisor_id: string;
   requested_date: string;
   duration_minutes: number;
-  topic: string | null;
+  location?: string;
+  topic?: string;
   status: string;
-  meeting_link: string | null;
-  location: string | null;
-  supervisor_notes: string | null;
-  created_at: string;
-  supervisor: {
+  meeting_link?: string;
+  supervisor_notes?: string;
+  supervisor?: {
     full_name: string;
   };
 }
 
 const KpGuidanceSchedule = () => {
-  const [schedules, setSchedules] = useState<GuidanceSchedule[]>([]);
-  const [isRequesting, setIsRequesting] = useState(false);
+  const [sessions, setSessions] = useState<GuidanceSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [supervisors, setSupervisors] = useState<any[]>([]);
   const { user } = useAuth();
+  const { selectedProposal, proposals } = useStudentDashboard();
 
-  const [newRequest, setNewRequest] = useState({
-    supervisor_id: '',
-    requested_date: '',
-    duration_minutes: 60,
-    topic: '',
-    location: ''
-  });
-
-  const fetchSchedules = async () => {
+  const fetchGuidanceSessions = async () => {
     if (!user?.id) return;
 
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('kp_guidance_schedule')
         .select(`
@@ -58,134 +46,79 @@ const KpGuidanceSchedule = () => {
         .order('requested_date', { ascending: false });
 
       if (error) throw error;
-      setSchedules(data || []);
+
+      setSessions(data || []);
     } catch (error) {
-      console.error('Error fetching schedules:', error);
-      toast.error('Gagal mengambil data jadwal');
+      console.error('Error fetching guidance sessions:', error);
+      toast.error('Gagal memuat jadwal bimbingan');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchSupervisors = async () => {
-    if (!user?.id) return;
-
-    try {
-      // First, get the user's team
-      const { data: teamMember, error: teamError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (teamError || !teamMember) {
-        console.log('No team found for user');
-        return;
-      }
-
-      // Then get supervisors for that team
-      const { data: teamSupervisors, error: supervisorError } = await supabase
-        .from('team_supervisors')
-        .select('supervisor_id')
-        .eq('team_id', teamMember.team_id);
-
-      if (supervisorError) throw supervisorError;
-
-      if (teamSupervisors && teamSupervisors.length > 0) {
-        // Get supervisor details from profiles table
-        const supervisorIds = teamSupervisors.map(ts => ts.supervisor_id);
-        
-        const { data: supervisorProfiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', supervisorIds);
-
-        if (profileError) throw profileError;
-
-        const supervisorsList = supervisorProfiles?.map(profile => ({
-          id: profile.id,
-          full_name: profile.full_name || 'Unknown'
-        })) || [];
-
-        setSupervisors(supervisorsList);
-        
-        // Set default supervisor if only one
-        if (supervisorsList.length === 1) {
-          setNewRequest(prev => ({ ...prev, supervisor_id: supervisorsList[0].id }));
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching supervisors:', error);
-    }
-  };
+  useEffect(() => {
+    fetchGuidanceSessions();
+  }, [user?.id]);
 
   const handleRequestGuidance = async () => {
-    if (!user?.id || !newRequest.supervisor_id) {
-      toast.error('Pilih dosen pembimbing terlebih dahulu');
+    if (!selectedProposal || !selectedProposal.supervisors || selectedProposal.supervisors.length === 0) {
+      toast.error('Tidak ada dosen pembimbing yang tersedia');
       return;
     }
 
+    // For now, we'll use the first supervisor
+    const supervisor = selectedProposal.supervisors[0];
+
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('kp_guidance_schedule')
         .insert({
-          student_id: user.id,
-          supervisor_id: newRequest.supervisor_id,
-          requested_date: newRequest.requested_date,
-          duration_minutes: newRequest.duration_minutes,
-          topic: newRequest.topic,
-          location: newRequest.location,
+          student_id: user?.id,
+          supervisor_id: supervisor.id,
+          requested_date: new Date().toISOString(),
+          topic: 'Bimbingan Umum',
           status: 'requested'
-        })
-        .select(`
-          *,
-          supervisor:profiles!kp_guidance_schedule_supervisor_id_fkey (
-            full_name
-          )
-        `)
-        .single();
+        });
 
       if (error) throw error;
 
-      setSchedules(prev => [data, ...prev]);
-      setNewRequest({
-        supervisor_id: supervisors.length === 1 ? supervisors[0].id : '',
-        requested_date: '',
-        duration_minutes: 60,
-        topic: '',
-        location: ''
-      });
-      setIsRequesting(false);
-      toast.success('Permintaan bimbingan berhasil dikirim');
+      toast.success('Permintaan bimbingan berhasil diajukan');
+      fetchGuidanceSessions();
     } catch (error) {
       console.error('Error requesting guidance:', error);
-      toast.error('Gagal mengirim permintaan bimbingan');
+      toast.error('Gagal mengajukan permintaan bimbingan');
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      requested: { label: 'Menunggu Persetujuan', className: 'bg-yellow-500' },
-      approved: { label: 'Disetujui', className: 'bg-green-500' },
-      rejected: { label: 'Ditolak', className: 'bg-red-500' },
-      completed: { label: 'Selesai', className: 'bg-blue-500' },
-      cancelled: { label: 'Dibatalkan', className: 'bg-gray-500' }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.requested;
-    return <Badge className={config.className}>{config.label}</Badge>;
+    switch (status) {
+      case 'approved':
+        return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Disetujui</span>;
+      case 'requested':
+        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Menunggu</span>;
+      case 'rejected':
+        return <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Ditolak</span>;
+      case 'completed':
+        return <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Selesai</span>;
+      default:
+        return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">{status}</span>;
+    }
   };
 
-  const getMinDateTime = () => {
-    const now = new Date();
-    now.setHours(now.getHours() + 2); // Minimum 2 hours from now
-    return now.toISOString().slice(0, 16);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  useEffect(() => {
-    fetchSchedules();
-    fetchSupervisors();
-  }, [user?.id]);
+  // Check if student has approved proposal and supervisors
+  const hasApprovedProposal = proposals.some(p => p.status === 'approved');
+  const hasSupervisors = selectedProposal?.supervisors && selectedProposal.supervisors.length > 0;
 
   if (loading) {
     return (
@@ -202,193 +135,87 @@ const KpGuidanceSchedule = () => {
           <h2 className="text-xl font-semibold">Kalender Bimbingan</h2>
           <p className="text-gray-600">Jadwalkan sesi bimbingan dengan dosen pembimbing</p>
         </div>
-        <Button 
-          onClick={() => setIsRequesting(true)} 
-          disabled={supervisors.length === 0}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Request Bimbingan
-        </Button>
+        {hasApprovedProposal && hasSupervisors && (
+          <Button onClick={handleRequestGuidance}>
+            <Plus className="mr-2 h-4 w-4" />
+            Request Bimbingan
+          </Button>
+        )}
       </div>
 
-      {supervisors.length === 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="pt-6">
-            <p className="text-yellow-800">
-              Anda belum memiliki dosen pembimbing. Silakan ajukan proposal terlebih dahulu.
+      {!hasApprovedProposal || !hasSupervisors ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum Ada Dosen Pembimbing</h3>
+            <p className="text-gray-600 text-center mb-4">
+              {!hasApprovedProposal 
+                ? "Proposal Anda belum disetujui. Tunggu persetujuan koordinator."
+                : "Anda belum memiliki dosen pembimbing. Tunggu penugasan dari koordinator."
+              }
             </p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Request Form */}
-      {isRequesting && (
+      ) : sessions.length === 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Request Bimbingan Baru</CardTitle>
-            <CardDescription>
-              Isi form di bawah untuk mengajukan jadwal bimbingan
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {supervisors.length > 1 && (
-              <div className="space-y-2">
-                <Label htmlFor="supervisor">Dosen Pembimbing</Label>
-                <select
-                  id="supervisor"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={newRequest.supervisor_id}
-                  onChange={(e) => setNewRequest(prev => ({ ...prev, supervisor_id: e.target.value }))}
-                >
-                  <option value="">Pilih Dosen Pembimbing</option>
-                  {supervisors.map(supervisor => (
-                    <option key={supervisor.id} value={supervisor.id}>
-                      {supervisor.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="requested_date">Tanggal & Waktu</Label>
-                <Input
-                  id="requested_date"
-                  type="datetime-local"
-                  min={getMinDateTime()}
-                  value={newRequest.requested_date}
-                  onChange={(e) => setNewRequest(prev => ({ ...prev, requested_date: e.target.value }))}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="duration">Durasi (menit)</Label>
-                <select
-                  id="duration"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  value={newRequest.duration_minutes}
-                  onChange={(e) => setNewRequest(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) }))}
-                >
-                  <option value={30}>30 menit</option>
-                  <option value={60}>60 menit</option>
-                  <option value={90}>90 menit</option>
-                  <option value={120}>120 menit</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="topic">Topik Bimbingan</Label>
-              <Input
-                id="topic"
-                placeholder="Masukkan topik yang akan dibahas..."
-                value={newRequest.topic}
-                onChange={(e) => setNewRequest(prev => ({ ...prev, topic: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Lokasi (Opsional)</Label>
-              <Input
-                id="location"
-                placeholder="Ruang, Lab, atau Online"
-                value={newRequest.location}
-                onChange={(e) => setNewRequest(prev => ({ ...prev, location: e.target.value }))}
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleRequestGuidance} 
-                disabled={!newRequest.requested_date || !newRequest.supervisor_id}
-              >
-                Kirim Permintaan
-              </Button>
-              <Button variant="outline" onClick={() => setIsRequesting(false)}>
-                Batal
-              </Button>
-            </div>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada jadwal bimbingan</h3>
+            <p className="text-gray-600 text-center mb-4">
+              Anda belum memiliki jadwal bimbingan. Klik tombol "Request Bimbingan" untuk mengajukan sesi bimbingan.
+            </p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Schedules List */}
-      <div className="space-y-4">
-        {schedules.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Belum ada jadwal bimbingan</p>
-            </CardContent>
-          </Card>
-        ) : (
-          schedules.map((schedule) => (
-            <Card key={schedule.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      {format(new Date(schedule.requested_date), 'dd MMMM yyyy', { locale: id })}
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-4 mt-1">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {format(new Date(schedule.requested_date), 'HH:mm', { locale: id })} 
-                        ({schedule.duration_minutes} menit)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <User className="h-4 w-4" />
-                        {schedule.supervisor?.full_name || 'Unknown Supervisor'}
-                      </span>
-                    </CardDescription>
+      ) : (
+        <div className="space-y-4">
+          {sessions.map((session) => (
+            <Card key={session.id}>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">{formatDate(session.requested_date)}</span>
+                      {getStatusBadge(session.status)}
+                    </div>
+                    
+                    {session.topic && (
+                      <div className="flex items-center space-x-2">
+                        <MessageSquare className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">{session.topic}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">{session.duration_minutes} menit</span>
+                    </div>
+                    
+                    {session.location && (
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">{session.location}</span>
+                      </div>
+                    )}
+                    
+                    <div className="text-sm text-gray-600">
+                      Pembimbing: {session.supervisor?.full_name || 'Unknown'}
+                    </div>
+                    
+                    {session.supervisor_notes && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded">
+                        <p className="text-sm text-blue-700">
+                          <strong>Catatan Pembimbing:</strong> {session.supervisor_notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  {getStatusBadge(schedule.status)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {schedule.topic && (
-                    <div>
-                      <h4 className="font-medium text-sm">Topik:</h4>
-                      <p className="text-gray-700">{schedule.topic}</p>
-                    </div>
-                  )}
-
-                  {schedule.location && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm">{schedule.location}</span>
-                    </div>
-                  )}
-
-                  {schedule.meeting_link && (
-                    <div className="flex items-center gap-2">
-                      <Video className="h-4 w-4 text-blue-500" />
-                      <a 
-                        href={schedule.meeting_link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline text-sm"
-                      >
-                        Join Meeting
-                      </a>
-                    </div>
-                  )}
-
-                  {schedule.supervisor_notes && (
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <h4 className="font-medium text-blue-800 text-sm mb-1">Catatan Dosen:</h4>
-                      <p className="text-blue-700 text-sm whitespace-pre-wrap">{schedule.supervisor_notes}</p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

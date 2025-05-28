@@ -11,10 +11,12 @@ import KpDiscussions from '@/components/student/kp-progress/KpDiscussions';
 import KpDocuments from '@/components/student/kp-progress/KpDocuments';
 import KpGuidanceSchedule from '@/components/student/kp-progress/KpGuidanceSchedule';
 import { useKpProgress } from '@/hooks/useKpProgress';
+import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 
 const KpProgress = () => {
   const [activeTab, setActiveTab] = useState('progress');
-  const { progressData, loading } = useKpProgress();
+  const { progressData, loading: progressLoading } = useKpProgress();
+  const { proposals, selectedProposal, loading: dashboardLoading } = useStudentDashboard();
 
   const getStageLabel = (stage: string) => {
     const stages = {
@@ -44,7 +46,11 @@ const KpProgress = () => {
     }
   };
 
-  if (loading) {
+  // Get the current proposal status
+  const hasApprovedProposal = proposals.some(p => p.status === 'approved');
+  const currentProposalStatus = selectedProposal?.status || 'draft';
+
+  if (progressLoading || dashboardLoading) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold">Progress KP</h1>
@@ -95,15 +101,22 @@ const KpProgress = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Aktivitas Terakhir</CardTitle>
+            <CardTitle className="text-sm font-medium">Status Proposal</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-600">
-              {progressData?.last_activity 
-                ? new Date(progressData.last_activity).toLocaleDateString('id-ID')
-                : 'Belum ada aktivitas'
-              }
-            </p>
+            <div className="space-y-1">
+              <Badge className={getStatusColor(currentProposalStatus)}>
+                {currentProposalStatus === 'approved' ? 'Disetujui' : 
+                 currentProposalStatus === 'submitted' ? 'Menunggu Review' :
+                 currentProposalStatus === 'revision' ? 'Perlu Revisi' :
+                 currentProposalStatus === 'rejected' ? 'Ditolak' : 'Draft'}
+              </Badge>
+              {selectedProposal?.supervisors && selectedProposal.supervisors.length > 0 && (
+                <p className="text-xs text-gray-600">
+                  Pembimbing: {selectedProposal.supervisors[0].full_name}
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
