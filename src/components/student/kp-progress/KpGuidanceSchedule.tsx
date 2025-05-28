@@ -47,6 +47,7 @@ const KpGuidanceSchedule = () => {
 
       if (error) throw error;
 
+      console.log('Fetched guidance sessions:', data);
       setSessions(data || []);
     } catch (error) {
       console.error('Error fetching guidance sessions:', error);
@@ -55,10 +56,6 @@ const KpGuidanceSchedule = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchGuidanceSessions();
-  }, [user?.id]);
 
   const handleRequestGuidance = async () => {
     if (!selectedProposal || !selectedProposal.supervisors || selectedProposal.supervisors.length === 0) {
@@ -77,7 +74,8 @@ const KpGuidanceSchedule = () => {
           supervisor_id: supervisor.id,
           requested_date: new Date().toISOString(),
           topic: 'Bimbingan Umum',
-          status: 'requested'
+          status: 'requested',
+          duration_minutes: 60
         });
 
       if (error) throw error;
@@ -116,6 +114,10 @@ const KpGuidanceSchedule = () => {
     });
   };
 
+  useEffect(() => {
+    fetchGuidanceSessions();
+  }, [user?.id]);
+
   // Check if student has approved proposal and supervisors
   const hasApprovedProposal = proposals.some(p => p.status === 'approved');
   const hasSupervisors = selectedProposal?.supervisors && selectedProposal.supervisors.length > 0;
@@ -142,6 +144,17 @@ const KpGuidanceSchedule = () => {
           </Button>
         )}
       </div>
+
+      {/* Display supervisors info */}
+      {hasSupervisors && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <p className="text-blue-800">
+              Dosen Pembimbing: {selectedProposal?.supervisors?.map(s => s.full_name).join(', ')}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {!hasApprovedProposal || !hasSupervisors ? (
         <Card>
@@ -188,7 +201,7 @@ const KpGuidanceSchedule = () => {
                     
                     <div className="flex items-center space-x-2">
                       <Clock className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600">{session.duration_minutes} menit</span>
+                      <span className="text-sm text-gray-600">{session.duration_minutes || 60} menit</span>
                     </div>
                     
                     {session.location && (

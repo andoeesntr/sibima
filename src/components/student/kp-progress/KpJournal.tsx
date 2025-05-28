@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 
 interface JournalEntry {
   id: string;
@@ -33,6 +35,7 @@ const KpJournal = () => {
   const [loading, setLoading] = useState(true);
   const [supervisors, setSupervisors] = useState<any[]>([]);
   const { user } = useAuth();
+  const { selectedProposal } = useStudentDashboard();
 
   const [newEntry, setNewEntry] = useState({
     entry_date: new Date().toISOString().split('T')[0],
@@ -68,10 +71,29 @@ const KpJournal = () => {
   };
 
   const fetchSupervisors = async () => {
-    if (!user?.id) return;
+    if (!user?.id || !selectedProposal) return;
 
     try {
-      // First, get the user's team
+      console.log('Fetching supervisors for proposal:', selectedProposal.id);
+      
+      // Get supervisors from the selected proposal
+      if (selectedProposal.supervisors && selectedProposal.supervisors.length > 0) {
+        const supervisorsList = selectedProposal.supervisors.map(supervisor => ({
+          id: supervisor.id,
+          full_name: supervisor.full_name || 'Unknown'
+        }));
+
+        console.log('Found supervisors from proposal:', supervisorsList);
+        setSupervisors(supervisorsList);
+        
+        // Set default supervisor if only one
+        if (supervisorsList.length === 1) {
+          setNewEntry(prev => ({ ...prev, supervisor_id: supervisorsList[0].id }));
+        }
+        return;
+      }
+
+      // Fallback: Get supervisors from team_supervisors table
       const { data: teamMember, error: teamError } = await supabase
         .from('team_members')
         .select('team_id')
@@ -79,37 +101,32 @@ const KpJournal = () => {
         .single();
 
       if (teamError || !teamMember) {
-        console.log('No team found for user');
+        console.log('No team found for user, trying direct supervisor lookup');
         return;
       }
 
-      // Then get supervisors for that team
       const { data: teamSupervisors, error: supervisorError } = await supabase
         .from('team_supervisors')
-        .select('supervisor_id')
+        .select(`
+          supervisor_id,
+          supervisor:profiles!team_supervisors_supervisor_id_fkey (
+            id,
+            full_name
+          )
+        `)
         .eq('team_id', teamMember.team_id);
 
       if (supervisorError) throw supervisorError;
 
       if (teamSupervisors && teamSupervisors.length > 0) {
-        // Get supervisor details from profiles table
-        const supervisorIds = teamSupervisors.map(ts => ts.supervisor_id);
-        
-        const { data: supervisorProfiles, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', supervisorIds);
+        const supervisorsList = teamSupervisors.map(ts => ({
+          id: ts.supervisor.id,
+          full_name: ts.supervisor.full_name || 'Unknown'
+        }));
 
-        if (profileError) throw profileError;
-
-        const supervisorsList = supervisorProfiles?.map(profile => ({
-          id: profile.id,
-          full_name: profile.full_name || 'Unknown'
-        })) || [];
-
+        console.log('Found supervisors from team:', supervisorsList);
         setSupervisors(supervisorsList);
         
-        // Set default supervisor if only one
         if (supervisorsList.length === 1) {
           setNewEntry(prev => ({ ...prev, supervisor_id: supervisorsList[0].id }));
         }
@@ -176,8 +193,13 @@ const KpJournal = () => {
 
   useEffect(() => {
     fetchEntries();
-    fetchSupervisors();
   }, [user?.id]);
+
+  useEffect(() => {
+    if (selectedProposal) {
+      fetchSupervisors();
+    }
+  }, [user?.id, selectedProposal]);
 
   if (loading) {
     return (
@@ -187,6 +209,10 @@ const KpJournal = () => {
     );
   }
 
+  // Check if student has approved proposal and supervisors
+  const hasApprovedProposal = selectedProposal?.status === 'approved';
+  const hasSupervisors = supervisors.length > 0;
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -194,24 +220,34 @@ const KpJournal = () => {
           <h2 className="text-xl font-semibold">Digital Journal/Logbook</h2>
           <p className="text-gray-600">Catat progress harian dan mingguan KP Anda</p>
         </div>
-        <Button onClick={() => setIsAddingEntry(true)} disabled={supervisors.length === 0}>
-          <Plus className="h-4 w-4 mr-2" />
-          Tambah Entri
-        </Button>
+        {hasApprovedProposal && hasSupervisors && (
+          <Button onClick={() => setIsAddingEntry(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Tambah Entri
+          </Button>
+        )}
       </div>
 
-      {supervisors.length === 0 && (
+      {!hasApprovedProposal ? (
         <Card className="border-yellow-200 bg-yellow-50">
           <CardContent className="pt-6">
             <p className="text-yellow-800">
-              Anda belum memiliki dosen pembimbing. Silakan ajukan proposal terlebih dahulu.
+              Proposal Anda belum disetujui. Tunggu persetujuan koordinator untuk dapat menggunakan logbook.
             </p>
           </CardContent>
         </Card>
-      )}
+      ) : !hasSupervisors ? (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <p className="text-yellow-800">
+              Anda belum memiliki dosen pembimbing. Tunggu penugasan dari koordinator.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Add New Entry Form */}
-      {isAddingEntry && (
+      {isAddingEntry && hasApprovedProposal && hasSupervisors && (
         <Card>
           <CardHeader>
             <CardTitle>Tambah Entri Jurnal Baru</CardTitle>
@@ -293,6 +329,17 @@ const KpJournal = () => {
                 Batal
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Display supervisors info for debugging */}
+      {supervisors.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <p className="text-blue-800">
+              Dosen Pembimbing: {supervisors.map(s => s.full_name).join(', ')}
+            </p>
           </CardContent>
         </Card>
       )}
