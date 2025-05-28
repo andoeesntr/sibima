@@ -37,11 +37,15 @@ const GuidanceSessionsList = ({ onAddSession, onViewReport }: GuidanceSessionsLi
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'scheduled':
-        return <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Scheduled</span>;
+      case 'approved':
+        return <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Disetujui</span>;
       case 'completed':
-        return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Completed</span>;
+        return <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Selesai</span>;
       case 'cancelled':
-        return <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Cancelled</span>;
+      case 'rejected':
+        return <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Dibatalkan</span>;
+      case 'requested':
+        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Menunggu</span>;
       default:
         return <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">{status}</span>;
     }
@@ -71,7 +75,7 @@ const GuidanceSessionsList = ({ onAddSession, onViewReport }: GuidanceSessionsLi
             <TableHead>Mahasiswa</TableHead>
             <TableHead>Pembimbing</TableHead>
             <TableHead>Tanggal & Waktu</TableHead>
-            <TableHead>Jenis</TableHead>
+            <TableHead>Topik</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
@@ -103,8 +107,13 @@ const GuidanceSessionsList = ({ onAddSession, onViewReport }: GuidanceSessionsLi
                     <Calendar className="h-4 w-4 text-gray-500" />
                     <span>{formatDate(session.session_date)}</span>
                   </div>
+                  {session.duration_minutes && (
+                    <div className="text-xs text-gray-500">
+                      {session.duration_minutes} menit
+                    </div>
+                  )}
                 </TableCell>
-                <TableCell>{session.session_type}</TableCell>
+                <TableCell>{session.topic || session.session_type}</TableCell>
                 <TableCell>{getStatusBadge(session.status)}</TableCell>
                 <TableCell className="text-right">
                   <Button 

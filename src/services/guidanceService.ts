@@ -18,6 +18,11 @@ export interface GuidanceSession {
   supervisor?: {
     full_name: string;
   };
+  topic?: string;
+  location?: string;
+  duration_minutes?: number;
+  meeting_link?: string;
+  supervisor_notes?: string;
 }
 
 export interface GuidanceReport {
@@ -28,10 +33,11 @@ export interface GuidanceReport {
   submitted_at: string;
 }
 
-// Fetch all guidance sessions (for coordinator)
+// Fetch all guidance sessions (for coordinator) - includes both tables
 export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => {
   try {
-    const { data, error } = await supabase
+    // Fetch from guidance_sessions table
+    const { data: guidanceSessions, error: guidanceError } = await supabase
       .from('guidance_sessions')
       .select(`
         *,
@@ -40,11 +46,50 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
       `)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
+    if (guidanceError) {
+      throw guidanceError;
     }
 
-    return data as GuidanceSession[] || [];
+    // Fetch from kp_guidance_schedule table
+    const { data: kpGuidanceSchedule, error: kpError } = await supabase
+      .from('kp_guidance_schedule')
+      .select(`
+        *,
+        student:profiles!kp_guidance_schedule_student_id_fkey (full_name, nim),
+        supervisor:profiles!kp_guidance_schedule_supervisor_id_fkey (full_name)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (kpError) {
+      throw kpError;
+    }
+
+    // Convert kp_guidance_schedule to GuidanceSession format
+    const convertedKpSessions: GuidanceSession[] = (kpGuidanceSchedule || []).map(session => ({
+      id: session.id,
+      student_id: session.student_id,
+      supervisor_id: session.supervisor_id,
+      session_date: session.requested_date,
+      session_type: session.topic || 'Bimbingan Umum',
+      status: session.status,
+      created_at: session.created_at,
+      updated_at: session.updated_at,
+      student: session.student,
+      supervisor: session.supervisor,
+      topic: session.topic,
+      location: session.location,
+      duration_minutes: session.duration_minutes,
+      meeting_link: session.meeting_link,
+      supervisor_notes: session.supervisor_notes
+    }));
+
+    // Combine both arrays
+    const allSessions = [...(guidanceSessions || []), ...convertedKpSessions];
+    
+    // Sort by created_at
+    allSessions.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+
+    return allSessions;
   } catch (error: any) {
     console.error('Error fetching guidance sessions:', error);
     toast.error(`Failed to load guidance sessions: ${error.message}`);
@@ -52,10 +97,11 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
   }
 };
 
-// Fetch guidance sessions for a specific supervisor
+// Fetch guidance sessions for a specific supervisor - includes both tables
 export const fetchSupervisorGuidanceSessions = async (supervisorId: string): Promise<GuidanceSession[]> => {
   try {
-    const { data, error } = await supabase
+    // Fetch from guidance_sessions table
+    const { data: guidanceSessions, error: guidanceError } = await supabase
       .from('guidance_sessions')
       .select(`
         *,
@@ -65,11 +111,51 @@ export const fetchSupervisorGuidanceSessions = async (supervisorId: string): Pro
       .eq('supervisor_id', supervisorId)
       .order('session_date', { ascending: false });
 
-    if (error) {
-      throw error;
+    if (guidanceError) {
+      throw guidanceError;
     }
 
-    return data as GuidanceSession[] || [];
+    // Fetch from kp_guidance_schedule table
+    const { data: kpGuidanceSchedule, error: kpError } = await supabase
+      .from('kp_guidance_schedule')
+      .select(`
+        *,
+        student:profiles!kp_guidance_schedule_student_id_fkey (full_name, nim),
+        supervisor:profiles!kp_guidance_schedule_supervisor_id_fkey (full_name)
+      `)
+      .eq('supervisor_id', supervisorId)
+      .order('requested_date', { ascending: false });
+
+    if (kpError) {
+      throw kpError;
+    }
+
+    // Convert kp_guidance_schedule to GuidanceSession format
+    const convertedKpSessions: GuidanceSession[] = (kpGuidanceSchedule || []).map(session => ({
+      id: session.id,
+      student_id: session.student_id,
+      supervisor_id: session.supervisor_id,
+      session_date: session.requested_date,
+      session_type: session.topic || 'Bimbingan Umum',
+      status: session.status,
+      created_at: session.created_at,
+      updated_at: session.updated_at,
+      student: session.student,
+      supervisor: session.supervisor,
+      topic: session.topic,
+      location: session.location,
+      duration_minutes: session.duration_minutes,
+      meeting_link: session.meeting_link,
+      supervisor_notes: session.supervisor_notes
+    }));
+
+    // Combine both arrays
+    const allSessions = [...(guidanceSessions || []), ...convertedKpSessions];
+    
+    // Sort by session_date/requested_date
+    allSessions.sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
+
+    return allSessions;
   } catch (error: any) {
     console.error('Error fetching supervisor guidance sessions:', error);
     toast.error(`Failed to load guidance sessions: ${error.message}`);
