@@ -81,38 +81,8 @@ const KpProgressTracker = () => {
   const getProgressPercentage = () => {
     if (!progressData) return 0;
     
-    let totalProgress = 0;
-    let completedStages = 0;
-
-    // Proposal stage
-    if (progressData.proposal_status === 'approved') {
-      completedStages += 1;
-    } else if (progressData.proposal_status === 'submitted') {
-      totalProgress += 0.5;
-    }
-
-    // Guidance stage
-    if (progressData.guidance_sessions_completed >= 8) {
-      completedStages += 1;
-    } else if (progressData.guidance_sessions_completed > 0) {
-      totalProgress += (progressData.guidance_sessions_completed / 8) * 25;
-    }
-
-    // Report stage
-    if (progressData.report_status === 'completed') {
-      completedStages += 1;
-    } else if (progressData.report_status === 'in_progress') {
-      totalProgress += 0.5;
-    }
-
-    // Presentation stage
-    if (progressData.presentation_status === 'completed') {
-      completedStages += 1;
-    } else if (progressData.presentation_status === 'scheduled') {
-      totalProgress += 0.5;
-    }
-
-    return Math.min(100, (completedStages * 25) + totalProgress);
+    // Use the overall_progress from database which is now properly updated by triggers
+    return progressData.overall_progress || 0;
   };
 
   if (loading) {
@@ -145,7 +115,7 @@ const KpProgressTracker = () => {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Progress</span>
-              <span className="text-sm text-gray-600">{Math.round(getProgressPercentage())}%</span>
+              <span className="text-sm text-gray-600">{getProgressPercentage()}%</span>
             </div>
             <Progress value={getProgressPercentage()} className="h-3" />
           </div>
@@ -229,7 +199,7 @@ const KpProgressTracker = () => {
             
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {Math.round(getProgressPercentage())}%
+                {getProgressPercentage()}%
               </div>
               <div className="text-sm text-gray-600">Progress Keseluruhan</div>
             </div>

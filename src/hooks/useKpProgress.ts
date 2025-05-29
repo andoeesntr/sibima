@@ -42,13 +42,25 @@ export const useKpProgress = () => {
 
       // If no progress record exists, create one
       if (!existingProgress) {
+        // Check if user has approved proposals to set initial progress correctly
+        const { data: approvedProposal } = await supabase
+          .from('proposals')
+          .select('status')
+          .eq('student_id', user.id)
+          .eq('status', 'approved')
+          .maybeSingle();
+
+        const initialProgress = approvedProposal ? 25 : 0;
+        const initialStage = approvedProposal ? 'guidance' : 'proposal';
+        const initialProposalStatus = approvedProposal ? 'approved' : 'pending';
+
         const { data: newProgress, error: createError } = await supabase
           .from('kp_progress')
           .insert({
             student_id: user.id,
-            current_stage: 'proposal',
-            overall_progress: 0,
-            proposal_status: 'pending',
+            current_stage: initialStage,
+            overall_progress: initialProgress,
+            proposal_status: initialProposalStatus,
             guidance_sessions_completed: 0,
             report_status: 'not_started',
             presentation_status: 'not_scheduled'
