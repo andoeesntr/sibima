@@ -24,7 +24,7 @@ export const useKpProgress = () => {
   const { user } = useAuth();
 
   const calculateGuidanceProgress = async (studentId: string) => {
-    // Count completed journal entries
+    // Count approved journal entries
     const { data: journalEntries } = await supabase
       .from('kp_journal_entries')
       .select('id')
@@ -38,11 +38,18 @@ export const useKpProgress = () => {
       .eq('student_id', studentId)
       .eq('status', 'completed');
 
-    const journalCount = journalEntries?.length || 0;
-    const sessionCount = guidanceSessions?.length || 0;
+    // Count any journal entries (including draft) - these represent actual guidance sessions that happened
+    const { data: allJournalEntries } = await supabase
+      .from('kp_journal_entries')
+      .select('id')
+      .eq('student_id', studentId);
+
+    const approvedJournalCount = journalEntries?.length || 0;
+    const completedSessionCount = guidanceSessions?.length || 0;
+    const totalJournalCount = allJournalEntries?.length || 0;
     
-    // Take the higher count between journal entries and guidance sessions
-    return Math.max(journalCount, sessionCount);
+    // Return the highest count - this represents actual guidance sessions conducted
+    return Math.max(approvedJournalCount, completedSessionCount, totalJournalCount);
   };
 
   const fetchProgressData = async () => {
@@ -99,35 +106,31 @@ export const useKpProgress = () => {
 
         setProgressData(newProgress);
       } else {
-        // Update guidance sessions count if different
-        if (existingProgress.guidance_sessions_completed !== actualGuidanceSessions) {
-          // Calculate new overall progress
-          let newOverallProgress = existingProgress.overall_progress;
-          
-          // Add guidance progress (25% for completing guidance phase)
-          if (actualGuidanceSessions >= 8 && existingProgress.guidance_sessions_completed < 8) {
-            newOverallProgress = Math.max(newOverallProgress, 50); // 25% proposal + 25% guidance
-          }
-
-          const { data: updatedProgress, error: updateError } = await supabase
-            .from('kp_progress')
-            .update({
-              guidance_sessions_completed: actualGuidanceSessions,
-              overall_progress: newOverallProgress,
-              updated_at: new Date().toISOString()
-            })
-            .eq('student_id', user.id)
-            .select()
-            .single();
-
-          if (updateError) {
-            throw updateError;
-          }
-
-          setProgressData(updatedProgress);
-        } else {
-          setProgressData(existingProgress);
+        // Always update guidance sessions count and progress
+        let newOverallProgress = existingProgress.overall_progress;
+        
+        // Update progress based on guidance sessions
+        if (actualGuidanceSessions >= 8) {
+          newOverallProgress = Math.max(newOverallProgress, 50); // 25% proposal + 25% guidance
         }
+
+        const { data: updatedProgress, error: updateError } = await supabase
+          .from('kp_progress')
+          .update({
+            guidance_sessions_completed: actualGuidanceSessions,
+            overall_progress: newOverallProgress,
+            last_activity: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('student_id', user.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        setProgressData(updatedProgress);
       }
     } catch (error) {
       console.error('Error fetching progress data:', error);

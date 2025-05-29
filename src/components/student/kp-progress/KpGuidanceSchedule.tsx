@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, Clock, MapPin, MessageSquare, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
-import GuidanceRequestForm from './GuidanceRequestForm';
+import GuidanceRequestDialog from './GuidanceRequestDialog';
 
 interface GuidanceSession {
   id: string;
@@ -25,6 +26,7 @@ interface GuidanceSession {
 const KpGuidanceSchedule = () => {
   const [sessions, setSessions] = useState<GuidanceSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { user } = useAuth();
   const { selectedProposal, proposals } = useStudentDashboard();
 
@@ -100,9 +102,17 @@ const KpGuidanceSchedule = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Kalender Bimbingan</h2>
-        <p className="text-gray-600">Jadwalkan sesi bimbingan dengan dosen pembimbing</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-semibold">Kalender Bimbingan</h2>
+          <p className="text-gray-600">Jadwalkan sesi bimbingan dengan dosen pembimbing</p>
+        </div>
+        {hasApprovedProposal && hasSupervisors && (
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Ajukan Bimbingan
+          </Button>
+        )}
       </div>
 
       {/* Display supervisors info */}
@@ -131,9 +141,6 @@ const KpGuidanceSchedule = () => {
         </Card>
       ) : (
         <>
-          {/* Guidance Request Form */}
-          <GuidanceRequestForm />
-
           {/* Existing Sessions */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Riwayat Pengajuan Bimbingan</h3>
@@ -144,7 +151,7 @@ const KpGuidanceSchedule = () => {
                   <Calendar className="h-12 w-12 text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada pengajuan bimbingan</h3>
                   <p className="text-gray-600 text-center mb-4">
-                    Anda belum mengajukan sesi bimbingan. Gunakan form di atas untuk mengajukan bimbingan.
+                    Anda belum mengajukan sesi bimbingan. Klik tombol "Ajukan Bimbingan" untuk mengajukan.
                   </p>
                 </CardContent>
               </Card>
@@ -199,6 +206,16 @@ const KpGuidanceSchedule = () => {
           </div>
         </>
       )}
+
+      {/* Guidance Request Dialog */}
+      <GuidanceRequestDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onSubmitSuccess={() => {
+          setIsDialogOpen(false);
+          fetchGuidanceSessions();
+        }}
+      />
     </div>
   );
 };
