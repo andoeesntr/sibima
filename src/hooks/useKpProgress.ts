@@ -161,23 +161,6 @@ export const useKpProgress = () => {
     }
   };
 
-  const addGuidanceSession = async () => {
-    if (!progressData) return;
-
-    const newSessionCount = progressData.guidance_sessions_completed + 1;
-    let newOverallProgress = progressData.overall_progress;
-
-    // If this completes the guidance phase (8 sessions), update overall progress
-    if (newSessionCount >= 8 && progressData.guidance_sessions_completed < 8) {
-      newOverallProgress = Math.max(newOverallProgress, 50); // 25% proposal + 25% guidance
-    }
-
-    await updateProgress({
-      guidance_sessions_completed: newSessionCount,
-      overall_progress: newOverallProgress
-    });
-  };
-
   useEffect(() => {
     fetchProgressData();
   }, [user?.id]);
@@ -186,7 +169,6 @@ export const useKpProgress = () => {
     progressData,
     loading,
     updateProgress,
-    addGuidanceSession,
     refetch: fetchProgressData
   };
 };

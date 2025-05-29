@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, AlertCircle, FileText, Calendar, MessageSquare, Plus } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, FileText, Calendar, MessageSquare } from 'lucide-react';
 import { useKpProgress } from '@/hooks/useKpProgress';
 
 const KpProgressTracker = () => {
-  const { progressData, loading, addGuidanceSession } = useKpProgress();
+  const { progressData, loading } = useKpProgress();
 
   const progressStages = [
     {
@@ -154,25 +153,17 @@ const KpProgressTracker = () => {
                     {/* Stage-specific details */}
                     {stage.key === 'guidance' && progressData && (
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm text-gray-700">
-                            <p>Sesi bimbingan: {progressData.guidance_sessions_completed}/8 (minimum)</p>
-                            {progressData.guidance_sessions_completed > 0 && (
-                              <Progress 
-                                value={(progressData.guidance_sessions_completed / 8) * 100} 
-                                className="h-2 mt-1" 
-                              />
-                            )}
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={addGuidanceSession}
-                            className="ml-4"
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Tambah Sesi
-                          </Button>
+                        <div className="text-sm text-gray-700">
+                          <p>Sesi bimbingan: {progressData.guidance_sessions_completed}/8 (minimum)</p>
+                          {progressData.guidance_sessions_completed > 0 && (
+                            <Progress 
+                              value={(progressData.guidance_sessions_completed / 8) * 100} 
+                              className="h-2 mt-1" 
+                            />
+                          )}
+                          <p className="text-xs text-gray-500 mt-1">
+                            Ajukan sesi bimbingan melalui tab "Jadwal"
+                          </p>
                         </div>
                       </div>
                     )}
