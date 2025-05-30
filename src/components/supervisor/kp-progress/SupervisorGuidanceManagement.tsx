@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Calendar, Clock, MapPin, CheckCircle, XCircle, MessageSquare, User, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -151,56 +151,74 @@ const SupervisorGuidanceManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Manajemen Jadwal Bimbingan</h2>
-        <p className="text-gray-600">Kelola jadwal dan approve permintaan bimbingan dari mahasiswa</p>
-      </div>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-semibold">Manajemen Jadwal Bimbingan</h2>
+          <p className="text-gray-600">Kelola jadwal dan approve permintaan bimbingan dari mahasiswa</p>
+        </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Filter className="h-4 w-4" />
-            Filter Jadwal Bimbingan
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="requested">Menunggu</SelectItem>
-                  <SelectItem value="approved">Disetujui</SelectItem>
-                  <SelectItem value="rejected">Ditolak</SelectItem>
-                  <SelectItem value="completed">Selesai</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Mahasiswa</label>
-              <Select value={studentFilter} onValueChange={setStudentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih mahasiswa" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Mahasiswa</SelectItem>
-                  {uniqueStudents.map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.name} ({student.nim})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Compact Filters */}
+        <div className="flex items-center gap-2">
+          {/* Status Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Status
+                {statusFilter !== 'all' && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {statusFilter === 'requested' ? 'Menunggu' : 
+                     statusFilter === 'approved' ? 'Disetujui' : 
+                     statusFilter === 'rejected' ? 'Ditolak' : 'Selesai'}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                Semua Status
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('requested')}>
+                Menunggu
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('approved')}>
+                Disetujui
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('rejected')}>
+                Ditolak
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStatusFilter('completed')}>
+                Selesai
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Student Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <User className="h-4 w-4" />
+                Mahasiswa
+                {studentFilter !== 'all' && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {uniqueStudents.find(s => s.id === studentFilter)?.name}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem onClick={() => setStudentFilter('all')}>
+                Semua Mahasiswa
+              </DropdownMenuItem>
+              {uniqueStudents.map((student) => (
+                <DropdownMenuItem key={student.id} onClick={() => setStudentFilter(student.id)}>
+                  {student.name} ({student.nim})
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       {filteredRequests.length === 0 ? (
         <Card>

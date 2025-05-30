@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, MapPin, MessageSquare, Plus, Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Calendar, Clock, MapPin, MessageSquare, Plus, Filter, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -146,12 +147,80 @@ const KpGuidanceSchedule = () => {
           <h2 className="text-xl font-semibold">Kalender Bimbingan</h2>
           <p className="text-gray-600">Jadwalkan sesi bimbingan dengan dosen pembimbing</p>
         </div>
-        {hasApprovedProposal && hasSupervisors && (
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajukan Bimbingan
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Compact Filters - only show if there are sessions */}
+          {sessions.length > 0 && (
+            <>
+              {/* Status Filter */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    Status
+                    {statusFilter !== 'all' && (
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        {statusFilter === 'requested' ? 'Menunggu' : 
+                         statusFilter === 'approved' ? 'Disetujui' : 
+                         statusFilter === 'rejected' ? 'Ditolak' : 'Selesai'}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                    Semua Status
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('requested')}>
+                    Menunggu
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('approved')}>
+                    Disetujui
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('rejected')}>
+                    Ditolak
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('completed')}>
+                    Selesai
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Supervisor Filter - only if multiple supervisors */}
+              {uniqueSupervisors.length > 1 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <User className="h-4 w-4" />
+                      Dosen
+                      {supervisorFilter !== 'all' && (
+                        <Badge variant="secondary" className="ml-1 text-xs">
+                          {uniqueSupervisors.find(s => s.id === supervisorFilter)?.name}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => setSupervisorFilter('all')}>
+                      Semua Dosen
+                    </DropdownMenuItem>
+                    {uniqueSupervisors.map((supervisor) => (
+                      <DropdownMenuItem key={supervisor.id} onClick={() => setSupervisorFilter(supervisor.id)}>
+                        {supervisor.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </>
+          )}
+
+          {hasApprovedProposal && hasSupervisors && (
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Ajukan Bimbingan
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Display supervisors info */}
@@ -180,56 +249,6 @@ const KpGuidanceSchedule = () => {
         </Card>
       ) : (
         <>
-          {/* Filters - only show if there are sessions */}
-          {sessions.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Filter className="h-4 w-4" />
-                  Filter Jadwal Bimbingan
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Status</label>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Semua Status</SelectItem>
-                        <SelectItem value="requested">Menunggu</SelectItem>
-                        <SelectItem value="approved">Disetujui</SelectItem>
-                        <SelectItem value="rejected">Ditolak</SelectItem>
-                        <SelectItem value="completed">Selesai</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {uniqueSupervisors.length > 1 && (
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Dosen Pembimbing</label>
-                      <Select value={supervisorFilter} onValueChange={setSupervisorFilter}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih dosen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Semua Dosen</SelectItem>
-                          {uniqueSupervisors.map((supervisor) => (
-                            <SelectItem key={supervisor.id} value={supervisor.id}>
-                              {supervisor.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Existing Sessions */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
