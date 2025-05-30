@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, MessageSquare, User } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, Clock, MapPin, CheckCircle, XCircle, MessageSquare, User, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -29,7 +30,10 @@ interface GuidanceRequest {
 
 const SupervisorGuidanceManagement = () => {
   const [guidanceRequests, setGuidanceRequests] = useState<GuidanceRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<GuidanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [studentFilter, setStudentFilter] = useState<string>('all');
   const { user } = useAuth();
 
   const fetchGuidanceRequests = async () => {
@@ -47,12 +51,13 @@ const SupervisorGuidanceManagement = () => {
           )
         `)
         .eq('supervisor_id', user.id)
-        .order('requested_date', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       console.log('Fetched guidance requests for supervisor:', data);
       setGuidanceRequests(data || []);
+      setFilteredRequests(data || []);
     } catch (error) {
       console.error('Error fetching guidance requests:', error);
       toast.error('Gagal memuat permintaan bimbingan');
@@ -60,6 +65,28 @@ const SupervisorGuidanceManagement = () => {
       setLoading(false);
     }
   };
+
+  // Filter function
+  const applyFilters = () => {
+    let filtered = [...guidanceRequests];
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(request => request.status === statusFilter);
+    }
+
+    // Filter by student
+    if (studentFilter !== 'all') {
+      filtered = filtered.filter(request => request.student_id === studentFilter);
+    }
+
+    setFilteredRequests(filtered);
+  };
+
+  // Apply filters when filter values change
+  useEffect(() => {
+    applyFilters();
+  }, [statusFilter, studentFilter, guidanceRequests]);
 
   const updateRequestStatus = async (requestId: string, status: string, notes?: string) => {
     try {
@@ -98,6 +125,18 @@ const SupervisorGuidanceManagement = () => {
     return format(new Date(dateString), 'dd MMMM yyyy HH:mm', { locale: id });
   };
 
+  // Get unique students for filter
+  const uniqueStudents = guidanceRequests.reduce((acc, request) => {
+    if (request.student && !acc.find(s => s.id === request.student_id)) {
+      acc.push({
+        id: request.student_id,
+        name: request.student.full_name,
+        nim: request.student.nim
+      });
+    }
+    return acc;
+  }, [] as Array<{ id: string; name: string; nim: string }>);
+
   useEffect(() => {
     fetchGuidanceRequests();
   }, [user?.id]);
@@ -117,16 +156,73 @@ const SupervisorGuidanceManagement = () => {
         <p className="text-gray-600">Kelola jadwal dan approve permintaan bimbingan dari mahasiswa</p>
       </div>
 
-      {guidanceRequests.length === 0 ? (
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Filter className="h-4 w-4" />
+            Filter Jadwal Bimbingan
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="requested">Menunggu</SelectItem>
+                  <SelectItem value="approved">Disetujui</SelectItem>
+                  <SelectItem value="rejected">Ditolak</SelectItem>
+                  <SelectItem value="completed">Selesai</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">Mahasiswa</label>
+              <Select value={studentFilter} onValueChange={setStudentFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih mahasiswa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Mahasiswa</SelectItem>
+                  {uniqueStudents.map((student) => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.name} ({student.nim})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {filteredRequests.length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500">Belum ada permintaan bimbingan dari mahasiswa</p>
+            <p className="text-gray-500">
+              {guidanceRequests.length === 0 
+                ? "Belum ada permintaan bimbingan dari mahasiswa" 
+                : "Tidak ada permintaan yang sesuai dengan filter"
+              }
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
-          {guidanceRequests.map((request) => (
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              Menampilkan {filteredRequests.length} dari {guidanceRequests.length} permintaan
+            </p>
+          </div>
+          
+          {filteredRequests.map((request) => (
             <Card key={request.id}>
               <CardHeader>
                 <div className="flex justify-between items-start">

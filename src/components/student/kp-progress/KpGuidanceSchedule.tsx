@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, MessageSquare, Plus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, Clock, MapPin, MessageSquare, Plus, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -18,6 +19,7 @@ interface GuidanceSession {
   status: string;
   meeting_link?: string;
   supervisor_notes?: string;
+  created_at: string;
   supervisor?: {
     full_name: string;
   };
@@ -25,8 +27,11 @@ interface GuidanceSession {
 
 const KpGuidanceSchedule = () => {
   const [sessions, setSessions] = useState<GuidanceSession[]>([]);
+  const [filteredSessions, setFilteredSessions] = useState<GuidanceSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [supervisorFilter, setSupervisorFilter] = useState<string>('all');
   const { user } = useAuth();
   const { selectedProposal, proposals } = useStudentDashboard();
 
@@ -44,12 +49,13 @@ const KpGuidanceSchedule = () => {
           )
         `)
         .eq('student_id', user.id)
-        .order('requested_date', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       console.log('Fetched guidance sessions:', data);
       setSessions(data || []);
+      setFilteredSessions(data || []);
     } catch (error) {
       console.error('Error fetching guidance sessions:', error);
       toast.error('Gagal memuat jadwal bimbingan');
@@ -57,6 +63,28 @@ const KpGuidanceSchedule = () => {
       setLoading(false);
     }
   };
+
+  // Filter function
+  const applyFilters = () => {
+    let filtered = [...sessions];
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(session => session.status === statusFilter);
+    }
+
+    // Filter by supervisor
+    if (supervisorFilter !== 'all') {
+      filtered = filtered.filter(session => session.supervisor_id === supervisorFilter);
+    }
+
+    setFilteredSessions(filtered);
+  };
+
+  // Apply filters when filter values change
+  useEffect(() => {
+    applyFilters();
+  }, [statusFilter, supervisorFilter, sessions]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -83,6 +111,17 @@ const KpGuidanceSchedule = () => {
       minute: '2-digit'
     });
   };
+
+  // Get unique supervisors for filter
+  const uniqueSupervisors = sessions.reduce((acc, session) => {
+    if (session.supervisor && !acc.find(s => s.id === session.supervisor_id)) {
+      acc.push({
+        id: session.supervisor_id,
+        name: session.supervisor.full_name
+      });
+    }
+    return acc;
+  }, [] as Array<{ id: string; name: string }>);
 
   useEffect(() => {
     fetchGuidanceSessions();
@@ -141,22 +180,87 @@ const KpGuidanceSchedule = () => {
         </Card>
       ) : (
         <>
+          {/* Filters - only show if there are sessions */}
+          {sessions.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Filter className="h-4 w-4" />
+                  Filter Jadwal Bimbingan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Status</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="requested">Menunggu</SelectItem>
+                        <SelectItem value="approved">Disetujui</SelectItem>
+                        <SelectItem value="rejected">Ditolak</SelectItem>
+                        <SelectItem value="completed">Selesai</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {uniqueSupervisors.length > 1 && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Dosen Pembimbing</label>
+                      <Select value={supervisorFilter} onValueChange={setSupervisorFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih dosen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Semua Dosen</SelectItem>
+                          {uniqueSupervisors.map((supervisor) => (
+                            <SelectItem key={supervisor.id} value={supervisor.id}>
+                              {supervisor.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Existing Sessions */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Riwayat Pengajuan Bimbingan</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Riwayat Pengajuan Bimbingan</h3>
+              {filteredSessions.length > 0 && sessions.length > filteredSessions.length && (
+                <p className="text-sm text-gray-600">
+                  Menampilkan {filteredSessions.length} dari {sessions.length} pengajuan
+                </p>
+              )}
+            </div>
             
-            {sessions.length === 0 ? (
+            {filteredSessions.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Calendar className="h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada pengajuan bimbingan</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {sessions.length === 0 
+                      ? "Belum ada pengajuan bimbingan" 
+                      : "Tidak ada pengajuan yang sesuai dengan filter"
+                    }
+                  </h3>
                   <p className="text-gray-600 text-center mb-4">
-                    Anda belum mengajukan sesi bimbingan. Klik tombol "Ajukan Bimbingan" untuk mengajukan.
+                    {sessions.length === 0 
+                      ? "Anda belum mengajukan sesi bimbingan. Klik tombol \"Ajukan Bimbingan\" untuk mengajukan."
+                      : "Coba ubah filter untuk melihat pengajuan lainnya."
+                    }
                   </p>
                 </CardContent>
               </Card>
             ) : (
-              sessions.map((session) => (
+              filteredSessions.map((session) => (
                 <Card key={session.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -197,6 +301,16 @@ const KpGuidanceSchedule = () => {
                             </p>
                           </div>
                         )}
+
+                        <div className="text-xs text-gray-500 pt-2 border-t">
+                          Diajukan pada: {new Date(session.created_at).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
