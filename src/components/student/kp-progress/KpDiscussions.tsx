@@ -18,6 +18,7 @@ interface Discussion {
   title: string;
   content: string;
   author_id: string;
+  student_id: string;
   parent_id: string | null;
   created_at: string;
   updated_at: string;
@@ -212,7 +213,7 @@ const KpDiscussions = () => {
       const { data, error } = await supabase
         .from('kp_discussions')
         .insert({
-          student_id: originalDiscussion.student_id, // Use original discussion's student_id
+          student_id: originalDiscussion.student_id,
           author_id: user.id,
           parent_id: discussionId,
           stage: 'reply',

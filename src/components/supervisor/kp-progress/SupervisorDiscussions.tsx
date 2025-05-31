@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,6 +87,10 @@ const SupervisorDiscussions = () => {
               author:profiles!kp_discussions_author_id_fkey (
                 full_name,
                 role
+              ),
+              student:profiles!kp_discussions_student_id_fkey (
+                full_name,
+                nim
               )
             `)
             .eq('parent_id', discussion.id)
@@ -140,6 +143,10 @@ const SupervisorDiscussions = () => {
           author:profiles!kp_discussions_author_id_fkey (
             full_name,
             role
+          ),
+          student:profiles!kp_discussions_student_id_fkey (
+            full_name,
+            nim
           )
         `)
         .single();
