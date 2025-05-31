@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +47,69 @@ const KpDiscussions = () => {
     if (!user?.id) return;
 
     try {
+      // Get current user's proposal to find supervisor relationship
+      const { data: proposalData } = await supabase
+        .from('proposals')
+        .select('supervisor_id')
+        .eq('student_id', user.id)
+        .eq('status', 'approved')
+        .maybeSingle();
+
+      if (!proposalData?.supervisor_id) {
+        // If no supervisor assigned, only show own discussions
+        const { data, error } = await supabase
+          .from('kp_discussions')
+          .select(`
+            *,
+            author:profiles!kp_discussions_author_id_fkey (
+              full_name,
+              role
+            )
+          `)
+          .eq('student_id', user.id)
+          .is('parent_id', null)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Fetch replies for each discussion
+        const discussionsWithReplies = await Promise.all(
+          (data || []).map(async (discussion) => {
+            const { data: replies, error: repliesError } = await supabase
+              .from('kp_discussions')
+              .select(`
+                *,
+                author:profiles!kp_discussions_author_id_fkey (
+                  full_name,
+                  role
+                )
+              `)
+              .eq('parent_id', discussion.id)
+              .order('created_at', { ascending: true });
+
+            if (repliesError) throw repliesError;
+
+            return {
+              ...discussion,
+              replies: replies || []
+            };
+          })
+        );
+
+        setDiscussions(discussionsWithReplies);
+        return;
+      }
+
+      // Get all students under the same supervisor
+      const { data: studentsData } = await supabase
+        .from('proposals')
+        .select('student_id')
+        .eq('supervisor_id', proposalData.supervisor_id)
+        .eq('status', 'approved');
+
+      const studentIds = studentsData?.map(p => p.student_id) || [user.id];
+
+      // Fetch discussions from all students under the same supervisor
       const { data, error } = await supabase
         .from('kp_discussions')
         .select(`
@@ -57,7 +119,7 @@ const KpDiscussions = () => {
             role
           )
         `)
-        .eq('student_id', user.id)
+        .in('student_id', studentIds)
         .is('parent_id', null)
         .order('created_at', { ascending: false });
 
@@ -140,10 +202,17 @@ const KpDiscussions = () => {
     }
 
     try {
+      // Get the original discussion to get student_id
+      const originalDiscussion = discussions.find(d => d.id === discussionId);
+      if (!originalDiscussion) {
+        toast.error('Diskusi tidak ditemukan');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('kp_discussions')
         .insert({
-          student_id: user.id,
+          student_id: originalDiscussion.student_id, // Use original discussion's student_id
           author_id: user.id,
           parent_id: discussionId,
           stage: 'reply',
