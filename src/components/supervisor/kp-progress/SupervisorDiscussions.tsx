@@ -42,22 +42,56 @@ const SupervisorDiscussions = () => {
     if (!user?.id) return;
 
     try {
-      // Get all students under this supervisor
-      const { data: studentsData } = await supabase
-        .from('proposals')
-        .select('student_id')
-        .eq('supervisor_id', user.id)
-        .eq('status', 'approved');
+      setLoading(true);
+      console.log('Supervisor fetching discussions for:', user.id);
 
-      if (!studentsData || studentsData.length === 0) {
+      // Method 1: Try using team_supervisors table
+      const { data: supervisorTeams, error: teamsError } = await supabase
+        .from('team_supervisors')
+        .select('team_id')
+        .eq('supervisor_id', user.id);
+
+      let studentIds: string[] = [];
+
+      if (!teamsError && supervisorTeams && supervisorTeams.length > 0) {
+        console.log('Found supervisor teams:', supervisorTeams);
+        const teamIds = supervisorTeams.map(t => t.team_id);
+
+        // Get students in those teams
+        const { data: teamMembers, error: membersError } = await supabase
+          .from('team_members')
+          .select('user_id')
+          .in('team_id', teamIds);
+
+        if (!membersError && teamMembers) {
+          studentIds = teamMembers.map(tm => tm.user_id);
+          console.log('Students from teams:', studentIds);
+        }
+      } 
+
+      // Method 2: Also try using proposals table as fallback
+      if (studentIds.length === 0) {
+        console.log('No students found via teams, trying proposals table');
+        const { data: proposalsData, error: proposalsError } = await supabase
+          .from('proposals')
+          .select('student_id')
+          .eq('supervisor_id', user.id)
+          .eq('status', 'approved');
+
+        if (!proposalsError && proposalsData) {
+          studentIds = proposalsData.map(p => p.student_id);
+          console.log('Students from proposals:', studentIds);
+        }
+      }
+
+      if (studentIds.length === 0) {
+        console.log('No students found for supervisor');
         setDiscussions([]);
         setLoading(false);
         return;
       }
 
-      const studentIds = studentsData.map(p => p.student_id);
-
-      // Fetch discussions from all supervised students
+      // Fetch discussions from supervised students
       const { data, error } = await supabase
         .from('kp_discussions')
         .select(`
@@ -75,7 +109,12 @@ const SupervisorDiscussions = () => {
         .is('parent_id', null)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching discussions:', error);
+        throw error;
+      }
+
+      console.log('Discussions found:', data?.length || 0);
 
       // Fetch replies for each discussion
       const discussionsWithReplies = await Promise.all(
@@ -96,7 +135,10 @@ const SupervisorDiscussions = () => {
             .eq('parent_id', discussion.id)
             .order('created_at', { ascending: true });
 
-          if (repliesError) throw repliesError;
+          if (repliesError) {
+            console.error('Error fetching replies:', repliesError);
+            return { ...discussion, replies: [] };
+          }
 
           return {
             ...discussion,
@@ -105,6 +147,7 @@ const SupervisorDiscussions = () => {
         })
       );
 
+      console.log('Final discussions with replies:', discussionsWithReplies.length);
       setDiscussions(discussionsWithReplies);
     } catch (error) {
       console.error('Error fetching discussions:', error);
@@ -217,6 +260,7 @@ const SupervisorDiscussions = () => {
           <CardContent className="pt-6 text-center">
             <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-2" />
             <p className="text-gray-500">Belum ada diskusi dari mahasiswa bimbingan</p>
+            <p className="text-sm text-gray-400 mt-1">Supervisor ID: {user?.id}</p>
           </CardContent>
         </Card>
       ) : (
