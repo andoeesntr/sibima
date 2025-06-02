@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,13 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
   const [department, setDepartment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Validation function for numeric input
+  const handleNumericInput = (value: string, setter: (value: string) => void) => {
+    // Only allow numbers
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setter(numericValue);
+  };
+
   const handleSubmit = async () => {
     // Validation checks
     if (!name || !email || !role || !password) {
@@ -40,6 +48,17 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
     // Validate supervisor specific fields
     if (role === 'supervisor' && !nid) {
       toast.error('NID diperlukan untuk dosen');
+      return;
+    }
+
+    // Additional validation for numeric fields
+    if (role === 'student' && nim && !/^\d+$/.test(nim)) {
+      toast.error('NIM harus berupa angka saja');
+      return;
+    }
+
+    if (role === 'supervisor' && nid && !/^\d+$/.test(nid)) {
+      toast.error('NID harus berupa angka saja');
       return;
     }
     
@@ -150,8 +169,8 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
             <Input
               id="nim"
               value={nim}
-              onChange={(e) => setNim(e.target.value)}
-              placeholder="Masukkan NIM"
+              onChange={(e) => handleNumericInput(e.target.value, setNim)}
+              placeholder="Masukkan NIM (angka saja)"
             />
           </div>
           
@@ -186,8 +205,8 @@ export const AddUserForm = ({ onClose, onSuccess }: AddUserFormProps) => {
             <Input
               id="nid"
               value={nid}
-              onChange={(e) => setNid(e.target.value)}
-              placeholder="Masukkan NID"
+              onChange={(e) => handleNumericInput(e.target.value, setNid)}
+              placeholder="Masukkan NID (angka saja)"
             />
           </div>
           

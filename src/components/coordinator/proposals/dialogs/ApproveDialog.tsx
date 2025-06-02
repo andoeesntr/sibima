@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { syncProposalStatusWithTeam } from '@/services/proposalService';
 
 interface ApproveDialogProps {
   onCancel: () => void;
@@ -58,11 +57,55 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
 
       console.log('Proposal data:', proposal);
 
-      // Sync status with team members (this will handle the main proposal too)
-      console.log('Syncing proposal status with team...');
-      await syncProposalStatusWithTeam(proposalId, 'approved');
+      // Update the main proposal status
+      console.log('Updating main proposal status...');
+      const { error: mainProposalError } = await supabase
+        .from('proposals')
+        .update({ 
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposalId);
+
+      if (mainProposalError) {
+        console.error('Error updating main proposal:', mainProposalError);
+        throw new Error('Failed to update main proposal status');
+      }
+
+      // If there's a team, update all team member proposals
+      if (proposal?.team_id) {
+        console.log('Updating team member proposals...');
+        
+        // Get all team members
+        const { data: teamMembers, error: teamMembersError } = await supabase
+          .from('team_members')
+          .select('user_id')
+          .eq('team_id', proposal.team_id);
+
+        if (teamMembersError) {
+          console.error('Error getting team members:', teamMembersError);
+        } else if (teamMembers && teamMembers.length > 0) {
+          // Update proposals for all team members
+          const memberIds = teamMembers.map(member => member.user_id);
+          
+          const { error: teamProposalsError } = await supabase
+            .from('proposals')
+            .update({ 
+              status: 'approved',
+              updated_at: new Date().toISOString()
+            })
+            .in('student_id', memberIds);
+
+          if (teamProposalsError) {
+            console.error('Error updating team proposals:', teamProposalsError);
+            // Don't throw error for team sync failure, main proposal is already updated
+          } else {
+            console.log('Team proposals updated successfully');
+          }
+        }
+      }
       
-      console.log('Team sync completed successfully');
+      console.log('Proposal approval completed successfully');
 
       // Try to log the activity (don't fail if this fails)
       try {

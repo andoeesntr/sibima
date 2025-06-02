@@ -3,8 +3,14 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Share2, Check } from 'lucide-react';
-import { shareProposalWithSupervisors, fetchAllSupervisors } from '@/services/proposalService';
+import { Checkbox } from '@/components/ui/checkbox';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Supervisor {
+  id: string;
+  full_name: string;
+  email: string;
+}
 
 interface ShareToSupervisorDialogProps {
   onCancel: () => void;
@@ -13,44 +19,129 @@ interface ShareToSupervisorDialogProps {
 }
 
 const ShareToSupervisorDialog = ({ onCancel, onShare, proposalId }: ShareToSupervisorDialogProps) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [selectedSupervisors, setSelectedSupervisors] = useState<string[]>([]);
-  const [allSupervisors, setAllSupervisors] = useState<Array<{
-    id: string;
-    full_name: string;
-  }>>([]);
-  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadAllSupervisors = async () => {
-      try {
-        setLoading(true);
-        const supervisors = await fetchAllSupervisors();
-        setAllSupervisors(supervisors);
-      } catch (error) {
-        console.error('Error loading supervisors:', error);
-        toast.error('Gagal memuat daftar dosen');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAllSupervisors();
+    fetchSupervisors();
   }, []);
-  
+
+  const fetchSupervisors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('role', 'supervisor')
+        .order('full_name');
+
+      if (error) {
+        console.error('Error fetching supervisors:', error);
+        throw error;
+      }
+
+      setSupervisors(data || []);
+    } catch (error) {
+      console.error('Error fetching supervisors:', error);
+      toast.error('Gagal memuat daftar dosen');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSupervisorToggle = (supervisorId: string) => {
+    setSelectedSupervisors(prev => 
+      prev.includes(supervisorId) 
+        ? prev.filter(id => id !== supervisorId)
+        : [...prev, supervisorId]
+    );
+  };
+
   const handleShare = async () => {
     if (selectedSupervisors.length === 0) {
-      toast.error("Pilih minimal satu dosen pembimbing");
+      toast.error('Pilih minimal satu dosen untuk dibagikan proposal');
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       console.log('Sharing proposal to supervisors:', selectedSupervisors);
-      
-      await shareProposalWithSupervisors(proposalId, selectedSupervisors);
-      
-      toast.success(`Proposal berhasil dibagikan ke ${selectedSupervisors.length} dosen pembimbing`);
+
+      // Get current user info
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User authentication failed');
+      }
+
+      // Get user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      // Get proposal info
+      const { data: proposal, error: proposalError } = await supabase
+        .from('proposals')
+        .select('title, student_id, profiles!student_id(full_name)')
+        .eq('id', proposalId)
+        .single();
+
+      if (proposalError) {
+        console.error('Error fetching proposal:', proposalError);
+        throw new Error('Failed to fetch proposal details');
+      }
+
+      // Create notifications for selected supervisors
+      const notifications = selectedSupervisors.map(supervisorId => ({
+        user_id: supervisorId,
+        title: 'Proposal Baru Dibagikan',
+        message: `Proposal "${proposal?.title}" dari ${proposal?.profiles?.full_name} telah dibagikan kepada Anda untuk ditinjau`,
+        type: 'proposal_shared',
+        related_id: proposalId
+      }));
+
+      console.log('Creating notifications:', notifications);
+
+      const { error: notificationError } = await supabase
+        .from('kp_notifications')
+        .insert(notifications);
+
+      if (notificationError) {
+        console.error('Error creating notifications:', notificationError);
+        throw new Error('Failed to notify supervisors');
+      }
+
+      // Log activity
+      try {
+        const supervisorNames = supervisors
+          .filter(s => selectedSupervisors.includes(s.id))
+          .map(s => s.full_name)
+          .join(', ');
+
+        const activityData = {
+          action: `Membagikan proposal "${proposal?.title}" kepada dosen: ${supervisorNames}`,
+          target_type: 'proposal',
+          target_id: proposalId,
+          user_id: user.id,
+          user_name: profile?.full_name || 'Coordinator'
+        };
+
+        console.log('Logging activity:', activityData);
+
+        const { error: logError } = await supabase
+          .from('activity_logs')
+          .insert(activityData);
+
+        if (logError) {
+          console.error('Activity log error:', logError);
+        }
+      } catch (logError) {
+        console.error('Failed to log activity (non-critical):', logError);
+      }
+
+      toast.success(`Proposal berhasil dibagikan kepada ${selectedSupervisors.length} dosen`);
       onShare();
     } catch (error: any) {
       console.error('Error sharing proposal:', error);
@@ -61,70 +152,61 @@ const ShareToSupervisorDialog = ({ onCancel, onShare, proposalId }: ShareToSuper
     }
   };
 
-  const toggleSupervisor = (supervisorId: string) => {
-    setSelectedSupervisors(prev => 
-      prev.includes(supervisorId) 
-        ? prev.filter(id => id !== supervisorId)
-        : [...prev, supervisorId]
+  if (isLoading) {
+    return (
+      <>
+        <DialogHeader>
+          <DialogTitle>Bagikan ke Dosen</DialogTitle>
+          <DialogDescription>
+            Memuat daftar dosen...
+          </DialogDescription>
+        </DialogHeader>
+        <div className="p-4 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        </div>
+      </>
     );
-  };
-  
+  }
+
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Bagikan Proposal ke Dosen</DialogTitle>
+        <DialogTitle>Bagikan ke Dosen</DialogTitle>
         <DialogDescription>
-          Pilih dosen pembimbing yang akan menerima proposal ini untuk review.
+          Pilih dosen yang akan menerima proposal ini untuk ditinjau.
         </DialogDescription>
       </DialogHeader>
       
-      <div className="flex flex-col items-center justify-center my-4 p-4 bg-blue-50 rounded-md border border-blue-100">
-        <Share2 className="h-12 w-12 text-blue-500 mb-2" />
-        <p className="text-center text-gray-600 mb-4">
-          Proposal akan dibagikan langsung ke dosen yang dipilih tanpa perlu persetujuan koordinator terlebih dahulu.
-        </p>
-        
-        <div className="w-full space-y-2">
-          <p className="font-medium text-sm text-gray-700">Pilih Dosen Pembimbing:</p>
-          {loading ? (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="text-sm text-gray-500 mt-2">Memuat daftar dosen...</p>
+      <div className="space-y-4 max-h-60 overflow-y-auto">
+        {supervisors.length === 0 ? (
+          <p className="text-gray-500 text-center py-4">Tidak ada dosen yang tersedia</p>
+        ) : (
+          supervisors.map((supervisor) => (
+            <div key={supervisor.id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
+              <Checkbox
+                id={supervisor.id}
+                checked={selectedSupervisors.includes(supervisor.id)}
+                onCheckedChange={() => handleSupervisorToggle(supervisor.id)}
+              />
+              <label
+                htmlFor={supervisor.id}
+                className="flex-1 cursor-pointer"
+              >
+                <div className="font-medium">{supervisor.full_name}</div>
+                <div className="text-sm text-gray-500">{supervisor.email}</div>
+              </label>
             </div>
-          ) : allSupervisors.length > 0 ? (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {allSupervisors.map((supervisor) => (
-                <div 
-                  key={supervisor.id}
-                  className={`flex items-center justify-between p-3 rounded-md border cursor-pointer transition-colors ${
-                    selectedSupervisors.includes(supervisor.id)
-                      ? 'bg-blue-50 border-blue-200'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                  }`}
-                  onClick={() => toggleSupervisor(supervisor.id)}
-                >
-                  <span className="text-sm font-medium">{supervisor.full_name}</span>
-                  {selectedSupervisors.includes(supervisor.id) && (
-                    <Check className="h-4 w-4 text-blue-500" />
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500 text-center py-4">
-              Tidak ada dosen pembimbing tersedia
-            </p>
-          )}
-        </div>
+          ))
+        )}
       </div>
-      
-      <div className="flex justify-end gap-2 mt-4">
+
+      <div className="flex justify-end gap-2 mt-6">
         <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
           Batal
         </Button>
         <Button 
-          className="bg-blue-500 hover:bg-blue-600"
-          disabled={isSubmitting || selectedSupervisors.length === 0 || loading}
+          className="bg-primary hover:bg-primary/90"
+          disabled={isSubmitting || selectedSupervisors.length === 0}
           onClick={handleShare}
         >
           {isSubmitting ? "Membagikan..." : `Bagikan ke ${selectedSupervisors.length} Dosen`}
