@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { QrCode } from 'lucide-react';
+import { QrCode, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface QRCodeValidationProps {
@@ -15,6 +15,26 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
 
   console.log("QR Code URL:", qrCodeUrl);
   console.log("Signature status:", status);
+
+  const downloadQRCode = async () => {
+    if (!qrCodeUrl) return;
+    
+    try {
+      const response = await fetch(qrCodeUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = 'qr-code-validasi.png';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+    }
+  };
 
   return (
     <div className="border-t pt-6">
@@ -36,7 +56,7 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
             )}
           </div>
           
-          <div>
+          <div className="flex-1">
             <p className="font-medium mb-2">QR Code Validasi Dosen</p>
             <p className="text-gray-600 text-sm mb-4">
               {status === 'approved' ? 
@@ -55,6 +75,17 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
                 <QrCode size={16} className="mr-1" /> 
                 {status === 'approved' && qrCodeUrl ? 'Lihat QR Code' : 'QR Code Sedang Diproses'}
               </Button>
+              
+              {status === 'approved' && qrCodeUrl && (
+                <Button 
+                  variant="outline"
+                  onClick={downloadQRCode}
+                  className="text-blue-600 border-blue-600"
+                >
+                  <Download size={16} className="mr-1" />
+                  Download QR Code
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -84,20 +115,29 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
             )}
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-500 mb-2">
+            <p className="text-sm text-gray-500 mb-4">
               Scan QR code ini untuk memvalidasi dokumen
             </p>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                if (qrCodeUrl) {
-                  window.open(qrCodeUrl, '_blank');
-                }
-              }}
-              className="mt-2"
-            >
-              Buka di Tab Baru
-            </Button>
+            <div className="flex gap-2 justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  if (qrCodeUrl) {
+                    window.open(qrCodeUrl, '_blank');
+                  }
+                }}
+              >
+                Buka di Tab Baru
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={downloadQRCode}
+                className="text-blue-600 border-blue-600"
+              >
+                <Download size={16} className="mr-1" />
+                Download
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

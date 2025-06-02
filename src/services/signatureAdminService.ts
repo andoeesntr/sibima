@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -66,7 +65,9 @@ export const fetchSignatures = async (): Promise<DigitalSignature[]> => {
 
 export const approveSignature = async (signatureId: string, signatureSupervisorId: string, signatureSupervisorName: string): Promise<{ qr_code_url?: string }> => {
   try {
-    // First update status to approved in database to avoid race conditions
+    console.log('Approving signature:', { signatureId, signatureSupervisorId, signatureSupervisorName });
+    
+    // First update status to approved in database
     const { error: updateError } = await supabase
       .from('digital_signatures')
       .update({ 
@@ -75,51 +76,31 @@ export const approveSignature = async (signatureId: string, signatureSupervisorI
       })
       .eq('id', signatureId);
 
-    if (updateError) throw updateError;
-    
-    // Get Supabase URL from client
-    const supabaseUrl = "https://ciaymvntmwwbnvewedue.supabase.co";
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    
-    if (!accessToken) {
-      throw new Error('No authentication token available');
+    if (updateError) {
+      console.error('Error updating signature status:', updateError);
+      throw updateError;
     }
     
-    // Generate QR code using direct API call to edge function
-    const response = await fetch(`${supabaseUrl}/functions/v1/generate-qrcode`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
+    console.log('Signature status updated to approved, now generating QR code...');
+    
+    // Generate QR code using edge function
+    const { data: qrData, error: qrError } = await supabase.functions.invoke('generate-qrcode', {
+      body: {
         signatureId,
         supervisorId: signatureSupervisorId,
         supervisorName: signatureSupervisorName,
         baseUrl: window.location.origin
-      })
+      }
     });
     
-    if (!response.ok) {
-      // Even if the QR code generation fails, the signature is still approved
-      // Log error but don't throw since the status update succeeded
-      console.error(`Error generating QR code: ${response.statusText}`);
-      
-      // Create activity log for the approval
-      await supabase.from('activity_logs').insert({
-        user_id: '0', // System user or should be replaced with actual admin ID
-        user_name: 'Admin',
-        action: 'menyetujui tanda tangan digital',
-        target_type: 'signature',
-        target_id: signatureId
-      });
-      
-      // Return empty object but don't throw error since approval did succeed
+    if (qrError) {
+      console.error('Error generating QR code:', qrError);
+      // Don't throw error since approval succeeded
+      toast.error('Tanda tangan disetujui, namun QR code gagal dibuat');
       return {};
     }
     
-    const qrData = await response.json();
+    console.log('QR code generated successfully:', qrData);
     
     // Create activity log
     await supabase.from('activity_logs').insert({
