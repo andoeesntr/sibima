@@ -355,16 +355,32 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     if (proposalError) {
       console.error("Error fetching proposal for team sync:", proposalError);
-      // If no team, just update the single proposal
+      // If proposal not found, don't fail - might be a single proposal
       if (proposalError.code === 'PGRST116') {
-        console.log("Proposal not found, skipping team sync");
+        console.log("Proposal not found, treating as single proposal");
         return true;
       }
       throw proposalError;
     }
 
+    console.log('Proposal data for sync:', proposalData);
+
     if (!proposalData?.team_id) {
-      console.log("No team associated with this proposal, skipping team sync");
+      console.log("No team associated with this proposal, updating single proposal only");
+      // For single proposals, just update this one
+      const { error: singleUpdateError } = await supabase
+        .from('proposals')
+        .update({ 
+          status: status,
+          rejection_reason: rejectionReason || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposalId);
+
+      if (singleUpdateError) {
+        console.error("Error updating single proposal:", singleUpdateError);
+        return false;
+      }
       return true;
     }
 
@@ -385,22 +401,22 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
     }
 
     // Now update all proposals for this team with the new status
-    const { error: updateError } = await supabase
+    const { data: updatedProposals, error: updateError } = await supabase
       .from('proposals')
       .update({ 
         status: status,
         rejection_reason: rejectionReason || null,
         updated_at: new Date().toISOString()
       })
-      .eq('team_id', proposalData.team_id);
+      .eq('team_id', proposalData.team_id)
+      .select('id, student_id');
 
     if (updateError) {
       console.error("Error updating team proposals:", updateError);
-      // Don't throw error, the main proposal was already updated
       return false;
     }
 
-    console.log(`Successfully synced status to all team proposals`);
+    console.log(`Successfully synced status to ${updatedProposals?.length || 0} team proposals`);
     return true;
   } catch (error) {
     console.error("Error syncing proposal status with team:", error);

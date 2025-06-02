@@ -28,6 +28,9 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
         throw new Error('User authentication failed');
       }
 
+      console.log('User authenticated:', user.id);
+
+      // Get user profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('full_name')
@@ -39,10 +42,12 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
         // Continue with default name if profile fetch fails
       }
 
-      // Get proposal info for activity log
+      console.log('User profile:', profile);
+
+      // Get proposal info for activity log and team sync
       const { data: proposal, error: proposalFetchError } = await supabase
         .from('proposals')
-        .select('title, student_id, profiles!student_id(full_name)')
+        .select('title, student_id, team_id, profiles!student_id(full_name)')
         .eq('id', proposalId)
         .single();
 
@@ -53,7 +58,15 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
 
       console.log('Proposal data:', proposal);
 
-      // Update proposal status
+      // First, sync status with team members (this will create missing proposals and update all)
+      console.log('Syncing proposal status with team...');
+      const syncSuccess = await syncProposalStatusWithTeam(proposalId, 'approved');
+      
+      if (!syncSuccess) {
+        console.warn('Team sync may have failed, but continuing with main proposal update');
+      }
+
+      // Update the main proposal status (redundant but ensures this specific proposal is updated)
       const { error: updateError } = await supabase
         .from('proposals')
         .update({
@@ -63,37 +76,39 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
         .eq('id', proposalId);
         
       if (updateError) {
-        console.error('Error updating proposal:', updateError);
+        console.error('Error updating main proposal:', updateError);
         throw new Error('Failed to update proposal status');
       }
 
-      console.log('Proposal status updated successfully');
+      console.log('Main proposal status updated successfully');
 
       // Try to log the activity (don't fail if this fails)
       try {
-        await supabase.from('activity_logs').insert({
+        const activityData = {
           action: `Menyetujui proposal "${proposal?.title}" dari ${proposal?.profiles?.full_name}`,
           target_type: 'proposal',
           target_id: proposalId,
           user_id: user.id,
           user_name: profile?.full_name || 'Coordinator'
-        });
-        console.log('Activity logged successfully');
+        };
+
+        console.log('Logging activity:', activityData);
+
+        const { error: logError } = await supabase
+          .from('activity_logs')
+          .insert(activityData);
+
+        if (logError) {
+          console.error('Activity log error:', logError);
+        } else {
+          console.log('Activity logged successfully');
+        }
       } catch (logError) {
         console.error('Failed to log activity (non-critical):', logError);
         // Don't throw error for logging failure
       }
       
-      // Sync status with team members
-      try {
-        await syncProposalStatusWithTeam(proposalId, 'approved');
-        console.log('Team sync completed successfully');
-      } catch (syncError) {
-        console.error('Error syncing with team (non-critical):', syncError);
-        // Don't throw error for sync failure
-      }
-      
-      toast.success("Proposal berhasil disetujui");
+      toast.success("Proposal berhasil disetujui untuk seluruh tim");
       onApprove();
     } catch (error: any) {
       console.error('Error approving proposal:', error);
@@ -109,13 +124,13 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
       <DialogHeader>
         <DialogTitle>Setujui Proposal</DialogTitle>
         <DialogDescription>
-          Apakah Anda yakin ingin menyetujui proposal ini? Status proposal akan berubah menjadi disetujui.
+          Apakah Anda yakin ingin menyetujui proposal ini? Status proposal akan berubah menjadi disetujui untuk seluruh tim.
         </DialogDescription>
       </DialogHeader>
       <div className="flex flex-col items-center justify-center my-4 p-4 bg-green-50 rounded-md border border-green-100">
         <CheckCircle className="h-12 w-12 text-green-500 mb-2" />
         <p className="text-center text-gray-600">
-          Dengan menyetujui proposal ini, mahasiswa dapat melanjutkan ke tahap selanjutnya dari Kerja Praktik.
+          Dengan menyetujui proposal ini, seluruh anggota tim dapat melanjutkan ke tahap selanjutnya dari Kerja Praktik.
         </p>
       </div>
       <div className="flex justify-end gap-2 mt-4">
