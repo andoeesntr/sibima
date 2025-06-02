@@ -1,24 +1,42 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Share2, Check } from 'lucide-react';
-import { shareProposalWithSupervisors } from '@/services/proposalService';
+import { shareProposalWithSupervisors, fetchAllSupervisors } from '@/services/proposalService';
 
 interface ShareToSupervisorDialogProps {
   onCancel: () => void;
   onShare: () => void;
   proposalId: string;
-  supervisors: Array<{
-    id: string;
-    full_name: string;
-  }>;
 }
 
-const ShareToSupervisorDialog = ({ onCancel, onShare, proposalId, supervisors }: ShareToSupervisorDialogProps) => {
+const ShareToSupervisorDialog = ({ onCancel, onShare, proposalId }: ShareToSupervisorDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSupervisors, setSelectedSupervisors] = useState<string[]>([]);
+  const [allSupervisors, setAllSupervisors] = useState<Array<{
+    id: string;
+    full_name: string;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAllSupervisors = async () => {
+      try {
+        setLoading(true);
+        const supervisors = await fetchAllSupervisors();
+        setAllSupervisors(supervisors);
+      } catch (error) {
+        console.error('Error loading supervisors:', error);
+        toast.error('Gagal memuat daftar dosen');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAllSupervisors();
+  }, []);
   
   const handleShare = async () => {
     if (selectedSupervisors.length === 0) {
@@ -68,9 +86,14 @@ const ShareToSupervisorDialog = ({ onCancel, onShare, proposalId, supervisors }:
         
         <div className="w-full space-y-2">
           <p className="font-medium text-sm text-gray-700">Pilih Dosen Pembimbing:</p>
-          {supervisors.length > 0 ? (
-            <div className="space-y-2">
-              {supervisors.map((supervisor) => (
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+              <p className="text-sm text-gray-500 mt-2">Memuat daftar dosen...</p>
+            </div>
+          ) : allSupervisors.length > 0 ? (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {allSupervisors.map((supervisor) => (
                 <div 
                   key={supervisor.id}
                   className={`flex items-center justify-between p-3 rounded-md border cursor-pointer transition-colors ${
@@ -101,7 +124,7 @@ const ShareToSupervisorDialog = ({ onCancel, onShare, proposalId, supervisors }:
         </Button>
         <Button 
           className="bg-blue-500 hover:bg-blue-600"
-          disabled={isSubmitting || selectedSupervisors.length === 0}
+          disabled={isSubmitting || selectedSupervisors.length === 0 || loading}
           onClick={handleShare}
         >
           {isSubmitting ? "Membagikan..." : `Bagikan ke ${selectedSupervisors.length} Dosen`}

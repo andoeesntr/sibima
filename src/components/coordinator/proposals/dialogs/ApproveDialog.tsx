@@ -58,14 +58,10 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
 
       console.log('Proposal data:', proposal);
 
-      // Sync status with team members first (this will handle the main proposal too)
+      // Sync status with team members (this will handle the main proposal too)
       console.log('Syncing proposal status with team...');
-      const syncSuccess = await syncProposalStatusWithTeam(proposalId, 'approved');
+      await syncProposalStatusWithTeam(proposalId, 'approved');
       
-      if (!syncSuccess) {
-        throw new Error('Failed to sync proposal status with team members');
-      }
-
       console.log('Team sync completed successfully');
 
       // Try to log the activity (don't fail if this fails)

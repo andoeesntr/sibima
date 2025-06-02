@@ -42,7 +42,12 @@ const ProposalDetail = () => {
   };
 
   const handleShareToSupervisor = () => {
-    console.log('Opening share dialog');
+    setIsShareDialogOpen(true);
+  };
+
+  const handleShareComplete = () => {
+    setIsShareDialogOpen(false);
+    // Optionally refresh data or show success message
   };
 
   if (loading) {
@@ -83,7 +88,7 @@ const ProposalDetail = () => {
             onApprove={() => setIsApproveDialogOpen(true)}
             onReject={() => setIsRejectDialogOpen(true)}
             onRevision={() => setIsRevisionDialogOpen(true)}
-            onShare={() => setIsShareDialogOpen(true)}
+            onShare={handleShareToSupervisor}
           />
         </div>
         
@@ -112,9 +117,8 @@ const ProposalDetail = () => {
         <DialogContent className="sm:max-w-[425px]">
           <ShareToSupervisorDialog
             onCancel={() => setIsShareDialogOpen(false)}
-            onShare={() => setIsShareDialogOpen(false)}
+            onShare={handleShareComplete}
             proposalId={proposal.id}
-            supervisors={supervisors}
           />
         </DialogContent>
       </Dialog>

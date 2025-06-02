@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Proposal } from '@/types/proposals';
 import { toast } from 'sonner';
@@ -190,6 +191,27 @@ export async function fetchMainSupervisor(supervisorId: string) {
   }
 }
 
+// Fetch all supervisors for sharing functionality
+export async function fetchAllSupervisors() {
+  try {
+    const { data: supervisors, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, profile_image')
+      .eq('role', 'supervisor')
+      .order('full_name');
+    
+    if (error) {
+      console.error('Error fetching all supervisors:', error);
+      throw error;
+    }
+
+    return supervisors || [];
+  } catch (error) {
+    console.error('Error in fetchAllSupervisors:', error);
+    throw error;
+  }
+}
+
 export async function saveProposalFeedback(proposalId: string, supervisorId: string, content: string) {
   try {
     const { data, error } = await supabase
@@ -354,7 +376,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     if (proposalError) {
       console.error("Error fetching proposal for team sync:", proposalError);
-      return false;
+      throw new Error(`Failed to fetch proposal: ${proposalError.message}`);
     }
 
     console.log('Proposal data for sync:', proposalData);
@@ -371,7 +393,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     if (mainUpdateError) {
       console.error("Error updating main proposal:", mainUpdateError);
-      return false;
+      throw new Error(`Failed to update main proposal: ${mainUpdateError.message}`);
     }
 
     console.log(`Successfully updated main proposal ${proposalId}`);
@@ -406,19 +428,19 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
         updated_at: new Date().toISOString()
       })
       .eq('team_id', proposalData.team_id)
-      .neq('id', proposalId)  // Exclude the main proposal we already updated
+      .neq('id', proposalId)
       .select('id, student_id');
 
     if (updateError) {
       console.error("Error updating team proposals:", updateError);
-      return false;
+      throw new Error(`Failed to update team proposals: ${updateError.message}`);
     }
 
     console.log(`Successfully synced status to ${(updatedProposals?.length || 0) + 1} total proposals (including main)`);
     return true;
   } catch (error) {
     console.error("Error syncing proposal status with team:", error);
-    return false;
+    throw error;
   }
 }
 
@@ -436,7 +458,7 @@ export async function shareProposalWithSupervisors(proposalId: string, superviso
 
     if (proposalError) {
       console.error('Error fetching proposal:', proposalError);
-      throw new Error('Failed to fetch proposal details');
+      throw new Error(`Failed to fetch proposal details: ${proposalError.message}`);
     }
 
     // Create notifications for each supervisor
@@ -454,7 +476,7 @@ export async function shareProposalWithSupervisors(proposalId: string, superviso
 
     if (notificationError) {
       console.error('Error creating notifications:', notificationError);
-      throw new Error('Failed to notify supervisors');
+      throw new Error(`Failed to notify supervisors: ${notificationError.message}`);
     }
 
     console.log('Successfully shared proposal with supervisors');
