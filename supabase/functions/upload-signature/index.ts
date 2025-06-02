@@ -50,66 +50,61 @@ serve(async (req) => {
     const fileBuffer = new Uint8Array(arrayBuffer);
     const filePath = `${userId}/${path}`;
 
-    try {
-      // Create or use existing bucket for signatures
-      // This will simply use the bucket if it exists, reducing errors
-      try {
-        const { error } = await supabaseAdmin
-          .storage
-          .createBucket('signatures', { 
-            public: true,
-            fileSizeLimit: 1024 * 1024, // 1MB
-          });
-          
-        if (error && !error.message.includes('already exists')) {
-          console.error("Error creating signatures bucket:", error);
-        } else {
-          console.log("Bucket created or already exists");
-        }
-      } catch (bucketError) {
-        // If bucket already exists, that's fine
-        console.log("Bucket operation error (likely already exists):", bucketError);
-      }
+    // Check if bucket exists first
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const bucketExists = buckets?.some(bucket => bucket.name === 'signatures');
 
-      console.log(`Uploading file to path: ${filePath}`);
-
-      // Upload the file using the admin client (bypassing RLS)
-      const { data: uploadData, error: uploadError } = await supabaseAdmin
-        .storage
-        .from('signatures')
-        .upload(filePath, fileBuffer, {
-          upsert: true,
-          contentType: file.type,
+    if (!bucketExists) {
+      console.log('Creating signatures bucket...');
+      const { error: createError } = await supabaseAdmin.storage
+        .createBucket('signatures', { 
+          public: true,
+          fileSizeLimit: 1024 * 1024, // 1MB
         });
-
-      if (uploadError) {
-        console.error("Error uploading file:", uploadError);
-        throw uploadError;
+        
+      if (createError) {
+        console.error("Error creating signatures bucket:", createError);
+        // Don't throw here, continue with upload attempt
+      } else {
+        console.log("Signatures bucket created successfully");
       }
-
-      console.log("File uploaded successfully, generating public URL");
-
-      // Get the public URL
-      const { data: { publicUrl } } = supabaseAdmin
-        .storage
-        .from('signatures')
-        .getPublicUrl(filePath);
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "File uploaded successfully",
-          publicUrl
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
-    } catch (storageError) {
-      console.error("Storage operation error:", storageError);
-      throw new Error(`Storage operation error: ${storageError.message || String(storageError)}`);
     }
+
+    console.log(`Uploading file to path: ${filePath}`);
+
+    // Upload the file using the admin client (bypassing RLS)
+    const { data: uploadData, error: uploadError } = await supabaseAdmin
+      .storage
+      .from('signatures')
+      .upload(filePath, fileBuffer, {
+        upsert: true,
+        contentType: file.type,
+      });
+
+    if (uploadError) {
+      console.error("Error uploading file:", uploadError);
+      throw uploadError;
+    }
+
+    console.log("File uploaded successfully, generating public URL");
+
+    // Get the public URL
+    const { data: { publicUrl } } = supabaseAdmin
+      .storage
+      .from('signatures')
+      .getPublicUrl(filePath);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: "File uploaded successfully",
+        publicUrl
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
   } catch (error) {
     console.error("Error uploading file:", error);
     
