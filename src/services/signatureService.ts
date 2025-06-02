@@ -92,70 +92,25 @@ export const saveSignatureToDatabase = async (
   try {
     console.log('Saving signature to database:', { userId, publicUrl });
     
-    // First try direct database insert/update
-    const { data: existingSignature, error: fetchError } = await supabase
-      .from('digital_signatures')
-      .select('*')
-      .eq('supervisor_id', userId)
-      .maybeSingle();
-    
-    if (fetchError) {
-      console.error('Error checking existing signature:', fetchError);
-    }
-    
-    let result;
-    if (existingSignature) {
-      console.log('Updating existing signature');
-      const { data, error } = await supabase
-        .from('digital_signatures')
-        .update({
-          signature_url: publicUrl,
-          status: 'pending',
-          updated_at: new Date().toISOString()
-        })
-        .eq('supervisor_id', userId)
-        .select();
-      
-      result = { data, error };
-    } else {
-      console.log('Creating new signature record');
-      const { data, error } = await supabase
-        .from('digital_signatures')
-        .insert({
+    // Always use edge function to ensure reliable database operations
+    console.log('Using edge function for database save');
+    const { data: functionData, error: functionError } = await supabase.functions.invoke(
+      'update-signature',
+      {
+        body: {
           supervisor_id: userId,
-          signature_url: publicUrl,
-          status: 'pending'
-        })
-        .select();
-      
-      result = { data, error };
+          status: 'pending',
+          signature_url: publicUrl
+        }
+      }
+    );
+    
+    if (functionError) {
+      console.error('Function error:', functionError);
+      throw new Error(`Function error: ${functionError.message}`);
     }
     
-    if (result.error) {
-      console.error('Direct database operation failed:', result.error);
-      
-      // Fall back to edge function
-      console.log('Falling back to edge function for database save');
-      const { data: functionData, error: functionError } = await supabase.functions.invoke(
-        'update-signature',
-        {
-          body: {
-            supervisor_id: userId,
-            status: 'pending',
-            signature_url: publicUrl
-          }
-        }
-      );
-      
-      if (functionError) {
-        console.error('Function error:', functionError);
-        throw new Error(`Function error: ${functionError.message}`);
-      }
-      
-      console.log('Successfully saved via edge function:', functionData);
-    } else {
-      console.log('Successfully saved to database:', result.data);
-    }
+    console.log('Successfully saved via edge function:', functionData);
   } catch (error: any) {
     console.error('Error saving signature to database:', error);
     throw error;
@@ -166,30 +121,20 @@ export const deleteSignature = async (userId: string): Promise<void> => {
   try {
     console.log('Deleting signature for user:', userId);
     
-    // Try direct delete first
-    const { error: directError } = await supabase
-      .from('digital_signatures')
-      .delete()
-      .eq('supervisor_id', userId);
-    
-    if (directError) {
-      console.error('Direct delete failed:', directError);
-      
-      // Fall back to edge function
-      const { data: functionData, error: functionError } = await supabase.functions.invoke(
-        'update-signature',
-        {
-          body: {
-            supervisor_id: userId,
-            status: 'deleted'
-          }
+    // Use edge function for delete operation
+    const { data: functionData, error: functionError } = await supabase.functions.invoke(
+      'update-signature',
+      {
+        body: {
+          supervisor_id: userId,
+          status: 'deleted'
         }
-      );
-      
-      if (functionError) {
-        console.error('Error deleting signature:', functionError);
-        throw new Error(`Function error: ${functionError.message}`);
       }
+    );
+    
+    if (functionError) {
+      console.error('Error deleting signature:', functionError);
+      throw new Error(`Function error: ${functionError.message}`);
     }
   } catch (error: any) {
     console.error('Error deleting signature:', error);

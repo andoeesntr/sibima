@@ -125,15 +125,23 @@ const DigitalSignatureUpload = () => {
       await saveSignatureToDatabase(user.id, publicUrl);
       console.log('Signature saved to database successfully');
       
-      toast.success('Tanda tangan berhasil diupload');
+      toast.success('Tanda tangan berhasil diupload dan disimpan');
+      
+      // Update local state immediately
+      const newSignatureData = { 
+        signature_url: publicUrl, 
+        status: 'pending',
+        supervisor_id: user.id,
+        id: Date.now().toString() // temporary ID
+      };
+      setSignatureData(newSignatureData);
       setHasUploadedSignature(true);
-      setSignatureData({ signature_url: publicUrl, status: 'pending' });
       setActiveTab('status');
       
-      // Refresh signature data to get the latest from database
+      // Refresh signature data from database after a short delay
       setTimeout(() => {
         fetchSignatureData();
-      }, 1000);
+      }, 2000);
       
     } catch (error: any) {
       console.error('Error uploading signature:', error);
