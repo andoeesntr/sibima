@@ -11,7 +11,8 @@ interface ProposalActionsProps {
 }
 
 const ProposalActions = ({ status, onApprove, onReject, onRevision }: ProposalActionsProps) => {
-  if (status !== 'submitted') {
+  // Show actions for submitted proposals or proposals that need revision/review
+  if (status !== 'submitted' && status !== 'revision') {
     return null;
   }
   

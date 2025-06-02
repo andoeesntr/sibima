@@ -341,7 +341,7 @@ export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
   }
 }
 
-// Improved function to sync proposal status with team members
+// Enhanced function to sync proposal status with team members
 export async function syncProposalStatusWithTeam(proposalId: string, status: string, rejectionReason?: string) {
   try {
     console.log(`Starting sync for proposal ${proposalId} with status ${status}`);
@@ -355,32 +355,13 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     if (proposalError) {
       console.error("Error fetching proposal for team sync:", proposalError);
-      // If proposal not found, don't fail - might be a single proposal
-      if (proposalError.code === 'PGRST116') {
-        console.log("Proposal not found, treating as single proposal");
-        return true;
-      }
-      throw proposalError;
+      return false;
     }
 
     console.log('Proposal data for sync:', proposalData);
 
     if (!proposalData?.team_id) {
       console.log("No team associated with this proposal, updating single proposal only");
-      // For single proposals, just update this one
-      const { error: singleUpdateError } = await supabase
-        .from('proposals')
-        .update({ 
-          status: status,
-          rejection_reason: rejectionReason || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposalId);
-
-      if (singleUpdateError) {
-        console.error("Error updating single proposal:", singleUpdateError);
-        return false;
-      }
       return true;
     }
 

@@ -44,7 +44,7 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
 
       console.log('User profile:', profile);
 
-      // Get proposal info for activity log and team sync
+      // Get proposal info for activity log
       const { data: proposal, error: proposalFetchError } = await supabase
         .from('proposals')
         .select('title, student_id, team_id, profiles!student_id(full_name)')
@@ -58,29 +58,15 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
 
       console.log('Proposal data:', proposal);
 
-      // First, sync status with team members (this will create missing proposals and update all)
+      // Sync status with team members first (this will handle the main proposal too)
       console.log('Syncing proposal status with team...');
       const syncSuccess = await syncProposalStatusWithTeam(proposalId, 'approved');
       
       if (!syncSuccess) {
-        console.warn('Team sync may have failed, but continuing with main proposal update');
+        throw new Error('Failed to sync proposal status with team members');
       }
 
-      // Update the main proposal status (redundant but ensures this specific proposal is updated)
-      const { error: updateError } = await supabase
-        .from('proposals')
-        .update({
-          status: 'approved',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposalId);
-        
-      if (updateError) {
-        console.error('Error updating main proposal:', updateError);
-        throw new Error('Failed to update proposal status');
-      }
-
-      console.log('Main proposal status updated successfully');
+      console.log('Team sync completed successfully');
 
       // Try to log the activity (don't fail if this fails)
       try {
