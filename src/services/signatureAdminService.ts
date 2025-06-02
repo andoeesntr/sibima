@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,6 +23,8 @@ interface DigitalSignature {
 
 export const fetchSignatures = async (): Promise<DigitalSignature[]> => {
   try {
+    console.log('Fetching digital signatures...');
+    
     const { data, error } = await supabase
       .from('digital_signatures')
       .select(`
@@ -38,25 +41,41 @@ export const fetchSignatures = async (): Promise<DigitalSignature[]> => {
           nip,
           department
         )
-      `);
+      `)
+      .not('status', 'eq', 'deleted');
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching signatures:', error);
+      throw error;
+    }
+
+    console.log('Raw signature data:', data);
+
+    if (!data || data.length === 0) {
+      console.log('No signatures found');
+      return [];
+    }
 
     // Transform data to match our DigitalSignature interface
-    return data.map((signature: any) => ({
-      id: signature.id,
-      supervisor: {
-        id: signature.profiles.id,
-        name: signature.profiles.full_name || 'Unnamed Supervisor',
-        nip: signature.profiles.nip || '-',
-        department: signature.profiles.department || '-'
-      },
-      status: signature.status as SignatureStatus,
-      signature_url: signature.signature_url,
-      qr_code_url: signature.qr_code_url,
-      created_at: signature.created_at,
-      updated_at: signature.updated_at
-    }));
+    const transformedData = data
+      .filter(signature => signature.profiles) // Only include signatures with valid profiles
+      .map((signature: any) => ({
+        id: signature.id,
+        supervisor: {
+          id: signature.profiles.id,
+          name: signature.profiles.full_name || 'Unnamed Supervisor',
+          nip: signature.profiles.nip || '-',
+          department: signature.profiles.department || '-'
+        },
+        status: signature.status as SignatureStatus,
+        signature_url: signature.signature_url,
+        qr_code_url: signature.qr_code_url,
+        created_at: signature.created_at,
+        updated_at: signature.updated_at
+      }));
+
+    console.log('Transformed signature data:', transformedData);
+    return transformedData;
   } catch (error) {
     console.error('Error fetching signatures:', error);
     throw error;
@@ -95,7 +114,6 @@ export const approveSignature = async (signatureId: string, signatureSupervisorI
     
     if (qrError) {
       console.error('Error generating QR code:', qrError);
-      // Don't throw error since approval succeeded
       toast.error('Tanda tangan disetujui, namun QR code gagal dibuat');
       return {};
     }

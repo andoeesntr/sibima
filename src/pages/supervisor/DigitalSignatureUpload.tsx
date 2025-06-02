@@ -36,18 +36,32 @@ const DigitalSignatureUpload = () => {
     if (!user) return;
 
     try {
+      console.log('Fetching signature data for user:', user.id);
+      
       const { data, error } = await supabase
         .from('digital_signatures')
         .select('*')
         .eq('supervisor_id', user.id)
+        .not('status', 'eq', 'deleted')
         .maybeSingle();
 
-      if (error) throw error;
+      console.log('Signature data fetch result:', { data, error });
+
+      if (error) {
+        console.error('Error fetching signature data:', error);
+        throw error;
+      }
 
       if (data) {
+        console.log('Found signature data:', data);
         setSignatureData(data);
         setHasUploadedSignature(true);
         setPreviewUrl(data.signature_url);
+      } else {
+        console.log('No signature data found');
+        setSignatureData(null);
+        setHasUploadedSignature(false);
+        setPreviewUrl(null);
       }
     } catch (error) {
       console.error('Error fetching signature data:', error);
@@ -101,20 +115,25 @@ const DigitalSignatureUpload = () => {
         return;
       }
       
+      console.log('Starting signature upload process...');
+      
       // Upload signature and get public URL
       const publicUrl = await uploadSignature(signature, user.id);
       console.log('Signature uploaded successfully to storage. Public URL:', publicUrl);
       
       // Save to database
       await saveSignatureToDatabase(user.id, publicUrl);
+      console.log('Signature saved to database successfully');
       
       toast.success('Tanda tangan berhasil diupload');
       setHasUploadedSignature(true);
       setSignatureData({ signature_url: publicUrl, status: 'pending' });
       setActiveTab('status');
       
-      // Refresh signature data
-      fetchSignatureData();
+      // Refresh signature data to get the latest from database
+      setTimeout(() => {
+        fetchSignatureData();
+      }, 1000);
       
     } catch (error: any) {
       console.error('Error uploading signature:', error);
@@ -157,10 +176,21 @@ const DigitalSignatureUpload = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Tanda Tangan Digital</h1>
-      <p className="text-gray-600">
-        Upload tanda tangan digital Anda yang akan digunakan pada dokumen KP mahasiswa
-      </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Tanda Tangan Digital</h1>
+          <p className="text-gray-600">
+            Upload tanda tangan digital Anda yang akan digunakan pada dokumen KP mahasiswa
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={fetchSignatureData}
+          disabled={loadingData}
+        >
+          {loadingData ? 'Loading...' : 'Refresh'}
+        </Button>
+      </div>
 
       <Alert className="bg-blue-50 border-blue-200">
         <QrCode className="h-5 w-5 text-blue-500" />

@@ -15,9 +15,13 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
 
   console.log("QR Code URL:", qrCodeUrl);
   console.log("Signature status:", status);
+  console.log("Has signature:", hasSignature);
 
   const downloadQRCode = async () => {
-    if (!qrCodeUrl) return;
+    if (!qrCodeUrl) {
+      console.log("No QR code URL available for download");
+      return;
+    }
     
     try {
       const response = await fetch(qrCodeUrl);
@@ -36,6 +40,9 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
     }
   };
 
+  const isApproved = status === 'approved';
+  const hasQrCode = qrCodeUrl && qrCodeUrl !== 'undefined';
+
   return (
     <div className="border-t pt-6">
       <h2 className="text-lg font-medium mb-4">QR Code Validasi</h2>
@@ -43,11 +50,15 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
       {hasSignature ? (
         <div className="bg-gray-50 p-6 rounded-lg border flex flex-col md:flex-row items-center gap-6">
           <div className="flex-shrink-0 border p-4 bg-white rounded">
-            {status === 'approved' && qrCodeUrl ? (
+            {isApproved && hasQrCode ? (
               <img 
                 src={qrCodeUrl} 
                 alt="QR Code Validation" 
                 className="w-40 h-40 object-contain"
+                onError={(e) => {
+                  console.error('Error loading QR code image:', e);
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             ) : (
               <div className="w-40 h-40 flex items-center justify-center bg-gray-100">
@@ -59,24 +70,28 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
           <div className="flex-1">
             <p className="font-medium mb-2">QR Code Validasi Dosen</p>
             <p className="text-gray-600 text-sm mb-4">
-              {status === 'approved' ? 
+              {isApproved && hasQrCode ? 
                 'QR Code ini dapat digunakan untuk memvalidasi dokumen KP mahasiswa yang Anda bimbing.' :
+                isApproved ? 
+                'QR Code sedang diproses. Refresh halaman dalam beberapa saat.' :
                 'QR Code validasi akan tersedia setelah tanda tangan Anda disetujui oleh Super Admin.'}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline" 
-                disabled={status !== 'approved' || !qrCodeUrl}
+                disabled={!isApproved || !hasQrCode}
                 onClick={() => {
-                  console.log("QR Code button clicked");
-                  setShowQRDialog(true);
+                  console.log("QR Code button clicked", { isApproved, hasQrCode, qrCodeUrl });
+                  if (isApproved && hasQrCode) {
+                    setShowQRDialog(true);
+                  }
                 }}
               >
                 <QrCode size={16} className="mr-1" /> 
-                {status === 'approved' && qrCodeUrl ? 'Lihat QR Code' : 'QR Code Sedang Diproses'}
+                {isApproved && hasQrCode ? 'Lihat QR Code' : 'QR Code Belum Tersedia'}
               </Button>
               
-              {status === 'approved' && qrCodeUrl && (
+              {isApproved && hasQrCode && (
                 <Button 
                   variant="outline"
                   onClick={downloadQRCode}
@@ -106,11 +121,14 @@ const QRCodeValidation = ({ hasSignature, status, qrCodeUrl }: QRCodeValidationP
             <DialogTitle>QR Code Validasi</DialogTitle>
           </DialogHeader>
           <div className="flex justify-center py-4">
-            {qrCodeUrl && (
+            {hasQrCode && (
               <img 
                 src={qrCodeUrl} 
                 alt="QR Code Validation" 
                 className="w-64 h-64 object-contain border p-2"
+                onError={(e) => {
+                  console.error('Error loading QR code in dialog:', e);
+                }}
               />
             )}
           </div>

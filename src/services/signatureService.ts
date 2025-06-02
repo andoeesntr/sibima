@@ -55,7 +55,6 @@ export const uploadSignature = async (
         const errorText = await response.text();
         console.error('Edge function error response:', errorText);
         try {
-          // Try to parse as JSON, but handle case where it's not JSON
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || `Edge function error: ${response.statusText}`);
         } catch (parseError) {
@@ -91,21 +90,71 @@ export const saveSignatureToDatabase = async (
   publicUrl: string
 ): Promise<void> => {
   try {
-    // Use the update-signature edge function to save to database with service role
-    const { data: functionData, error: functionError } = await supabase.functions.invoke(
-      'update-signature',
-      {
-        body: {
-          supervisor_id: userId,
-          status: 'pending',
-          signature_url: publicUrl
-        }
-      }
-    );
+    console.log('Saving signature to database:', { userId, publicUrl });
     
-    if (functionError) {
-      console.error('Function error:', functionError);
-      throw new Error(`Function error: ${functionError.message}`);
+    // First try direct database insert/update
+    const { data: existingSignature, error: fetchError } = await supabase
+      .from('digital_signatures')
+      .select('*')
+      .eq('supervisor_id', userId)
+      .maybeSingle();
+    
+    if (fetchError) {
+      console.error('Error checking existing signature:', fetchError);
+    }
+    
+    let result;
+    if (existingSignature) {
+      console.log('Updating existing signature');
+      const { data, error } = await supabase
+        .from('digital_signatures')
+        .update({
+          signature_url: publicUrl,
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('supervisor_id', userId)
+        .select();
+      
+      result = { data, error };
+    } else {
+      console.log('Creating new signature record');
+      const { data, error } = await supabase
+        .from('digital_signatures')
+        .insert({
+          supervisor_id: userId,
+          signature_url: publicUrl,
+          status: 'pending'
+        })
+        .select();
+      
+      result = { data, error };
+    }
+    
+    if (result.error) {
+      console.error('Direct database operation failed:', result.error);
+      
+      // Fall back to edge function
+      console.log('Falling back to edge function for database save');
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'update-signature',
+        {
+          body: {
+            supervisor_id: userId,
+            status: 'pending',
+            signature_url: publicUrl
+          }
+        }
+      );
+      
+      if (functionError) {
+        console.error('Function error:', functionError);
+        throw new Error(`Function error: ${functionError.message}`);
+      }
+      
+      console.log('Successfully saved via edge function:', functionData);
+    } else {
+      console.log('Successfully saved to database:', result.data);
     }
   } catch (error: any) {
     console.error('Error saving signature to database:', error);
@@ -117,20 +166,30 @@ export const deleteSignature = async (userId: string): Promise<void> => {
   try {
     console.log('Deleting signature for user:', userId);
     
-    // Use the update-signature edge function to delete from database with service role
-    const { data: functionData, error: functionError } = await supabase.functions.invoke(
-      'update-signature',
-      {
-        body: {
-          supervisor_id: userId,
-          status: 'deleted'
-        }
-      }
-    );
+    // Try direct delete first
+    const { error: directError } = await supabase
+      .from('digital_signatures')
+      .delete()
+      .eq('supervisor_id', userId);
     
-    if (functionError) {
-      console.error('Error deleting signature:', functionError);
-      throw new Error(`Function error: ${functionError.message}`);
+    if (directError) {
+      console.error('Direct delete failed:', directError);
+      
+      // Fall back to edge function
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'update-signature',
+        {
+          body: {
+            supervisor_id: userId,
+            status: 'deleted'
+          }
+        }
+      );
+      
+      if (functionError) {
+        console.error('Error deleting signature:', functionError);
+        throw new Error(`Function error: ${functionError.message}`);
+      }
     }
   } catch (error: any) {
     console.error('Error deleting signature:', error);
