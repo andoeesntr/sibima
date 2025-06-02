@@ -1,5 +1,7 @@
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import ProposalLoading from '@/components/coordinator/proposals/ProposalLoading';
 import NotFoundMessage from '@/components/coordinator/proposals/NotFoundMessage';
 import ProposalHeader from '@/components/coordinator/proposals/ProposalHeader';
@@ -8,6 +10,7 @@ import TeamInfo from '@/components/coordinator/proposals/TeamInfo';
 import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
+import ShareToSupervisorDialog from '@/components/coordinator/proposals/ShareToSupervisorDialog';
 import { useCoordinatorProposalDetail } from '@/hooks/useCoordinatorProposalDetail';
 import { statusColors, statusLabels } from '@/constants/proposalStatus';
 
@@ -31,10 +34,15 @@ const ProposalDetail = () => {
     handleDownloadFile
   } = useCoordinatorProposalDetail();
 
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const navigate = useNavigate();
   
   const handleGoBack = () => {
     navigate('/coordinator/proposal-list');
+  };
+
+  const handleShareToSupervisor = () => {
+    console.log('Opening share dialog');
   };
 
   if (loading) {
@@ -75,6 +83,7 @@ const ProposalDetail = () => {
             onApprove={() => setIsApproveDialogOpen(true)}
             onReject={() => setIsRejectDialogOpen(true)}
             onRevision={() => setIsRevisionDialogOpen(true)}
+            onShare={() => setIsShareDialogOpen(true)}
           />
         </div>
         
@@ -98,6 +107,17 @@ const ProposalDetail = () => {
         setIsRevisionDialogOpen={setIsRevisionDialogOpen}
         proposalId={proposal.id}
       />
+
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <ShareToSupervisorDialog
+            onCancel={() => setIsShareDialogOpen(false)}
+            onShare={() => setIsShareDialogOpen(false)}
+            proposalId={proposal.id}
+            supervisors={supervisors}
+          />
+        </DialogContent>
+      </Dialog>
 
       <DocumentPreview
         isOpen={previewDialogOpen}

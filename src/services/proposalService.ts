@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Proposal } from '@/types/proposals';
 import { toast } from 'sonner';
@@ -360,8 +359,25 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     console.log('Proposal data for sync:', proposalData);
 
+    // Update the main proposal first
+    const { error: mainUpdateError } = await supabase
+      .from('proposals')
+      .update({ 
+        status: status,
+        rejection_reason: rejectionReason || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', proposalId);
+
+    if (mainUpdateError) {
+      console.error("Error updating main proposal:", mainUpdateError);
+      return false;
+    }
+
+    console.log(`Successfully updated main proposal ${proposalId}`);
+
     if (!proposalData?.team_id) {
-      console.log("No team associated with this proposal, updating single proposal only");
+      console.log("No team associated with this proposal, single proposal updated successfully");
       return true;
     }
 
@@ -381,7 +397,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       console.warn("Failed to ensure all team members have proposals, but continuing with sync");
     }
 
-    // Now update all proposals for this team with the new status
+    // Now update all OTHER proposals for this team (excluding the main one we already updated)
     const { data: updatedProposals, error: updateError } = await supabase
       .from('proposals')
       .update({ 
@@ -390,6 +406,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
         updated_at: new Date().toISOString()
       })
       .eq('team_id', proposalData.team_id)
+      .neq('id', proposalId)  // Exclude the main proposal we already updated
       .select('id, student_id');
 
     if (updateError) {
@@ -397,11 +414,54 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       return false;
     }
 
-    console.log(`Successfully synced status to ${updatedProposals?.length || 0} team proposals`);
+    console.log(`Successfully synced status to ${(updatedProposals?.length || 0) + 1} total proposals (including main)`);
     return true;
   } catch (error) {
     console.error("Error syncing proposal status with team:", error);
     return false;
+  }
+}
+
+// Function to share proposal with supervisors
+export async function shareProposalWithSupervisors(proposalId: string, supervisorIds: string[]) {
+  try {
+    console.log(`Sharing proposal ${proposalId} with supervisors:`, supervisorIds);
+    
+    // Get proposal details
+    const { data: proposal, error: proposalError } = await supabase
+      .from('proposals')
+      .select('title, student_id, team_id, profiles!student_id(full_name)')
+      .eq('id', proposalId)
+      .single();
+
+    if (proposalError) {
+      console.error('Error fetching proposal:', proposalError);
+      throw new Error('Failed to fetch proposal details');
+    }
+
+    // Create notifications for each supervisor
+    const notifications = supervisorIds.map(supervisorId => ({
+      user_id: supervisorId,
+      title: 'Proposal Baru untuk Review',
+      type: 'proposal_shared',
+      message: `Proposal "${proposal.title}" dari ${proposal.profiles?.full_name} telah dibagikan kepada Anda untuk review`,
+      related_id: proposalId
+    }));
+
+    const { error: notificationError } = await supabase
+      .from('kp_notifications')
+      .insert(notifications);
+
+    if (notificationError) {
+      console.error('Error creating notifications:', notificationError);
+      throw new Error('Failed to notify supervisors');
+    }
+
+    console.log('Successfully shared proposal with supervisors');
+    return true;
+  } catch (error) {
+    console.error('Error sharing proposal:', error);
+    throw error;
   }
 }
 
