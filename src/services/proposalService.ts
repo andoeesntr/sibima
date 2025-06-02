@@ -353,15 +353,25 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       .eq('id', proposalId)
       .single();
 
-    if (proposalError || !proposalData?.team_id) {
+    if (proposalError) {
       console.error("Error fetching proposal for team sync:", proposalError);
-      return false;
+      // If no team, just update the single proposal
+      if (proposalError.code === 'PGRST116') {
+        console.log("Proposal not found, skipping team sync");
+        return true;
+      }
+      throw proposalError;
+    }
+
+    if (!proposalData?.team_id) {
+      console.log("No team associated with this proposal, skipping team sync");
+      return true;
     }
 
     console.log(`Found proposal with team_id: ${proposalData.team_id}`);
 
     // First ensure all team members have proposals
-    await ensureTeamProposalsExist(proposalData.team_id, {
+    const ensureSuccess = await ensureTeamProposalsExist(proposalData.team_id, {
       title: proposalData.title,
       description: proposalData.description,
       company_name: proposalData.company_name,
@@ -370,8 +380,12 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       rejection_reason: rejectionReason
     });
 
+    if (!ensureSuccess) {
+      console.warn("Failed to ensure all team members have proposals, but continuing with sync");
+    }
+
     // Now update all proposals for this team with the new status
-    const { data: updateResult, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('proposals')
       .update({ 
         status: status,
@@ -382,6 +396,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     if (updateError) {
       console.error("Error updating team proposals:", updateError);
+      // Don't throw error, the main proposal was already updated
       return false;
     }
 

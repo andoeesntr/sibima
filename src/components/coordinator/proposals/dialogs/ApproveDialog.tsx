@@ -19,23 +19,42 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
+      console.log('Starting proposal approval process for:', proposalId);
+      
       // Get current user info
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.error('Error getting user:', userError);
+        throw new Error('User authentication failed');
+      }
+
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('full_name')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
 
+      if (profileError) {
+        console.error('Error getting profile:', profileError);
+        // Continue with default name if profile fetch fails
+      }
+
       // Get proposal info for activity log
-      const { data: proposal } = await supabase
+      const { data: proposal, error: proposalFetchError } = await supabase
         .from('proposals')
         .select('title, student_id, profiles!student_id(full_name)')
         .eq('id', proposalId)
         .single();
 
+      if (proposalFetchError) {
+        console.error('Error fetching proposal:', proposalFetchError);
+        throw new Error('Failed to fetch proposal details');
+      }
+
+      console.log('Proposal data:', proposal);
+
       // Update proposal status
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('proposals')
         .update({
           status: 'approved',
@@ -43,25 +62,43 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
         })
         .eq('id', proposalId);
         
-      if (error) throw error;
-      
-      // Log the activity
-      await supabase.from('activity_logs').insert({
-        action: `Menyetujui proposal "${proposal?.title}" dari ${proposal?.profiles?.full_name}`,
-        target_type: 'proposal',
-        target_id: proposalId,
-        user_id: user?.id || 'coordinator',
-        user_name: profile?.full_name || 'Coordinator'
-      });
+      if (updateError) {
+        console.error('Error updating proposal:', updateError);
+        throw new Error('Failed to update proposal status');
+      }
+
+      console.log('Proposal status updated successfully');
+
+      // Try to log the activity (don't fail if this fails)
+      try {
+        await supabase.from('activity_logs').insert({
+          action: `Menyetujui proposal "${proposal?.title}" dari ${proposal?.profiles?.full_name}`,
+          target_type: 'proposal',
+          target_id: proposalId,
+          user_id: user.id,
+          user_name: profile?.full_name || 'Coordinator'
+        });
+        console.log('Activity logged successfully');
+      } catch (logError) {
+        console.error('Failed to log activity (non-critical):', logError);
+        // Don't throw error for logging failure
+      }
       
       // Sync status with team members
-      await syncProposalStatusWithTeam(proposalId, 'approved');
+      try {
+        await syncProposalStatusWithTeam(proposalId, 'approved');
+        console.log('Team sync completed successfully');
+      } catch (syncError) {
+        console.error('Error syncing with team (non-critical):', syncError);
+        // Don't throw error for sync failure
+      }
       
       toast.success("Proposal berhasil disetujui");
       onApprove();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error approving proposal:', error);
-      toast.error("Gagal menyetujui proposal");
+      const errorMessage = error.message || 'Terjadi kesalahan saat menyetujui proposal';
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
