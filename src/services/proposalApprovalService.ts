@@ -296,20 +296,24 @@ export class ProposalApprovalService {
       }
   
       // 2. Update one by one with error details
-      const updateResults = await Promise.all(
-  proposals.map(async (proposal) => {
-    const { error } = await supabase
-      .from('proposals')
-      .update({
-        status: 'approved',
-        rejection_reason: rejectionReason || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', proposal.id);
+    const updateResults = await Promise.all(
+     proposals.map(async (proposal) => {
+       const { error } = await supabase
+         .from('proposals')
+         .update({
+           status: 'approved',
+           rejection_reason: rejectionReason || null,
+           updated_at: new Date().toISOString()
+         })
+         .eq('id', proposal.id);
 
-    return { error };
-  })
-);
+       if (error) {
+         console.error(`Failed to update proposal ID ${proposal.id}:`, error.message);
+       }
+       return { error };
+     })
+   );
+   
 
   
       const failedUpdates = updateResults.filter(r => r.error);
