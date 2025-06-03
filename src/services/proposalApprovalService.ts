@@ -278,75 +278,84 @@ export class ProposalApprovalService {
 
   // Update all team proposals in a single operation
   private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
-  // 1. Fetch with additional debug data
-  const { data: proposals, error: fetchError } = await supabase
-    .from('proposals')
-    .select('id, student_id, status, created_at, updated_at, title')
-    .eq('team_id', teamId)
-    .neq('status', 'approved'); // Skip already approved
+    try {
+      // 1. Fetch with additional debug data
+      const { data: proposals, error: fetchError } = await supabase
+        .from('proposals')
+        .select('id, student_id, status, created_at, updated_at, title')
+        .eq('team_id', teamId)
+        .neq('status', 'approved'); // Skip already approved
 
-  console.log('🔍 Proposal Debug Data:', JSON.stringify(proposals, null, 2));
+      console.log('🔍 Proposal Debug Data:', JSON.stringify(proposals, null, 2));
 
-  if (!proposals || proposals.length === 0) {
-    return {
-      success: true, // Considered success if nothing to update
-      message: 'No proposals need updating',
-      affectedProposals: 0
-    };
-  }
-
-  // 2. Prepare atomic updates
-  const updates = proposals.map(proposal => ({
-    id: proposal.id,
-    query: supabase
-      .from('proposals')
-      .update({
-        status: 'approved',
-        rejection_reason: rejectionReason || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', proposal.id)
-      .select('id')
-  }));
-
-  // 3. Execute with individual error handling
-  const results = await Promise.all(
-    updates.map(async ({ id, query }) => {
-      try {
-        const { data, error } = await query;
-        return { id, success: !error, error };
-      } catch (e) {
-        return { id, success: false, error: e };
+      if (!proposals || proposals.length === 0) {
+        return {
+          success: true, // Considered success if nothing to update
+          message: 'No proposals need updating',
+          affectedProposals: 0
+        };
       }
+
+      // 2. Prepare atomic updates
+      const updates = proposals.map(proposal => ({
+        id: proposal.id,
+        query: supabase
+          .from('proposals')
+          .update({
+            status: 'approved',
+            rejection_reason: rejectionReason || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', proposal.id)
+          .select('id')
+      }));
+
+      // 3. Execute with individual error handling
+      const results = await Promise.all(
+        updates.map(async ({ id, query }) => {
+          try {
+            const { data, error } = await query;
+            return { id, success: !error, error };
+          } catch (e) {
+            return { id, success: false, error: e };
+          }
+        })
+      );
+
+      // 4. Analyze results
+      const failed = results.filter(r => !r.success);
+      if (failed.length > 0) {
+        console.error('❌ Detailed Failures:', failed.map(f => ({
+          id: f.id,
+          error: f.error?.message || 'Unknown error',
+          proposal: proposals.find(p => p.id === f.id)
+        })));
+
+        return {
+          success: false,
+          message: `Failed to update ${failed.length} of ${proposals.length} proposals`,
+          errors: failed.map(f => 
+            `Proposal ${f.id}: ${f.error?.message || 'Unknown error'} ` +
+            `(Current Status: ${proposals.find(p => p.id === f.id)?.status || 'unknown'})`
+          ),
+          affectedProposals: proposals.length - failed.length
+        };
+      }
+
+      return {
+        success: true,
+        message: `Successfully updated ${proposals.length} proposals`,
+        affectedProposals: proposals.length
+      };
+    } catch (error: any) {
+      console.error(`❌ Unexpected error in updateAllTeamProposals:`, error);
+      return {
+        success: false,
+        message: `Unexpected error: ${error.message}`,
+        errors: [error.message]
+      };
     }
-  );
-
-  // 4. Analyze results
-  const failed = results.filter(r => !r.success);
-  if (failed.length > 0) {
-    console.error('❌ Detailed Failures:', failed.map(f => ({
-      id: f.id,
-      error: f.error?.message || 'Unknown error',
-      proposal: proposals.find(p => p.id === f.id)
-    })));
-
-    return {
-      success: false,
-      message: `Failed to update ${failed.length} of ${proposals.length} proposals`,
-      errors: failed.map(f => 
-        `Proposal ${f.id}: ${f.error?.message || 'Unknown error'} ` +
-        `(Current Status: ${proposals.find(p => p.id === f.id)?.status || 'unknown'})`
-      ),
-      affectedProposals: proposals.length - failed.length
-    };
   }
-
-  return {
-    success: true,
-    message: `Successfully updated ${proposals.length} proposals`,
-    affectedProposals: proposals.length
-  };
-}
 
   // Rejection method with same robustness
   static async rejectProposal(proposalId: string, rejectionReason: string): Promise<ApprovalResult> {
