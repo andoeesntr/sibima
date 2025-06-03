@@ -279,34 +279,48 @@ export class ProposalApprovalService {
 
   // Update all team proposals in a single operation
   private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 1000;
+  
+  console.log(`🔄 Starting batch update for team ${teamId} (max ${MAX_RETRIES} retries)`);
+
+  // 1. Fetch all proposal IDs with current status
+  const { data: proposals, error: fetchError } = await supabase
+    .from('proposals')
+    .select('id, student_id, status, updated_at')
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: true });
+
+  if (fetchError || !proposals || proposals.length === 0) {
+    const errorMsg = fetchError?.message || 'No proposals found for team';
+    console.error(`❌ Fetch failed: ${errorMsg}`, { teamId, fetchError });
+    return {
+      success: false,
+      message: `Failed to fetch proposals: ${errorMsg}`,
+      errors: [errorMsg]
+    };
+  }
+
+  console.log(`📋 Found ${proposals.length} proposals to update`);
+
+  // 2. Prepare batch update with retry mechanism
+  const updateBatch = async (attempt = 1): Promise<ApprovalResult> => {
+    const errors: Array<{
+      proposalId: string;
+      studentId: string;
+      error: string;
+      status?: string;
+    }> = [];
+
     try {
-      console.log(`🔄 Updating all proposals for team: ${teamId}`);
-      
-      // Get all proposals for this team
-      const { data: proposals, error: fetchError } = await supabase
-        .from('proposals')
-        .select('id, student_id')
-        .eq('team_id', teamId);
+      // Using transaction for atomic updates
+      const { error: transactionError } = await supabase.rpc('begin');
 
-      if (fetchError) {
-        console.error(`❌ Error fetching team proposals:`, fetchError);
-        return {
-          success: false,
-          message: `Failed to fetch team proposals: ${fetchError.message}`,
-          errors: [fetchError.message]
-        };
-      }
+      if (transactionError) throw transactionError;
 
-      if (!proposals || proposals.length === 0) {
-        return {
-          success: false,
-          message: 'No proposals found for this team'
-        };
-      }
-
-      // Update all proposals in parallel
-      const updateResults = await Promise.all(
-        proposals.map(async (proposal) => {
+      // Process each proposal sequentially
+      for (const proposal of proposals) {
+        try {
           const { error } = await supabase
             .from('proposals')
             .update({
@@ -314,39 +328,77 @@ export class ProposalApprovalService {
               rejection_reason: rejectionReason || null,
               updated_at: new Date().toISOString()
             })
-            .eq('id', proposal.id);
+            .eq('id', proposal.id)
+            .select('id')
+            .single();
 
-          return { proposalId: proposal.id, error };
-        })
-      );
+          if (error) {
+            errors.push({
+              proposalId: proposal.id,
+              studentId: proposal.student_id,
+              error: error.message,
+              status: proposal.status
+            });
+            console.warn(`⚠️ Update failed for ${proposal.id} (attempt ${attempt}):`, error.message);
+          }
+        } catch (err: any) {
+          errors.push({
+            proposalId: proposal.id,
+            studentId: proposal.student_id,
+            error: err.message,
+            status: proposal.status
+          });
+        }
+      }
 
-      // Check for errors
-      const errors = updateResults.filter(r => r.error).map(r => r.error!.message);
+      // If any errors, rollback entire transaction
       if (errors.length > 0) {
-        console.error(`❌ Failed to update ${errors.length} proposals:`, errors);
+        await supabase.rpc('rollback');
         return {
           success: false,
-          message: `Failed to update ${errors.length} proposals`,
-          errors
+          message: `Failed to update ${errors.length} proposals in transaction`,
+          errors: errors.map(e => 
+            `Proposal ${e.proposalId} (Student: ${e.studentId}, Status: ${e.status}): ${e.error}`
+          ),
+          affectedProposals: proposals.length - errors.length
         };
       }
 
-      console.log(`✅ Successfully updated ${proposals.length} proposals`);
+      // Commit if all successful
+      const { error: commitError } = await supabase.rpc('commit');
+      if (commitError) throw commitError;
+
+      console.log(`✅ Successfully updated all ${proposals.length} proposals`);
       return {
         success: true,
-        message: `Updated ${proposals.length} proposals`,
+        message: `Updated all ${proposals.length} proposals`,
         affectedProposals: proposals.length
       };
 
-    } catch (error: any) {
-      console.error(`❌ Error updating team proposals:`, error);
+    } catch (batchError: any) {
+      console.error(`❌ Batch update failed (attempt ${attempt}):`, batchError.message);
+
+      // Retry logic
+      if (attempt < MAX_RETRIES) {
+        console.log(`🔄 Retrying in ${RETRY_DELAY_MS}ms...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        return updateBatch(attempt + 1);
+      }
+
       return {
         success: false,
-        message: `Unexpected error: ${error.message}`,
-        errors: [error.message]
+        message: `Failed after ${MAX_RETRIES} attempts: ${batchError.message}`,
+        errors: [
+          `Transaction failed: ${batchError.message}`,
+          ...errors.map(e => `Proposal ${e.proposalId}: ${e.error}`)
+        ],
+        affectedProposals: proposals.length - errors.length
       };
     }
-  }
+  };
+
+  return updateBatch();
+}
 
   // Rejection method with same robustness
   static async rejectProposal(proposalId: string, rejectionReason: string): Promise<ApprovalResult> {
