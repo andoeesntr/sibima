@@ -1,20 +1,19 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { QrCode, UploadCloud } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { FileImage, QrCode, Trash, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Import refactored components
-import SignatureUploadArea from '@/components/signatures/SignatureUploadArea';
-import SignatureUploadGuidelines from '@/components/signatures/SignatureUploadGuidelines';
-import SignatureStatusDisplay from '@/components/signatures/SignatureStatusDisplay';
-import QRCodeValidation from '@/components/signatures/QRCodeValidation';
 import { uploadSignature, saveSignatureToDatabase, deleteSignature } from '@/services/signatureService';
+
+// Placeholder image for QR code
+const qrImageUrl = "/lovable-uploads/cf1cd298-5ceb-4140-9045-4486c2030e4e.png";
 
 const DigitalSignatureUpload = () => {
   const [activeTab, setActiveTab] = useState('upload');
@@ -22,60 +21,8 @@ const DigitalSignatureUpload = () => {
   const [hasUploadedSignature, setHasUploadedSignature] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
   const [signatureData, setSignatureData] = useState<any>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
-
-  useEffect(() => {
-    if (user) {
-      fetchSignatureData();
-    }
-  }, [user, refreshTrigger]);
-
-  const fetchSignatureData = async () => {
-    if (!user) return;
-
-    try {
-      console.log('Fetching signature data for user:', user.id);
-      
-      const { data, error } = await supabase
-        .from('digital_signatures')
-        .select('*')
-        .eq('supervisor_id', user.id)
-        .not('status', 'eq', 'deleted')
-        .maybeSingle();
-
-      console.log('Signature data fetch result:', { data, error });
-
-      if (error) {
-        console.error('Error fetching signature data:', error);
-        throw error;
-      }
-
-      if (data) {
-        console.log('Found signature data:', data);
-        setSignatureData(data);
-        setHasUploadedSignature(true);
-        setPreviewUrl(data.signature_url);
-        
-        // If we have signature data, switch to status tab
-        if (data.signature_url) {
-          setActiveTab('status');
-        }
-      } else {
-        console.log('No signature data found');
-        setSignatureData(null);
-        setHasUploadedSignature(false);
-        setPreviewUrl(null);
-        setActiveTab('upload');
-      }
-    } catch (error) {
-      console.error('Error fetching signature data:', error);
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -133,22 +80,8 @@ const DigitalSignatureUpload = () => {
       console.log('Signature saved to database successfully');
       
       toast.success('Tanda tangan berhasil diupload dan disimpan');
-      
-      // Update local state immediately
-      const newSignatureData = { 
-        signature_url: publicUrl, 
-        status: 'pending',
-        supervisor_id: user.id,
-        id: Date.now().toString() // temporary ID
-      };
-      setSignatureData(newSignatureData);
       setHasUploadedSignature(true);
       setActiveTab('status');
-      
-      // Trigger refresh to get fresh data from database
-      setTimeout(() => {
-        setRefreshTrigger(prev => prev + 1);
-      }, 3000); // Wait 3 seconds before refreshing
       
     } catch (error: any) {
       console.error('Error uploading signature:', error);
@@ -173,9 +106,6 @@ const DigitalSignatureUpload = () => {
       toast.success('Tanda tangan berhasil dihapus');
       setActiveTab('upload');
       
-      // Trigger refresh
-      setRefreshTrigger(prev => prev + 1);
-      
     } catch (error) {
       console.error('Error deleting signature:', error);
       toast.error('Gagal menghapus tanda tangan');
@@ -184,31 +114,12 @@ const DigitalSignatureUpload = () => {
     }
   };
 
-  if (loadingData) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Tanda Tangan Digital</h1>
-          <p className="text-gray-600">
-            Upload tanda tangan digital Anda yang akan digunakan pada dokumen KP mahasiswa
-          </p>
-        </div>
-        <Button 
-          variant="outline" 
-          onClick={() => setRefreshTrigger(prev => prev + 1)}
-          disabled={loadingData}
-        >
-          {loadingData ? 'Loading...' : 'Refresh'}
-        </Button>
-      </div>
+      <h1 className="text-2xl font-bold">Tanda Tangan Digital</h1>
+      <p className="text-gray-600">
+        Upload tanda tangan digital Anda yang akan digunakan pada dokumen KP mahasiswa
+      </p>
 
       <Alert className="bg-blue-50 border-blue-200">
         <QrCode className="h-5 w-5 text-blue-500" />
@@ -234,16 +145,55 @@ const DigitalSignatureUpload = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <SignatureUploadArea 
-                previewUrl={previewUrl} 
-                onFileChange={handleFileChange} 
-                onRemove={() => {
-                  setSignature(null);
-                  setPreviewUrl(null);
-                }} 
-              />
+              <div className="border border-dashed rounded-lg p-6 flex flex-col items-center justify-center">
+                {previewUrl ? (
+                  <div className="mb-4 flex flex-col items-center">
+                    <img 
+                      src={previewUrl} 
+                      alt="Signature Preview" 
+                      className="max-h-40 object-contain mb-4" 
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setSignature(null);
+                        setPreviewUrl(null);
+                      }}
+                    >
+                      <Trash size={14} className="mr-1" /> Hapus
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <FileImage size={40} className="text-gray-400 mb-4" />
+                    <p className="mb-4 text-sm text-gray-600 text-center">
+                      Drag & drop file tanda tangan Anda di sini, atau klik tombol di bawah
+                    </p>
+                  </>
+                )}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="signature-upload" className="sr-only">Upload tanda tangan</Label>
+                  <Input
+                    id="signature-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="w-full"
+                  />
+                </div>
+              </div>
               
-              <SignatureUploadGuidelines />
+              <div className="bg-gray-50 p-4 rounded border text-sm">
+                <h3 className="font-medium mb-2">Panduan Upload Tanda Tangan</h3>
+                <ul className="list-disc list-inside space-y-1 text-gray-600">
+                  <li>Gunakan gambar tanda tangan dengan latar belakang transparan (format PNG)</li>
+                  <li>Ukuran file tidak lebih dari 1MB</li>
+                  <li>Resolusi yang disarankan: 300 DPI</li>
+                  <li>Pastikan tanda tangan terlihat jelas dan tidak buram</li>
+                </ul>
+              </div>
             </CardContent>
             <CardFooter>
               <Button 
@@ -273,23 +223,103 @@ const DigitalSignatureUpload = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <SignatureStatusDisplay
-                status={signatureData?.status}
-                previewUrl={previewUrl}
-                onRequestUpload={() => setActiveTab('upload')}
-                onDelete={handleDelete}
-                isSubmitting={isSubmitting}
-              />
+              {hasUploadedSignature ? (
+                <>
+                  <div className="flex justify-center">
+                    <div className="border p-6 rounded-lg bg-gray-50 max-w-xs">
+                      <img 
+                        src={previewUrl || "/placeholder.svg"} 
+                        alt="Digital Signature" 
+                        className="h-32 object-contain mx-auto"
+                      />
+                      <p className="text-center mt-4 text-sm text-gray-600">
+                        Tanda tangan yang saat ini aktif
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-green-50 p-4 rounded border border-green-100 flex items-start">
+                    <div className="text-green-800">
+                      <p className="font-medium">Tanda tangan telah diupload</p>
+                      <p className="text-sm mt-1">
+                        Tanda tangan digital Anda telah diupload dan saat ini sedang diproses oleh Super Admin
+                        untuk pembuatan QR Code validasi.
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-yellow-50 p-4 rounded border border-yellow-100 flex items-start">
+                  <div className="text-yellow-800">
+                    <p className="font-medium">Belum ada tanda tangan</p>
+                    <p className="text-sm mt-1">
+                      Anda belum mengupload tanda tangan digital. Silakan upload tanda tangan 
+                      pada tab "Upload Tanda Tangan".
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
+            {hasUploadedSignature && (
+              <CardFooter>
+                <Button 
+                  variant="outline" 
+                  className="mr-auto"
+                  onClick={() => setActiveTab('upload')}
+                >
+                  Upload Baru
+                </Button>
+                
+                <Button 
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Menghapus...' : 'Hapus Tanda Tangan'}
+                </Button>
+              </CardFooter>
+            )}
           </Card>
         </TabsContent>
       </Tabs>
 
-      <QRCodeValidation 
-        hasSignature={hasUploadedSignature}
-        status={signatureData?.status} 
-        qrCodeUrl={signatureData?.qr_code_url}
-      />
+      <div className="border-t pt-6">
+        <h2 className="text-lg font-medium mb-4">QR Code Validasi</h2>
+        
+        {hasUploadedSignature ? (
+          <div className="bg-gray-50 p-6 rounded-lg border flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-shrink-0 border p-4 bg-white rounded">
+              <img 
+                src={qrImageUrl} 
+                alt="QR Code Validation" 
+                className="w-40 h-40 object-contain"
+              />
+            </div>
+            
+            <div>
+              <p className="font-medium mb-2">QR Code Validasi Dosen</p>
+              <p className="text-gray-600 text-sm mb-4">
+                QR Code ini dapat digunakan untuk memvalidasi dokumen KP mahasiswa yang Anda bimbing.
+                Super Admin akan mendistribusikan QR Code ini kepada mahasiswa setelah proposal 
+                KP mereka disetujui.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" disabled>
+                  <QrCode size={16} className="mr-1" /> QR Code Sedang Diproses
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-10 bg-gray-50 rounded-lg border">
+            <QrCode className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+            <h3 className="text-lg font-medium text-gray-900">QR Code belum tersedia</h3>
+            <p className="text-gray-500 max-w-md mx-auto mt-2">
+              Upload tanda tangan digital Anda terlebih dahulu untuk mendapatkan QR Code validasi
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

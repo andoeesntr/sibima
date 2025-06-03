@@ -1,277 +1,176 @@
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CalendarDays, MapPin, MessageSquare, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 
-const formSchema = z.object({
-  date: z.date({
-    required_error: "Tanggal bimbingan harus dipilih",
-  }),
-  time: z.string().min(1, "Waktu harus dipilih"),
-  duration: z.string().min(1, "Durasi harus dipilih"),
-  topic: z.string().min(5, "Topik bimbingan minimal 5 karakter"),
-  description: z.string().optional(),
-  location_type: z.string().min(1, "Jenis lokasi harus dipilih"),
-  location: z.string().optional(),
-});
+interface GuidanceRequestFormProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+  guidanceType: 'regular' | 'scheduled';
+}
 
-const GuidanceRequestForm = () => {
+const GuidanceRequestForm = ({ onSuccess, onCancel, guidanceType }: GuidanceRequestFormProps) => {
+  const [requestData, setRequestData] = useState({
+    requested_date: '',
+    location: '',
+    topic: '',
+    guidance_type: guidanceType
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
-  const { selectedProposal } = useStudentDashboard();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      topic: '',
-      description: '',
-      location_type: '',
-      location: '',
-    },
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user?.id) {
+      toast.error('User tidak ditemukan');
+      return;
+    }
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!selectedProposal || !selectedProposal.supervisors || selectedProposal.supervisors.length === 0) {
-      toast.error('Tidak ada dosen pembimbing yang tersedia');
+    if (!requestData.requested_date || !requestData.topic) {
+      toast.error('Harap isi tanggal dan topik bimbingan');
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      // Combine date and time
-      const requestedDateTime = new Date(values.date);
-      const [hours, minutes] = values.time.split(':');
-      requestedDateTime.setHours(parseInt(hours), parseInt(minutes));
+      // Get supervisor ID from user's proposal
+      const { data: proposalData, error: proposalError } = await supabase
+        .from('proposals')
+        .select('supervisor_id')
+        .eq('student_id', user.id)
+        .eq('status', 'approved')
+        .single();
+
+      if (proposalError || !proposalData?.supervisor_id) {
+        toast.error('Supervisor tidak ditemukan. Pastikan proposal Anda sudah disetujui.');
+        return;
+      }
 
       const { error } = await supabase
         .from('kp_guidance_schedule')
         .insert({
-          student_id: user?.id,
-          supervisor_id: selectedProposal.supervisors[0].id,
-          requested_date: requestedDateTime.toISOString(),
-          topic: values.topic,
-          duration_minutes: parseInt(values.duration),
-          location: values.location_type === 'online' ? 'Online' : values.location,
-          meeting_link: values.location_type === 'online' ? 'Akan diberikan oleh dosen' : null,
-          status: 'requested'
+          student_id: user.id,
+          supervisor_id: proposalData.supervisor_id,
+          requested_date: requestData.requested_date,
+          location: requestData.location || null,
+          topic: requestData.topic,
+          status: 'requested',
+          guidance_type: requestData.guidance_type
         });
 
       if (error) throw error;
 
-      toast.success('Permintaan bimbingan berhasil diajukan');
-      form.reset();
+      toast.success(`Permintaan bimbingan ${guidanceType === 'scheduled' ? 'terjadwal' : 'reguler'} berhasil dikirim`);
+      onSuccess();
     } catch (error) {
       console.error('Error submitting guidance request:', error);
-      toast.error('Gagal mengajukan permintaan bimbingan');
+      toast.error('Gagal mengirim permintaan bimbingan');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const timeSlots = [
-    '08:00', '09:00', '10:00', '11:00', '13:00', 
-    '14:00', '15:00', '16:00', '17:00'
-  ];
-
-  const durationOptions = [
-    { value: '60', label: '1 jam' },
-    { value: '90', label: '1.5 jam' },
-    { value: '120', label: '2 jam' },
-  ];
+  const handleInputChange = (field: string, value: string) => {
+    setRequestData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Ajukan Sesi Bimbingan</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5" />
+          Ajukan {guidanceType === 'scheduled' ? 'Bimbingan Terjadwal' : 'Sesi Bimbingan'}
+        </CardTitle>
+        <CardDescription>
+          {guidanceType === 'scheduled' 
+            ? 'Ajukan permintaan untuk bimbingan terjadwal yang diwajibkan (2x)' 
+            : 'Ajukan permintaan sesi bimbingan reguler dengan dosen pembimbing'
+          }
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Tanggal Bimbingan</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP", { locale: id })
-                            ) : (
-                              <span>Pilih tanggal</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="requested_date">Tanggal & Waktu yang Diinginkan *</Label>
+            <Input
+              id="requested_date"
+              type="datetime-local"
+              value={requestData.requested_date}
+              onChange={(e) => handleInputChange('requested_date', e.target.value)}
+              required
+            />
+          </div>
 
-              <FormField
-                control={form.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Waktu Bimbingan</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih waktu" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {timeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          <div className="space-y-2">
+            <Label htmlFor="location">Lokasi Bimbingan</Label>
+            <div className="flex items-center space-x-2">
+              <MapPin className="h-4 w-4 text-gray-500" />
+              <Input
+                id="location"
+                type="text"
+                placeholder="Contoh: Ruang Dosen, Online (Teams), dll"
+                value={requestData.location}
+                onChange={(e) => handleInputChange('location', e.target.value)}
               />
             </div>
+          </div>
 
-            <FormField
-              control={form.control}
-              name="duration"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Durasi Bimbingan</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih durasi" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {durationOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="topic"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Topik Bimbingan</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Masukkan topik yang akan dibahas" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Deskripsi/Catatan (Opsional)</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Tambahkan deskripsi atau catatan tambahan"
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="location_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Jenis Bimbingan</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih jenis bimbingan" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="online">Online</SelectItem>
-                      <SelectItem value="offline">Offline</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {form.watch('location_type') === 'offline' && (
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lokasi Bimbingan</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Masukkan lokasi bimbingan" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          <div className="space-y-2">
+            <Label htmlFor="topic">Topik Bimbingan *</Label>
+            <div className="flex items-start space-x-2">
+              <MessageSquare className="h-4 w-4 text-gray-500 mt-3" />
+              <Textarea
+                id="topic"
+                placeholder="Jelaskan topik atau hal yang ingin didiskusikan dalam bimbingan ini..."
+                value={requestData.topic}
+                onChange={(e) => handleInputChange('topic', e.target.value)}
+                required
+                rows={4}
               />
-            )}
+            </div>
+          </div>
 
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Mengajukan...' : 'Ajukan Bimbingan'}
+          <div className="flex gap-2 pt-4">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex-1"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Mengirim...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Kirim Permintaan
+                </>
+              )}
             </Button>
-          </form>
-        </Form>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              Batal
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );
