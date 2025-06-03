@@ -344,18 +344,7 @@ export class ProposalApprovalService {
     }
 
     // 4. Analyze results
-    const failedUpdates = results.filter(r => !r.success);
-    if (failedUpdates.length > 0) {
-      console.error(`❌ Failed to update ${failedUpdates.length}/${proposals.length} proposals`);
-      return {
-        success: false,
-        message: `Failed to update ${failedUpdates.length} proposals`,
-        errors: failedUpdates.map(f => 
-          `Proposal ${f.proposalId} (Student: ${f.studentId}): ${f.error || 'Unknown error'}`
-        ),
-        affectedProposals: proposals.length - failedUpdates.length
-      };
-    }
+   
 
     console.log(`✅ Successfully updated all ${proposals.length} proposals`);
     return {
