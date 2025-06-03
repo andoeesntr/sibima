@@ -278,44 +278,75 @@ export class ProposalApprovalService {
   }
 
   // Update all team proposals in a single operation
- 
-          });
-        } else {
-          results.push({
-            proposalId: proposal.id,
-            studentId: proposal.student_id,
-            success: true
-          });
-        }
-      } catch (error: any) {
-        console.error(`❌ Unexpected error updating proposal ${proposal.id}:`, error);
-        results.push({
-          proposalId: proposal.id,
-          studentId: proposal.student_id,
+  private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
+    try {
+      console.log(`🔄 Updating all proposals for team: ${teamId}`);
+      
+      // Get all proposals for this team
+      const { data: proposals, error: fetchError } = await supabase
+        .from('proposals')
+        .select('id, student_id')
+        .eq('team_id', teamId);
+
+      if (fetchError) {
+        console.error(`❌ Error fetching team proposals:`, fetchError);
+        return {
           success: false,
-          error: error.message
-        });
+          message: `Failed to fetch team proposals: ${fetchError.message}`,
+          errors: [fetchError.message]
+        };
       }
+
+      if (!proposals || proposals.length === 0) {
+        return {
+          success: false,
+          message: 'No proposals found for this team'
+        };
+      }
+
+      // Update all proposals in parallel
+      const updateResults = await Promise.all(
+        proposals.map(async (proposal) => {
+          const { error } = await supabase
+            .from('proposals')
+            .update({
+              status: 'approved',
+              rejection_reason: rejectionReason || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', proposal.id);
+
+          return { proposalId: proposal.id, error };
+        })
+      );
+
+      // Check for errors
+      const errors = updateResults.filter(r => r.error).map(r => r.error!.message);
+      if (errors.length > 0) {
+        console.error(`❌ Failed to update ${errors.length} proposals:`, errors);
+        return {
+          success: false,
+          message: `Failed to update ${errors.length} proposals`,
+          errors
+        };
+      }
+
+      console.log(`✅ Successfully updated ${proposals.length} proposals`);
+      return {
+        success: true,
+        message: `Updated ${proposals.length} proposals`,
+        affectedProposals: proposals.length
+      };
+
+    } catch (error: any) {
+      console.error(`❌ Error updating team proposals:`, error);
+      return {
+        success: false,
+        message: `Unexpected error: ${error.message}`,
+        errors: [error.message]
+      };
     }
-
-    // 4. Analyze results
-   
-
-    console.log(`✅ Successfully updated all ${proposals.length} proposals`);
-    return {
-      success: true,
-      message: `Updated all ${proposals.length} proposals`,
-      affectedProposals: proposals.length
-    };
-  } catch (error: any) {
-    console.error(`❌ Unexpected error in updateAllTeamProposals:`, error);
-    return {
-      success: false,
-      message: `Unexpected error: ${error.message}`,
-      errors: [error.message]
-    };
   }
-}
 
   // Rejection method with same robustness
   static async rejectProposal(proposalId: string, rejectionReason: string): Promise<ApprovalResult> {
