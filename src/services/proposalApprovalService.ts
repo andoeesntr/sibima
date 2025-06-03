@@ -229,11 +229,10 @@ export class ProposalApprovalService {
       // Create missing proposals one by one
       if (missingMemberIds.length > 0) {
         const createResults = await Promise.allSettled(
-    missingMemberIds.map(async (studentId) => {
-      const { error } = await supabase
-        .from('proposals')
-        .upsert( // Gunakan upsert dengan constraint unik
-          {
+          missingMemberIds.map(async (studentId) => {
+            const { error } = await supabase
+              .from('proposals')
+              .insert({
                 student_id: studentId,
                 team_id: baseProposal.team_id,
                 title: baseProposal.title,
@@ -241,15 +240,12 @@ export class ProposalApprovalService {
                 company_name: baseProposal.company_name,
                 supervisor_id: baseProposal.supervisor_id,
                 status: 'submitted'
-              })
-              },
-          { onConflict: 'student_id,team_id' } // Pastikan constraint unik ada
-        );
+              });
 
-      if (error) throw error;
-      return true;
-    })
-  );
+            if (error) throw error;
+            return true;
+          })
+        );
 
         const failures = createResults.filter(result => result.status === 'rejected');
         if (failures.length > 0) {
@@ -280,64 +276,71 @@ export class ProposalApprovalService {
   }
 
   // Update all team proposals in a single operation
-private static async approveTeamProposal(proposal: ProposalData, rejectionReason?: string): Promise<ApprovalResult> {
-  try {
-    const ensureResult = await this.ensureAllTeamMembersHaveProposals(proposal);
-    if (!ensureResult.success) return ensureResult;
+  private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
+    try {
+      // 1. Get all proposals for this team
+      const { data: proposals, error: fetchError } = await supabase
+        .from('proposals')
+        .select('id')
+        .eq('team_id', teamId);
 
-    // Panggil method yang sudah diperbaiki
-    return await this.updateAllTeamProposals(proposal.team_id!, rejectionReason);
-  } catch (error: any) {
-    console.error(`❌ Team approval error:`, error);
-    return {
-      success: false,
-      message: `Team approval failed: ${error.message}`,
-      errors: [error.message]
-    };
-  }
-}
+      if (fetchError) {
+        console.error(`❌ Error fetching team proposals:`, fetchError);
+        return {
+          success: false,
+          message: `Failed to fetch team proposals: ${fetchError.message}`,
+          errors: [fetchError.message]
+        };
+      }
 
-    // 2. Update satu per satu berdasarkan ID
-    const updateResults = await Promise.all(
-      proposals.map(async (proposal) => {
-        const { error } = await supabase
-          .from('proposals')
-          .update({
-            status: 'approved',
-            rejection_reason: rejectionReason || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', proposal.id); // Gunakan ID spesifik
+      if (!proposals || proposals.length === 0) {
+        return {
+          success: false,
+          message: 'No proposals found for this team'
+        };
+      }
 
-        return { error };
-      })
-    );
+      // 2. Update one by one based on ID
+      const updateResults = await Promise.all(
+        proposals.map(async (proposal) => {
+          const { error } = await supabase
+            .from('proposals')
+            .update({
+              status: 'approved',
+              rejection_reason: rejectionReason || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', proposal.id);
 
-    const errors = updateResults.filter(r => r.error).map(r => r.error!.message);
-    if (errors.length > 0) {
-      console.error(`❌ Partial update failed:`, errors);
+          return { error };
+        })
+      );
+
+      const errors = updateResults.filter(r => r.error).map(r => r.error!.message);
+      if (errors.length > 0) {
+        console.error(`❌ Partial update failed:`, errors);
+        return {
+          success: false,
+          message: `Failed to update ${errors.length} proposals`,
+          errors
+        };
+      }
+
+      console.log(`✅ Updated ${proposals.length} proposals`);
+      return {
+        success: true,
+        message: `Updated ${proposals.length} proposals`,
+        affectedProposals: proposals.length
+      };
+    } catch (error: any) {
+      console.error(`❌ Error updating team proposals:`, error);
       return {
         success: false,
-        message: `Failed to update ${errors.length} proposals`,
-        errors
+        message: `Unexpected error: ${error.message}`,
+        errors: [error.message]
       };
     }
-
-    console.log(`✅ Updated ${proposals.length} proposals`);
-    return {
-      success: true,
-      message: `Updated ${proposals.length} proposals`,
-      affectedProposals: proposals.length
-    };
-  } catch (error: any) {
-    console.error(`❌ Error updating team proposals:`, error);
-    return {
-      success: false,
-      message: `Unexpected error: ${error.message}`,
-      errors: [error.message]
-    };
   }
-}
 
   // Rejection method with same robustness
   static async rejectProposal(proposalId: string, rejectionReason: string): Promise<ApprovalResult> {
