@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CheckCircle } from 'lucide-react';
-import { syncProposalStatusWithTeam } from '@/services/proposalService';
+import { ProposalApprovalService } from '@/services/proposalApprovalService';
 
 interface ApproveDialogProps {
   onCancel: () => void;
@@ -18,17 +18,28 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      console.log('Starting proposal approval process for:', proposalId);
+      console.log('🚀 Starting proposal approval process for:', proposalId);
       
-      // Use the improved sync function that avoids ON CONFLICT issues
-      await syncProposalStatusWithTeam(proposalId, 'approved');
+      const result = await ProposalApprovalService.approveProposal(proposalId);
       
-      console.log('Proposal approval completed successfully');
-      toast.success("Proposal berhasil disetujui");
-      onApprove();
+      if (result.success) {
+        console.log('✅ Proposal approval completed successfully');
+        toast.success(result.message);
+        onApprove();
+      } else {
+        console.error('❌ Proposal approval failed:', result.message);
+        toast.error(result.message);
+        
+        // Log detailed errors if available
+        if (result.errors) {
+          result.errors.forEach(error => {
+            console.error('📋 Error detail:', error);
+          });
+        }
+      }
     } catch (error: any) {
-      console.error('Error approving proposal:', error);
-      const errorMessage = error.message || 'Terjadi kesalahan saat menyetujui proposal';
+      console.error('💥 Unexpected error during approval:', error);
+      const errorMessage = error.message || 'Terjadi kesalahan tidak terduga saat menyetujui proposal';
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
