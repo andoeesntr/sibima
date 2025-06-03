@@ -18,7 +18,13 @@ export async function fetchProposalFeedback(proposalId: string) {
       return [];
     }
 
-    return feedback || [];
+    // Transform the data to match FeedbackEntry interface
+    return (feedback || []).map(item => ({
+      id: item.id,
+      content: item.content,
+      createdAt: item.created_at,
+      supervisorName: item.supervisor?.full_name || 'Unknown Supervisor'
+    }));
   } catch (error) {
     console.error('Error in fetchProposalFeedback:', error);
     return [];
