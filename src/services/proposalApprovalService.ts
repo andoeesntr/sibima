@@ -278,52 +278,7 @@ export class ProposalApprovalService {
   }
 
   // Update all team proposals in a single operation
-  private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
-  try {
-    console.log(`🔄 Updating all proposals for team: ${teamId}`);
-    
-    // 1. Get all proposal IDs with their current status for better error reporting
-    const { data: proposals, error: fetchError } = await supabase
-      .from('proposals')
-      .select('id, student_id, status')
-      .eq('team_id', teamId);
-
-    if (fetchError || !proposals) {
-      console.error(`❌ Error fetching proposals:`, fetchError);
-      return {
-        success: false,
-        message: `Failed to fetch proposals: ${fetchError?.message || 'No data'}`,
-        errors: [fetchError?.message || 'Unknown error']
-      };
-    }
-
-    // 2. Track successful and failed updates
-    const results: {
-      proposalId: string;
-      studentId: string;
-      success: boolean;
-      error?: string;
-    }[] = [];
-
-    // 3. Process updates sequentially for better error tracking
-    for (const proposal of proposals) {
-      try {
-        const { error } = await supabase
-          .from('proposals')
-          .update({
-            status: 'approved',
-            rejection_reason: rejectionReason || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', proposal.id);
-
-        if (error) {
-          console.error(`❌ Failed to update proposal ${proposal.id} for student ${proposal.student_id}:`, error.message);
-          results.push({
-            proposalId: proposal.id,
-            studentId: proposal.student_id,
-            success: false,
-            error: error.message
+ 
           });
         } else {
           results.push({
