@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,23 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-// Simplified interface to avoid type instantiation issues
-interface GuidanceRequest {
+interface GuidanceData {
+  id: string;
+  student_id: string;
+  requested_date: string;
+  location: string | null;
+  topic: string | null;
+  status: string;
+  meeting_link: string | null;
+  supervisor_notes: string | null;
+  created_at: string;
+  student: {
+    full_name: string;
+    nim: string;
+  } | null;
+}
+
+interface ProcessedGuidance {
   id: string;
   student_id: string;
   requested_date: string;
@@ -25,10 +41,16 @@ interface GuidanceRequest {
   student_nim: string;
 }
 
+interface UniqueStudent {
+  id: string;
+  name: string;
+  nim: string;
+}
+
 const SupervisorScheduledGuidance = () => {
-  const [guidanceRequests, setGuidanceRequests] = useState<GuidanceRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<GuidanceRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [guidanceRequests, setGuidanceRequests] = useState<ProcessedGuidance[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<ProcessedGuidance[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const { user } = useAuth();
@@ -48,15 +70,13 @@ const SupervisorScheduledGuidance = () => {
           )
         `)
         .eq('supervisor_id', user.id)
-        .eq('guidance_type', 'scheduled')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       console.log('Fetched scheduled guidance requests for supervisor:', data);
       
-      // Transform the data to match our simplified interface
-      const transformedData: GuidanceRequest[] = (data || []).map(item => ({
+      const transformedData: ProcessedGuidance[] = (data as GuidanceData[] || []).map(item => ({
         id: item.id,
         student_id: item.student_id,
         requested_date: item.requested_date,
@@ -80,16 +100,13 @@ const SupervisorScheduledGuidance = () => {
     }
   };
 
-  // Filter function
   const applyFilters = () => {
     let filtered = [...guidanceRequests];
 
-    // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(request => request.status === statusFilter);
     }
 
-    // Filter by student
     if (studentFilter !== 'all') {
       filtered = filtered.filter(request => request.student_id === studentFilter);
     }
@@ -97,7 +114,6 @@ const SupervisorScheduledGuidance = () => {
     setFilteredRequests(filtered);
   };
 
-  // Apply filters when filter values change
   useEffect(() => {
     applyFilters();
   }, [statusFilter, studentFilter, guidanceRequests]);
@@ -139,8 +155,7 @@ const SupervisorScheduledGuidance = () => {
     return format(new Date(dateString), 'dd MMMM yyyy HH:mm', { locale: id });
   };
 
-  // Get unique students for filter
-  const uniqueStudents = guidanceRequests.reduce((acc: Array<{ id: string; name: string; nim: string }>, request) => {
+  const uniqueStudents: UniqueStudent[] = guidanceRequests.reduce((acc: UniqueStudent[], request) => {
     if (!acc.find(s => s.id === request.student_id)) {
       acc.push({
         id: request.student_id,
@@ -171,9 +186,7 @@ const SupervisorScheduledGuidance = () => {
           <p className="text-gray-600">Kelola 2 sesi bimbingan terjadwal yang diwajibkan</p>
         </div>
 
-        {/* Compact Filters */}
         <div className="flex items-center gap-2">
-          {/* Status Filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -207,7 +220,6 @@ const SupervisorScheduledGuidance = () => {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Student Filter */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
