@@ -1,46 +1,42 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Search } from 'lucide-react';
-import { useProposals, ProposalStatus } from '@/hooks/useProposals';
-import ProposalCard from '@/components/coordinator/ProposalCard';
-import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { ArrowRight, Check, FileText, Search, User, X } from 'lucide-react';
+import { proposals, formatDate } from '@/services/mockData';
+import { Proposal } from '@/types';
+
+type ProposalStatus = 'submitted' | 'approved' | 'rejected' | 'all';
+
+const statusColors = {
+  draft: "bg-gray-500",
+  submitted: "bg-yellow-500",
+  reviewed: "bg-blue-500",
+  approved: "bg-green-500",
+  rejected: "bg-red-500",
+};
+
+const statusLabels = {
+  draft: "Draft",
+  submitted: "Diajukan",
+  reviewed: "Ditinjau",
+  approved: "Disetujui",
+  rejected: "Ditolak",
+};
 
 const ProposalReview = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<ProposalStatus>('submitted');
   const [searchQuery, setSearchQuery] = useState('');
-  const { proposals, loading, refreshProposals } = useProposals();
-  
-  // Dialog states
-  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [isRevisionDialogOpen, setIsRevisionDialogOpen] = useState(false);
-
-  console.log("All proposals for review:", proposals.map(p => ({ 
-    id: p.id,
-    title: p.title, 
-    status: p.status, 
-    rejectionReason: p.rejectionReason 
-  })));
 
   const filteredProposals = proposals.filter(proposal => {
     // Filter by tab selection
-    if (activeTab !== 'all') {
-      if (activeTab === 'revision') {
-        // For "revision" tab, check if status is 'revision' OR 
-        // (submitted with rejectionReason which indicates it needs revision)
-        return proposal.status === 'revision' || 
-               (proposal.status === 'submitted' && proposal.rejectionReason);
-      } else {
-        // For other tabs, check status normally
-        return proposal.status === activeTab;
-      }
+    if (activeTab !== 'all' && proposal.status !== activeTab) {
+      return false;
     }
     
     // Filter by search query
@@ -51,32 +47,8 @@ const ProposalReview = () => {
     return true;
   });
 
-  console.log("Filtered proposals for tab", activeTab, ":", filteredProposals.length);
-
   const handleViewProposal = (proposalId: string) => {
     navigate(`/coordinator/proposal-detail/${proposalId}`);
-  };
-  
-  // Dialog handlers
-  const handleApproveClick = (proposalId: string) => {
-    setSelectedProposalId(proposalId);
-    setIsApproveDialogOpen(true);
-  };
-
-  const handleRejectClick = (proposalId: string) => {
-    setSelectedProposalId(proposalId);
-    setIsRejectDialogOpen(true);
-  };
-
-  const handleRevisionClick = (proposalId: string) => {
-    setSelectedProposalId(proposalId);
-    setIsRevisionDialogOpen(true);
-  };
-
-  // Reset selected proposal when dialogs close
-  const handleDialogClose = () => {
-    setSelectedProposalId(null);
-    refreshProposals();
   };
   
   return (
@@ -95,28 +67,20 @@ const ProposalReview = () => {
       </div>
       
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ProposalStatus)}>
-        <TabsList className="grid grid-cols-5 mb-6">
+        <TabsList className="grid grid-cols-4 mb-6">
           <TabsTrigger value="submitted">Menunggu Review</TabsTrigger>
-          <TabsTrigger value="revision">Perlu Revisi</TabsTrigger>
           <TabsTrigger value="approved">Disetujui</TabsTrigger>
           <TabsTrigger value="rejected">Ditolak</TabsTrigger>
           <TabsTrigger value="all">Semua</TabsTrigger>
         </TabsList>
         
         <TabsContent value={activeTab} className="space-y-4">
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : filteredProposals.length > 0 ? (
+          {filteredProposals.length > 0 ? (
             filteredProposals.map((proposal) => (
               <ProposalCard 
                 key={proposal.id}
                 proposal={proposal}
                 onView={handleViewProposal}
-                onApprove={proposal.status === 'submitted' ? () => handleApproveClick(proposal.id) : undefined}
-                onReject={proposal.status === 'submitted' ? () => handleRejectClick(proposal.id) : undefined}
-                onRevision={proposal.status === 'submitted' ? () => handleRevisionClick(proposal.id) : undefined}
               />
             ))
           ) : (
@@ -132,29 +96,73 @@ const ProposalReview = () => {
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Action Dialogs */}
-      {selectedProposalId && (
-        <ActionDialogs
-          isApproveDialogOpen={isApproveDialogOpen}
-          setIsApproveDialogOpen={(open) => {
-            setIsApproveDialogOpen(open);
-            if (!open) handleDialogClose();
-          }}
-          isRejectDialogOpen={isRejectDialogOpen}
-          setIsRejectDialogOpen={(open) => {
-            setIsRejectDialogOpen(open);
-            if (!open) handleDialogClose();
-          }}
-          isRevisionDialogOpen={isRevisionDialogOpen}
-          setIsRevisionDialogOpen={(open) => {
-            setIsRevisionDialogOpen(open);
-            if (!open) handleDialogClose();
-          }}
-          proposalId={selectedProposalId}
-        />
-      )}
     </div>
+  );
+};
+
+type ProposalCardProps = {
+  proposal: Proposal;
+  onView: (proposalId: string) => void;
+};
+
+const ProposalCard = ({ proposal, onView }: ProposalCardProps) => {
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-lg">{proposal.title}</CardTitle>
+        <Badge className={statusColors[proposal.status]}>
+          {statusLabels[proposal.status]}
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        <div className="text-sm text-gray-600 mb-4">
+          {proposal.description.substring(0, 100)}
+          {proposal.description.length > 100 ? '...' : ''}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
+          <div className="flex items-center">
+            <User size={14} className="mr-1" />
+            <span>{proposal.supervisorIds.length} Pembimbing</span>
+          </div>
+          <div>
+            Submitted: {formatDate(proposal.submissionDate)}
+          </div>
+          {proposal.reviewDate && (
+            <div>
+              Reviewed: {formatDate(proposal.reviewDate)}
+            </div>
+          )}
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        {proposal.status === 'submitted' && (
+          <>
+            <Button 
+              onClick={() => onView(proposal.id)}
+              className="bg-primary hover:bg-primary/90 flex-1 mr-2"
+            >
+              <Check size={16} className="mr-1" /> Setuju
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => onView(proposal.id)}
+              className="flex-1"
+            >
+              <X size={16} className="mr-1" /> Tolak
+            </Button>
+          </>
+        )}
+        {(proposal.status === 'approved' || proposal.status === 'rejected') && (
+          <Button 
+            variant="outline" 
+            onClick={() => onView(proposal.id)}
+            className="w-full"
+          >
+            <ArrowRight size={16} className="mr-1" /> Lihat Detail
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
   );
 };
 

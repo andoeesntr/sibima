@@ -1,90 +1,37 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from 'sonner';
+import { supervisors } from '@/services/mockData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, FileSignature } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import ProfileImageUploader from '@/components/ProfileImageUploader';
 
 const SupervisorProfile = () => {
-  const { profile, user, updateProfile } = useAuth();
-  
-  // State for form fields
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [department, setDepartment] = useState('');
+  const [supervisor] = useState(supervisors[0]);
+  const [name, setName] = useState(supervisor.name);
+  const [email, setEmail] = useState(supervisor.email);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hasDigitalSignature, setHasDigitalSignature] = useState(false);
   
-  // Update state when profile or user data changes
-  useEffect(() => {
-    console.log("Profile data in SupervisorProfile:", profile);
-    console.log("User data in SupervisorProfile:", user);
-    
-    if (profile) {
-      setName(profile.full_name || '');
-      setDepartment(profile.department || '');
-    }
-    if (user) {
-      setEmail(user.email || '');
-    }
-    
-    // Check if the supervisor has a digital signature
-    const checkSignature = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('digital_signatures')
-          .select('id')
-          .eq('supervisor_id', user.id)
-          .maybeSingle();
-          
-        if (!error && data) {
-          setHasDigitalSignature(true);
-        }
-      } catch (error) {
-        console.error('Error checking digital signature:', error);
-      }
-    };
-    
-    checkSignature();
-  }, [profile, user]);
-  
-  const handleUpdateProfile = async () => {
-    if (!user) {
-      toast.error('Anda harus login untuk memperbarui profil');
-      return;
-    }
-    
+  const handleUpdateProfile = () => {
     setIsLoading(true);
     
-    try {
-      await updateProfile({
-        full_name: name,
-        department: department
-      });
-      
-      toast.success('Profil berhasil diperbarui');
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast.error(`Gagal memperbarui profil: ${error.message}`);
-    } finally {
+    // Simulate API call
+    setTimeout(() => {
       setIsLoading(false);
-    }
+      toast.success('Profil berhasil diperbarui');
+    }, 1000);
   };
   
-  const handleChangePassword = async () => {
+  const handleChangePassword = () => {
     if (newPassword !== confirmPassword) {
       toast.error('Konfirmasi password tidak cocok');
       return;
@@ -97,47 +44,26 @@ const SupervisorProfile = () => {
     
     setIsLoading(true);
     
-    try {
-      // First verify current password by attempting to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email || '',
-        password: currentPassword,
-      });
-      
-      if (signInError) {
-        toast.error('Password saat ini tidak valid');
-        setIsLoading(false);
-        return;
-      }
-      
-      // Then update password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       toast.success('Password berhasil diperbarui');
-    } catch (error: any) {
-      console.error('Error changing password:', error);
-      toast.error(`Gagal memperbarui password: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
+    }, 1000);
   };
   
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-6">
-        <ProfileImageUploader initialImage={profile?.profile_image} />
+      <div className="flex items-center space-x-4">
+        <Avatar className="h-20 w-20">
+          <AvatarImage src="/placeholder.svg" />
+          <AvatarFallback>{supervisor.name[0]}</AvatarFallback>
+        </Avatar>
         <div>
-          <h1 className="text-2xl font-bold">{profile?.full_name || 'Dosen Pembimbing'}</h1>
-          <p className="text-gray-600">{profile?.nid || 'No NID'} - Dosen Pembimbing KP</p>
+          <h1 className="text-2xl font-bold">{supervisor.name}</h1>
+          <p className="text-gray-600">{supervisor.nip} - Dosen Pembimbing KP</p>
         </div>
       </div>
       
@@ -157,10 +83,10 @@ const SupervisorProfile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="nid">NID</Label>
-                <Input id="nid" value={profile?.nid || ''} disabled />
+                <Label htmlFor="nip">NIP</Label>
+                <Input id="nip" value={supervisor.nip} disabled />
                 <p className="text-sm text-gray-500">
-                  NID tidak dapat diubah
+                  NIP tidak dapat diubah
                 </p>
               </div>
               
@@ -179,20 +105,13 @@ const SupervisorProfile = () => {
                   id="email" 
                   type="email" 
                   value={email} 
-                  disabled
+                  onChange={(e) => setEmail(e.target.value)}
                 />
-                <p className="text-sm text-gray-500">
-                  Email tidak dapat diubah
-                </p>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
-                <Input 
-                  id="department" 
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                />
+                <Input id="department" value={supervisor.department} />
               </div>
               
               <div className="flex items-center space-x-4 bg-gray-50 p-4 rounded-lg">
@@ -200,7 +119,7 @@ const SupervisorProfile = () => {
                 <div>
                   <p className="font-medium">Status Tanda Tangan Digital</p>
                   <div className="flex items-center mt-1">
-                    {hasDigitalSignature ? (
+                    {supervisor.hasDigitalSignature ? (
                       <Badge className="bg-green-500">Tersedia</Badge>
                     ) : (
                       <Badge variant="outline" className="text-amber-500 border-amber-200 bg-amber-50">
@@ -211,7 +130,7 @@ const SupervisorProfile = () => {
                 </div>
               </div>
               
-              {!hasDigitalSignature && (
+              {!supervisor.hasDigitalSignature && (
                 <Alert className="bg-yellow-50 border-yellow-200">
                   <AlertCircle className="h-5 w-5 text-yellow-600" />
                   <AlertTitle className="text-yellow-800">Perhatian</AlertTitle>

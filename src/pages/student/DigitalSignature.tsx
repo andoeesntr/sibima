@@ -10,17 +10,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
+// Placeholder image for QR code
+const qrImageUrl = "/lovable-uploads/cf1cd298-5ceb-4140-9045-4486c2030e4e.png";
+
 const DigitalSignature = () => {
   const [activeTab, setActiveTab] = useState('qrcode');
   const [isLoading, setIsLoading] = useState(true);
   const [hasApprovedProposal, setHasApprovedProposal] = useState(false);
   const [supervisorName, setSupervisorName] = useState('');
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
-  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
-    const fetchSignatureData = async () => {
+    const checkProposalStatus = async () => {
       if (!user) return;
 
       setIsLoading(true);
@@ -36,7 +37,7 @@ const DigitalSignature = () => {
           .eq('student_id', user.id)
           .eq('status', 'approved')
           .limit(1)
-          .maybeSingle();
+          .single();
 
         if (proposalError && proposalError.code !== 'PGRST116') {
           console.error('Error checking proposal status:', proposalError);
@@ -48,9 +49,8 @@ const DigitalSignature = () => {
         if (proposalData && proposalData.status === 'approved') {
           setHasApprovedProposal(true);
           
-          // If we have a supervisor, fetch their name and signature data
+          // If we have a supervisor, fetch their name
           if (proposalData.supervisor_id) {
-            // Fetch supervisor name
             const { data: supervisorData, error: supervisorError } = await supabase
               .from('profiles')
               .select('full_name')
@@ -59,21 +59,6 @@ const DigitalSignature = () => {
               
             if (!supervisorError && supervisorData) {
               setSupervisorName(supervisorData.full_name);
-            }
-            
-            // Fetch digital signature and QR code
-            const { data: signatureData, error: signatureError } = await supabase
-              .from('digital_signatures')
-              .select('signature_url, qr_code_url, status')
-              .eq('supervisor_id', proposalData.supervisor_id)
-              .eq('status', 'approved')
-              .maybeSingle();
-              
-            if (!signatureError && signatureData) {
-              setSignatureUrl(signatureData.signature_url);
-              setQrCodeUrl(signatureData.qr_code_url);
-            } else {
-              console.log('No approved signature found for supervisor');
             }
           }
         }
@@ -84,23 +69,11 @@ const DigitalSignature = () => {
       }
     };
 
-    fetchSignatureData();
+    checkProposalStatus();
   }, [user]);
 
   const handleDownload = (type: 'qrcode' | 'signature') => {
-    const url = type === 'qrcode' ? qrCodeUrl : signatureUrl;
-    
-    if (url) {
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = type === 'qrcode' ? 'qr_code.png' : 'signature.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success(`Berhasil mengunduh ${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'}`);
-    } else {
-      toast.error(`${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'} belum tersedia`);
-    }
+    toast.success(`Berhasil mengunduh ${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'}`);
   };
 
   if (isLoading) {
@@ -122,27 +95,6 @@ const DigitalSignature = () => {
           Silakan ajukan proposal KP terlebih dahulu atau hubungi koordinator KP jika Anda yakin ini adalah kesalahan.
         </AlertDescription>
       </Alert>
-    );
-  }
-
-  // Show a message if signature or QR code are not available
-  if (!signatureUrl && !qrCodeUrl) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Digital Signature</h1>
-        <p className="text-gray-600">
-          Download tanda tangan digital dan QR code untuk dokumen KP Anda
-        </p>
-        
-        <Alert className="max-w-lg mx-auto">
-          <AlertTriangle className="h-5 w-5 text-amber-500" />
-          <AlertTitle className="text-amber-500 font-medium">Tanda Tangan Belum Tersedia</AlertTitle>
-          <AlertDescription className="text-gray-600">
-            Dosen pembimbing Anda belum mengupload tanda tangan digital atau tanda tangan belum disetujui.
-            Silakan hubungi dosen pembimbing Anda untuk mengupload tanda tangan digital.
-          </AlertDescription>
-        </Alert>
-      </div>
     );
   }
 
@@ -169,27 +121,17 @@ const DigitalSignature = () => {
             </CardHeader>
             <CardContent className="flex justify-center p-6">
               <div className="border p-4 rounded-lg">
-                {qrCodeUrl ? (
-                  <img 
-                    src={qrCodeUrl} 
-                    alt="QR Code Validasi" 
-                    className="w-64 h-64 object-contain"
-                  />
-                ) : (
-                  <div className="w-64 h-64 flex flex-col items-center justify-center bg-gray-100 rounded">
-                    <QrCode className="text-gray-400 h-16 w-16 mb-4" />
-                    <p className="text-gray-500 text-center px-4">
-                      QR Code belum tersedia. Silakan hubungi dosen pembimbing.
-                    </p>
-                  </div>
-                )}
+                <img 
+                  src={qrImageUrl} 
+                  alt="QR Code Validasi" 
+                  className="w-64 h-64 object-contain"
+                />
               </div>
             </CardContent>
             <CardFooter className="flex justify-center">
               <Button 
                 onClick={() => handleDownload('qrcode')}
                 className="bg-primary hover:bg-primary/90"
-                disabled={!qrCodeUrl}
               >
                 <Download size={16} className="mr-2" /> Download QR Code
               </Button>
@@ -208,22 +150,16 @@ const DigitalSignature = () => {
             <CardContent>
               <div className="border rounded-lg p-6 flex flex-col items-center">
                 <div className="mb-4 p-6 bg-gray-50 rounded-lg">
-                  {signatureUrl ? (
-                    <img 
-                      src={signatureUrl} 
-                      alt="Digital Signature" 
-                      className="w-64 object-contain"
-                    />
-                  ) : (
-                    <div className="w-64 h-32 flex items-center justify-center bg-gray-100">
-                      <p className="text-gray-500">Tanda tangan belum tersedia</p>
-                    </div>
-                  )}
+                  <img 
+                    src="/placeholder.svg" 
+                    alt="Digital Signature" 
+                    className="w-64 object-contain"
+                  />
                 </div>
                 <div className="text-center">
                   <Avatar className="h-12 w-12 mx-auto mb-2">
                     <AvatarImage src="/placeholder.svg" alt={supervisorName} />
-                    <AvatarFallback>{supervisorName ? supervisorName.charAt(0) : 'D'}</AvatarFallback>
+                    <AvatarFallback>{supervisorName.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <p className="font-medium">{supervisorName || "Dosen Pembimbing"}</p>
                   <p className="text-sm text-gray-600">Dosen Pembimbing KP</p>
@@ -234,7 +170,6 @@ const DigitalSignature = () => {
               <Button 
                 onClick={() => handleDownload('signature')}
                 className="bg-primary hover:bg-primary/90"
-                disabled={!signatureUrl}
               >
                 <Download size={16} className="mr-2" /> Download Tanda Tangan
               </Button>

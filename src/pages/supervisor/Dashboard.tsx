@@ -1,204 +1,202 @@
 
-import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
-import ProposalsList from '@/components/supervisor/proposals/ProposalsList';
-import FeedbackDialog from '@/components/supervisor/proposals/FeedbackDialog';
-import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
-import KpTimeline from '@/components/coordinator/KpTimeline';
-import { useSupervisorProposals } from '@/hooks/useSupervisorProposals';
-import ProposalDetailCard from '@/components/supervisor/proposals/ProposalDetailCard';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ArrowRight, Calendar, Clock, FileText, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { proposals, students, formatDate } from '@/services/mockData';
+import { Student } from '@/types';
+
+const statusColors = {
+  draft: "bg-gray-500",
+  submitted: "bg-yellow-500",
+  reviewed: "bg-blue-500",
+  approved: "bg-green-500",
+  rejected: "bg-red-500",
+};
+
+const statusLabels = {
+  draft: "Draft",
+  submitted: "Diajukan",
+  reviewed: "Ditinjau",
+  approved: "Disetujui",
+  rejected: "Ditolak",
+};
 
 const SupervisorDashboard = () => {
   const navigate = useNavigate();
-  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [previewName, setPreviewName] = useState('');
   
-  const {
-    selectedProposal,
-    setSelectedProposal,
-    proposals,
-    loading: proposalsLoading,
-    activeTab,
-    setActiveTab,
-    formatDate,
-    feedbackContent,
-    setFeedbackContent,
-    isSubmittingFeedback,
-    submitFeedback,
-    filterProposals,
-    handleStatusChange,
-    activeStatus,
-    handleSendFeedback,
-    handleSelectProposal
-  } = useSupervisorProposals();
+  // Filter proposals for this supervisor (we're using the first supervisor's ID)
+  const supervisorId = '6';
+  const supervisedProposals = proposals.filter(p => 
+    p.supervisorIds.includes(supervisorId)
+  );
   
-  const handlePreviewFile = (url: string, name: string = '') => {
-    setPreviewUrl(url);
-    setPreviewName(name);
-    setPreviewDialogOpen(true);
-  };
+  // Get all supervised students
+  const supervisedStudents = students.filter(student => {
+    // Check if student is part of a team that has a proposal supervised by this supervisor
+    const studentTeamIds = supervisedProposals.map(p => p.teamId);
+    return 'kpTeamId' in student && studentTeamIds.includes(student.kpTeamId || '');
+  });
   
-  const handleDownloadFile = (url: string, fileName: string) => {
-    window.open(url, '_blank');
-  };
-  
-  const openFeedbackDialog = () => {
-    setIsFeedbackDialogOpen(true);
+  // Stats
+  const stats = {
+    totalSupervisedProposals: supervisedProposals.length,
+    totalSupervisedStudents: supervisedStudents.length,
+    pendingFeedback: supervisedProposals.filter(p => p.status === 'approved' && !p.feedback?.length).length,
   };
 
-  const filteredProposals = filterProposals(proposals, activeStatus);
-  
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Dashboard Dosen Pembimbing</h1>
+      <h1 className="text-2xl font-bold">Dashboard Dosen Pembimbing</h1>
       
-      {/* Timeline at the top */}
-      <div className="mb-6">
-        <KpTimeline readOnly={true} />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Total Proposal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <div className="text-3xl font-bold">{stats.totalSupervisedProposals}</div>
+              <FileText className="ml-auto h-8 w-8 text-gray-400" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Mahasiswa Bimbingan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <div className="text-3xl font-bold">{stats.totalSupervisedStudents}</div>
+              <Users className="ml-auto h-8 w-8 text-gray-400" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Menunggu Feedback</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <div className="text-3xl font-bold text-yellow-500">{stats.pendingFeedback}</div>
+              <Clock className="ml-auto h-8 w-8 text-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
-      <Tabs value={activeStatus} onValueChange={handleStatusChange} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="all">Semua</TabsTrigger>
-          <TabsTrigger value="submitted">Baru Masuk</TabsTrigger>
-          <TabsTrigger value="revision">Perlu Revisi</TabsTrigger>
-          <TabsTrigger value="approved">Disetujui</TabsTrigger>
-          <TabsTrigger value="rejected">Ditolak</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="all" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ProposalsList
-              proposals={filteredProposals}
-              loading={proposalsLoading}
-              selectedProposal={selectedProposal}
-              onSelectProposal={handleSelectProposal}
-              formatDate={formatDate}
-            />
-            
-            <ProposalDetailCard
-              proposal={selectedProposal}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              formatDate={formatDate}
-              handlePreviewFile={handlePreviewFile}
-              handleDownloadFile={handleDownloadFile}
-              onFeedbackClick={openFeedbackDialog}
-            />
+      {/* Supervised Proposals */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Proposal Bimbingan</CardTitle>
+            <CardDescription>Proposal mahasiswa yang Anda bimbing</CardDescription>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="submitted" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ProposalsList
-              proposals={filterProposals(proposals, 'submitted')}
-              loading={proposalsLoading}
-              selectedProposal={selectedProposal}
-              onSelectProposal={handleSelectProposal}
-              formatDate={formatDate}
-            />
-            
-            <ProposalDetailCard
-              proposal={selectedProposal}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              formatDate={formatDate}
-              handlePreviewFile={handlePreviewFile}
-              handleDownloadFile={handleDownloadFile}
-              onFeedbackClick={openFeedbackDialog}
-            />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="revision" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ProposalsList
-              proposals={filterProposals(proposals, 'revision')}
-              loading={proposalsLoading}
-              selectedProposal={selectedProposal}
-              onSelectProposal={handleSelectProposal}
-              formatDate={formatDate}
-            />
-            
-            <ProposalDetailCard
-              proposal={selectedProposal}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              formatDate={formatDate}
-              handlePreviewFile={handlePreviewFile}
-              handleDownloadFile={handleDownloadFile}
-              onFeedbackClick={openFeedbackDialog}
-            />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="approved" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ProposalsList
-              proposals={filterProposals(proposals, 'approved')}
-              loading={proposalsLoading}
-              selectedProposal={selectedProposal}
-              onSelectProposal={handleSelectProposal}
-              formatDate={formatDate}
-            />
-            
-            <ProposalDetailCard
-              proposal={selectedProposal}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              formatDate={formatDate}
-              handlePreviewFile={handlePreviewFile}
-              handleDownloadFile={handleDownloadFile}
-              onFeedbackClick={openFeedbackDialog}
-            />
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="rejected" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ProposalsList
-              proposals={filterProposals(proposals, 'rejected')}
-              loading={proposalsLoading}
-              selectedProposal={selectedProposal}
-              onSelectProposal={handleSelectProposal}
-              formatDate={formatDate}
-            />
-            
-            <ProposalDetailCard
-              proposal={selectedProposal}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              formatDate={formatDate}
-              handlePreviewFile={handlePreviewFile}
-              handleDownloadFile={handleDownloadFile}
-              onFeedbackClick={openFeedbackDialog}
-            />
-          </div>
-        </TabsContent>
-      </Tabs>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/supervisor/feedback')}
+          >
+            Lihat Semua
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {supervisedProposals.length > 0 ? (
+            supervisedProposals.map(proposal => (
+              <div 
+                key={proposal.id}
+                className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">{proposal.title}</span>
+                  <span className="text-sm text-gray-500">
+                    Submitted: {formatDate(proposal.submissionDate)}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Badge className={statusColors[proposal.status]}>
+                    {statusLabels[proposal.status]}
+                  </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => navigate(`/supervisor/feedback?id=${proposal.id}`)}
+                  >
+                    <ArrowRight size={16} />
+                  </Button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="mx-auto h-10 w-10 opacity-50 mb-2" />
+              <p>Belum ada proposal yang Anda bimbing</p>
+            </div>
+          )}
+        </CardContent>
+        {supervisedProposals.length > 0 && (
+          <CardFooter>
+            <Button 
+              className="w-full bg-primary hover:bg-primary/90"
+              onClick={() => navigate('/supervisor/feedback')}
+            >
+              Berikan Feedback
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
       
-      <FeedbackDialog
-        isOpen={isFeedbackDialogOpen}
-        setIsOpen={setIsFeedbackDialogOpen}
-        onOpenChange={setIsFeedbackDialogOpen}
-        proposalTitle={selectedProposal?.title}
-        onSendFeedback={handleSendFeedback}
-        content={feedbackContent}
-        setContent={setFeedbackContent}
-        isSubmitting={isSubmittingFeedback}
-        onSubmit={submitFeedback}
-      />
+      {/* Upcoming Schedule */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Jadwal Bimbingan</CardTitle>
+          <CardDescription>Jadwal bimbingan yang akan datang</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center py-8 text-gray-500">
+            <Calendar className="mx-auto h-10 w-10 opacity-50 mb-2" />
+            <p>Belum ada jadwal bimbingan</p>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button 
+            className="w-full"
+            variant="outline"
+            onClick={() => navigate('/supervisor/schedule')}
+          >
+            Buat Jadwal Bimbingan
+          </Button>
+        </CardFooter>
+      </Card>
       
-      <DocumentPreview
-        isOpen={previewDialogOpen}
-        setIsOpen={setPreviewDialogOpen}
-        url={previewUrl}
-        name={previewName}
-        onDownload={handleDownloadFile}
-      />
+      {/* Digital Signature Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tanda Tangan Digital</CardTitle>
+          <CardDescription>Upload tanda tangan digital Anda</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-6 border border-dashed rounded-lg">
+            <div className="text-center">
+              <FileText className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+              <p className="text-gray-600 mb-4">
+                Upload tanda tangan digital Anda untuk digunakan pada dokumen KP mahasiswa
+              </p>
+              <Button 
+                onClick={() => navigate('/supervisor/digital-signature')}
+                className="bg-secondary hover:bg-secondary/90"
+              >
+                Upload Tanda Tangan
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
