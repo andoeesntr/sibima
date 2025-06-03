@@ -297,30 +297,27 @@ export class ProposalApprovalService {
   
       // 2. Update one by one with error details
       const updateResults = await Promise.all(
-        proposals.map(async (proposal) => {
-          const { error } = await supabase
-            .from('proposals')
-            .update({
-              status: 'approved',
-              rejection_reason: rejectionReason || null,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', proposal.id);
-  
-          return { 
-            id: proposal.id,
-            error,
-            previousStatus: proposal.status // Untuk debug
-          };
-        })
-      );
+  proposals.map(async (proposal) => {
+    const { error } = await supabase
+      .from('proposals')
+      .update({
+        status: 'approved',
+        rejection_reason: rejectionReason || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', proposal.id);
+
+    return { error };
+  })
+);
+
   
       const failedUpdates = updateResults.filter(r => r.error);
       if (failedUpdates.length > 0) {
         console.error(`❌ Failed to update ${failedUpdates.length} proposals:`, failedUpdates);
         return {
           success: false,
-          message: `Failed to update ${failedUpdates.length} proposals yang mana`,
+          message: `Failed to update ${failedUpdates.length} proposals`,
           errors: failedUpdates.map(f => 
             `Proposal ${f.id} (prev status: ${f.previousStatus}): ${f.error?.message || 'Unknown error'}`
           )
