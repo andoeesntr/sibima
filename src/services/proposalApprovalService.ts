@@ -232,7 +232,7 @@ export class ProposalApprovalService {
           missingMemberIds.map(async (studentId) => {
             const { error } = await supabase
               .from('proposals')
-              .insert({
+              .upsert({
                 student_id: studentId,
                 team_id: baseProposal.team_id,
                 title: baseProposal.title,
@@ -240,6 +240,8 @@ export class ProposalApprovalService {
                 company_name: baseProposal.company_name,
                 supervisor_id: baseProposal.supervisor_id,
                 status: 'submitted'
+              }, {
+                onConflict: 'student_id,team_id'
               });
 
             if (error) throw error;
@@ -296,26 +298,24 @@ export class ProposalApprovalService {
       }
   
       // 2. Update one by one with error details
-    const updateResults = await Promise.all(
-     proposals.map(async (proposal) => {
-       const { error } = await supabase
-         .from('proposals')
-         .update({
-           status: 'approved',
-           rejection_reason: rejectionReason || null,
-           updated_at: new Date().toISOString()
-         })
-         .eq('id', proposal.id);
+      const updateResults = await Promise.all(
+        proposals.map(async (proposal) => {
+          const { error } = await supabase
+            .from('proposals')
+            .update({
+              status: 'approved',
+              rejection_reason: rejectionReason || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', proposal.id);
 
-       if (error) {
-         console.error(`Failed to update proposal ID ${proposal.id}:`, error.message);
-       }
-       return { error };
-     })
-   );
-   
+          if (error) {
+            console.error(`Failed to update proposal ID ${proposal.id}:`, error.message);
+          }
+          return { error, proposalId: proposal.id };
+        })
+      );
 
-  
       const failedUpdates = updateResults.filter(r => r.error);
       if (failedUpdates.length > 0) {
         console.error(`❌ Failed to update ${failedUpdates.length} proposals:`, failedUpdates);
@@ -323,7 +323,7 @@ export class ProposalApprovalService {
           success: false,
           message: `Failed to update ${failedUpdates.length} proposals`,
           errors: failedUpdates.map(f => 
-            `Proposal ${f.id} (prev status: ${f.previousStatus}): ${f.error?.message || 'Unknown error'}`
+            `Proposal ${f.proposalId}: ${f.error?.message || 'Unknown error'}`
           )
         };
       }
