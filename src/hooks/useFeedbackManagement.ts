@@ -13,18 +13,25 @@ export const useFeedbackManagement = () => {
     feedback: string
   ): Promise<boolean> => {
     if (!proposalId || !supervisorId) {
+      console.error('Missing proposalId or supervisorId');
+      return false;
+    }
+
+    if (!feedback.trim()) {
+      console.error('Empty feedback');
       return false;
     }
 
     setIsSubmittingFeedback(true);
-    const result = await sendProposalFeedback(proposalId, supervisorId, feedback);
-    setIsSubmittingFeedback(false);
-    
-    if (result) {
-      setFeedbackContent('');
+    try {
+      const result = await sendProposalFeedback(proposalId, supervisorId, feedback);
+      if (result) {
+        setFeedbackContent(''); // Clear content on success
+      }
+      return result;
+    } finally {
+      setIsSubmittingFeedback(false);
     }
-    
-    return result;
   };
   
   // Submit feedback using the content from state
