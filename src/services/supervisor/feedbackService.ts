@@ -8,7 +8,7 @@ export async function fetchProposalFeedback(proposalId: string) {
       .from('proposal_feedback')
       .select(`
         id, content, created_at,
-        supervisor:profiles!supervisor_id(full_name)
+        supervisor:profiles!proposal_feedback_supervisor_id_fkey(full_name)
       `)
       .eq('proposal_id', proposalId)
       .order('created_at', { ascending: false });
