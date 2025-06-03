@@ -24,13 +24,14 @@ const DigitalSignatureUpload = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [signatureData, setSignatureData] = useState<any>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
       fetchSignatureData();
     }
-  }, [user]);
+  }, [user, refreshTrigger]);
 
   const fetchSignatureData = async () => {
     if (!user) return;
@@ -57,11 +58,17 @@ const DigitalSignatureUpload = () => {
         setSignatureData(data);
         setHasUploadedSignature(true);
         setPreviewUrl(data.signature_url);
+        
+        // If we have signature data, switch to status tab
+        if (data.signature_url) {
+          setActiveTab('status');
+        }
       } else {
         console.log('No signature data found');
         setSignatureData(null);
         setHasUploadedSignature(false);
         setPreviewUrl(null);
+        setActiveTab('upload');
       }
     } catch (error) {
       console.error('Error fetching signature data:', error);
@@ -138,10 +145,10 @@ const DigitalSignatureUpload = () => {
       setHasUploadedSignature(true);
       setActiveTab('status');
       
-      // Refresh signature data from database after a short delay
+      // Trigger refresh to get fresh data from database
       setTimeout(() => {
-        fetchSignatureData();
-      }, 2000);
+        setRefreshTrigger(prev => prev + 1);
+      }, 3000); // Wait 3 seconds before refreshing
       
     } catch (error: any) {
       console.error('Error uploading signature:', error);
@@ -165,6 +172,9 @@ const DigitalSignatureUpload = () => {
       setSignatureData(null);
       toast.success('Tanda tangan berhasil dihapus');
       setActiveTab('upload');
+      
+      // Trigger refresh
+      setRefreshTrigger(prev => prev + 1);
       
     } catch (error) {
       console.error('Error deleting signature:', error);
@@ -193,7 +203,7 @@ const DigitalSignatureUpload = () => {
         </div>
         <Button 
           variant="outline" 
-          onClick={fetchSignatureData}
+          onClick={() => setRefreshTrigger(prev => prev + 1)}
           disabled={loadingData}
         >
           {loadingData ? 'Loading...' : 'Refresh'}

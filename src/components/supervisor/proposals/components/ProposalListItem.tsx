@@ -52,6 +52,19 @@ const ProposalListItem = ({ proposal, isSelected, formatDate, onClick }: Proposa
   // Use submissionDate or created_at for upload time
   const uploadTime = proposal.submissionDate || proposal.created_at;
 
+  // Enhanced date formatting with time
+  const formatDateWithTime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <Card 
       className={`cursor-pointer transition-colors hover:bg-gray-50 ${
@@ -77,7 +90,7 @@ const ProposalListItem = ({ proposal, isSelected, formatDate, onClick }: Proposa
           {uploadTime && (
             <div className="flex items-center gap-1 text-xs text-gray-500">
               <Clock className="h-3 w-3" />
-              <span>Upload: {formatDate(uploadTime)}</span>
+              <span>Upload: {formatDateWithTime(uploadTime)}</span>
             </div>
           )}
         </div>

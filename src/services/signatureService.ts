@@ -113,24 +113,49 @@ export const saveSignatureToDatabase = async (
     
     console.log('Successfully saved via edge function:', functionData);
     
-    // Add a small delay and verify the signature was saved
-    setTimeout(async () => {
+    // Add multiple verification attempts with delays
+    let retryCount = 0;
+    const maxRetries = 5;
+    const verifySignature = async (): Promise<boolean> => {
       try {
+        console.log(`Verification attempt ${retryCount + 1}/${maxRetries}`);
         const { data: verifyData, error: verifyError } = await supabase
           .from('digital_signatures')
-          .select('id, signature_url, status')
+          .select('id, signature_url, status, supervisor_id')
           .eq('supervisor_id', userId)
+          .not('status', 'eq', 'deleted')
           .single();
         
         if (verifyError) {
           console.error('Verification error:', verifyError);
+          return false;
         } else {
           console.log('Signature verification successful:', verifyData);
+          return true;
         }
       } catch (verifyError) {
         console.error('Failed to verify signature:', verifyError);
+        return false;
       }
-    }, 1000);
+    };
+
+    // Retry verification with increasing delays
+    const delays = [1000, 2000, 3000, 5000, 8000]; // 1s, 2s, 3s, 5s, 8s
+    
+    for (const delay of delays) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      const verified = await verifySignature();
+      retryCount++;
+      
+      if (verified) {
+        console.log(`Signature verified successfully after ${retryCount} attempts`);
+        break;
+      }
+      
+      if (retryCount >= maxRetries) {
+        console.warn('Max verification attempts reached, but signature may still be saved');
+      }
+    }
     
   } catch (error: any) {
     console.error('Error saving signature to database:', error);
