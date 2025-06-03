@@ -86,6 +86,7 @@ const FeedbackDialog = ({
       const success = await onSendFeedback(content);
       if (success && setContent) {
         setContent(''); // Clear the content after successful submission
+        handleOpenChange(false); // Close dialog after successful submission
       }
       return success;
     }
@@ -93,8 +94,9 @@ const FeedbackDialog = ({
     // Default internal implementation for direct proposal feedback
     const currentFeedback = content !== undefined ? content : feedback;
     
-    if (!proposalId || (!currentFeedback.trim() && !file)) {
-      toast.error('Harap masukkan feedback atau unggah dokumen');
+    // Fixed validation: only require feedback content, file is optional
+    if (!currentFeedback.trim()) {
+      toast.error('Harap masukkan feedback');
       return false;
     }
 
@@ -217,7 +219,7 @@ const FeedbackDialog = ({
           <Button 
             className="bg-primary hover:bg-primary/90" 
             onClick={handleSubmit}
-            disabled={isCurrentlySubmitting || (!currentFeedback.trim() && !file)}
+            disabled={isCurrentlySubmitting || !currentFeedback.trim()}
           >
             {isCurrentlySubmitting ? 'Memproses...' : 'Kirim Feedback'}
             {isCurrentlySubmitting && <FileUp className="ml-1 h-4 w-4 animate-bounce" />}

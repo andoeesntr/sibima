@@ -57,7 +57,7 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
 
       console.log('Proposal data:', proposal);
 
-      // Update the main proposal status directly without complex logic
+      // Update the main proposal status with simple UPDATE (no ON CONFLICT)
       console.log('Updating main proposal status...');
       const { error: mainProposalError } = await supabase
         .from('proposals')

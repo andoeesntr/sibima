@@ -78,6 +78,7 @@ export const uploadSignature = async (
       .from('signatures')
       .getPublicUrl(filePath);
     
+    console.log('Upload successful, public URL:', publicUrl);
     return publicUrl;
   } catch (error: any) {
     console.error('Upload error:', error);
@@ -111,6 +112,26 @@ export const saveSignatureToDatabase = async (
     }
     
     console.log('Successfully saved via edge function:', functionData);
+    
+    // Add a small delay and verify the signature was saved
+    setTimeout(async () => {
+      try {
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('digital_signatures')
+          .select('id, signature_url, status')
+          .eq('supervisor_id', userId)
+          .single();
+        
+        if (verifyError) {
+          console.error('Verification error:', verifyError);
+        } else {
+          console.log('Signature verification successful:', verifyData);
+        }
+      } catch (verifyError) {
+        console.error('Failed to verify signature:', verifyError);
+      }
+    }, 1000);
+    
   } catch (error: any) {
     console.error('Error saving signature to database:', error);
     throw error;
@@ -136,6 +157,8 @@ export const deleteSignature = async (userId: string): Promise<void> => {
       console.error('Error deleting signature:', functionError);
       throw new Error(`Function error: ${functionError.message}`);
     }
+    
+    console.log('Signature deletion successful:', functionData);
   } catch (error: any) {
     console.error('Error deleting signature:', error);
     throw error;

@@ -1,50 +1,88 @@
 
+import React from 'react';
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { statusColors, statusLabels } from '@/utils/proposalConstants';
-
-// Use a more generic type that matches CommonProposal from ProposalsList
-interface ProposalItem {
-  id: string;
-  title: string;
-  submissionDate: string;
-  status: string;
-  studentName?: string;
-  [key: string]: any; // Allow for other properties
-}
+import { Clock } from 'lucide-react';
 
 interface ProposalListItemProps {
-  proposal: ProposalItem;
+  proposal: {
+    id: string;
+    title: string;
+    submissionDate: string;
+    status: string;
+    studentName?: string;
+    created_at?: string;
+  };
   isSelected: boolean;
-  formatDate: (dateString: string) => string;
+  formatDate: (date: string) => string;
   onClick: () => void;
 }
 
-const ProposalListItem = ({
-  proposal,
-  isSelected,
-  formatDate,
-  onClick
-}: ProposalListItemProps) => {
+const ProposalListItem = ({ proposal, isSelected, formatDate, onClick }: ProposalListItemProps) => {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'submitted':
+        return 'bg-blue-100 text-blue-800';
+      case 'revision':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'approved':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'submitted':
+        return 'Diajukan';
+      case 'revision':
+        return 'Revisi';
+      case 'approved':
+        return 'Disetujui';
+      case 'rejected':
+        return 'Ditolak';
+      default:
+        return status;
+    }
+  };
+
+  // Use submissionDate or created_at for upload time
+  const uploadTime = proposal.submissionDate || proposal.created_at;
+
   return (
-    <div 
-      className={`p-3 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors ${
-        isSelected ? 'bg-primary/5 border-primary' : ''
+    <Card 
+      className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+        isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : ''
       }`}
       onClick={onClick}
     >
-      <div className="flex justify-between items-center">
-        <div className="font-medium truncate">{proposal.title}</div>
-        <Badge className={statusColors[proposal.status as keyof typeof statusColors]}>
-          {statusLabels[proposal.status as keyof typeof statusLabels] || proposal.status}
-        </Badge>
-      </div>
-      <div className="text-xs text-gray-500 mt-1">
-        {formatDate(proposal.submissionDate)}
-      </div>
-      <div className="text-xs text-gray-500">
-        Mahasiswa: {proposal.studentName || 'Unknown'}
-      </div>
-    </div>
+      <CardContent className="p-4">
+        <div className="space-y-2">
+          <div className="flex items-start justify-between">
+            <h3 className="font-semibold text-sm line-clamp-2">{proposal.title}</h3>
+            <Badge className={`text-xs ${getStatusColor(proposal.status)}`}>
+              {getStatusLabel(proposal.status)}
+            </Badge>
+          </div>
+          
+          {proposal.studentName && (
+            <p className="text-sm text-gray-600">
+              Mahasiswa: {proposal.studentName}
+            </p>
+          )}
+          
+          {uploadTime && (
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Clock className="h-3 w-3" />
+              <span>Upload: {formatDate(uploadTime)}</span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
