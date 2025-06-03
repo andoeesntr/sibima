@@ -11,11 +11,6 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-interface StudentProfile {
-  full_name: string;
-  nim: string;
-}
-
 interface ScheduledGuidanceRequest {
   id: string;
   student_id: string;
@@ -26,8 +21,10 @@ interface ScheduledGuidanceRequest {
   meeting_link?: string;
   supervisor_notes?: string;
   created_at: string;
-  guidance_type?: string;
-  student: StudentProfile | null;
+  student?: {
+    full_name: string;
+    nim: string;
+  } | null;
 }
 
 const SupervisorScheduledGuidance = () => {
@@ -60,23 +57,22 @@ const SupervisorScheduledGuidance = () => {
 
       console.log('Fetched scheduled guidance requests for supervisor:', data);
       
-      // Map the data to ensure it matches our interface
-      const mappedData: ScheduledGuidanceRequest[] = (data || []).map(item => ({
+      // Transform the data to match our interface
+      const transformedData: ScheduledGuidanceRequest[] = (data || []).map(item => ({
         id: item.id,
         student_id: item.student_id,
         requested_date: item.requested_date,
-        location: item.location,
-        topic: item.topic,
+        location: item.location || '',
+        topic: item.topic || '',
         status: item.status,
-        meeting_link: item.meeting_link,
-        supervisor_notes: item.supervisor_notes,
+        meeting_link: item.meeting_link || '',
+        supervisor_notes: item.supervisor_notes || '',
         created_at: item.created_at,
-        guidance_type: item.guidance_type || 'scheduled',
         student: item.student
       }));
 
-      setGuidanceRequests(mappedData);
-      setFilteredRequests(mappedData);
+      setGuidanceRequests(transformedData);
+      setFilteredRequests(transformedData);
     } catch (error) {
       console.error('Error fetching scheduled guidance requests:', error);
       toast.error('Gagal memuat permintaan bimbingan terjadwal');
