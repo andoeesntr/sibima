@@ -7,8 +7,7 @@ export async function fetchProposalFeedback(proposalId: string) {
     const { data: feedback, error } = await supabase
       .from('proposal_feedback')
       .select(`
-        id, content, created_at,
-        supervisor:profiles!proposal_feedback_supervisor_id_fkey(full_name)
+        id, content, created_at, supervisor_id
       `)
       .eq('proposal_id', proposalId)
       .order('created_at', { ascending: false });
@@ -18,13 +17,31 @@ export async function fetchProposalFeedback(proposalId: string) {
       return [];
     }
 
+    if (!feedback || feedback.length === 0) {
+      return [];
+    }
+
+    // Get supervisor names separately
+    const supervisorIds = feedback.map(f => f.supervisor_id);
+    const { data: supervisors, error: supervisorError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', supervisorIds);
+
+    if (supervisorError) {
+      console.error('Error fetching supervisors:', supervisorError);
+    }
+
     // Transform the data to match FeedbackEntry interface
-    return (feedback || []).map(item => ({
-      id: item.id,
-      content: item.content,
-      createdAt: item.created_at,
-      supervisorName: item.supervisor?.full_name || 'Unknown Supervisor'
-    }));
+    return feedback.map(item => {
+      const supervisor = supervisors?.find(s => s.id === item.supervisor_id);
+      return {
+        id: item.id,
+        content: item.content,
+        createdAt: item.created_at,
+        supervisorName: supervisor?.full_name || 'Unknown Supervisor'
+      };
+    });
   } catch (error) {
     console.error('Error in fetchProposalFeedback:', error);
     return [];
