@@ -36,18 +36,9 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      // Update the current proposal
-      const { error } = await supabase
-        .from('proposals')
-        .update({ 
-          status: 'approved',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposal.id);
-        
-      if (error) throw error;
-
-      // Sync with team members
+      console.log(`Starting approval process for proposal ${proposal.id}`);
+      
+      // Use the improved sync function that handles the ON CONFLICT issue
       await syncProposalStatusWithTeam(proposal.id, 'approved');
       
       toast.success("Proposal berhasil disetujui untuk seluruh tim");
@@ -71,19 +62,9 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      // Update the current proposal
-      const { error } = await supabase
-        .from('proposals')
-        .update({ 
-          status: 'rejected',
-          updated_at: new Date().toISOString(),
-          rejection_reason: rejectionReason
-        })
-        .eq('id', proposal.id);
-        
-      if (error) throw error;
-
-      // Sync with team members
+      console.log(`Starting rejection process for proposal ${proposal.id}`);
+      
+      // Use the improved sync function that handles the ON CONFLICT issue
       await syncProposalStatusWithTeam(proposal.id, 'rejected', rejectionReason);
       
       toast.success("Proposal berhasil ditolak untuk seluruh tim");
@@ -107,19 +88,9 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      // Update the current proposal
-      const { error: proposalError } = await supabase
-        .from('proposals')
-        .update({ 
-          status: 'revision',
-          updated_at: new Date().toISOString(),
-          rejection_reason: revisionFeedback
-        })
-        .eq('id', proposal.id);
-        
-      if (proposalError) throw proposalError;
-
-      // Sync with team members
+      console.log(`Starting revision process for proposal ${proposal.id}`);
+      
+      // Use the improved sync function that handles the ON CONFLICT issue
       await syncProposalStatusWithTeam(proposal.id, 'revision', revisionFeedback);
       
       toast.success("Permintaan revisi berhasil dikirim ke seluruh tim");
