@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +12,8 @@ import { uploadSignature, saveSignatureToDatabase, deleteSignature } from '@/ser
 import { useSignatureStatus } from '@/hooks/useSignatureStatus';
 import SignatureUploadArea from '@/components/signatures/SignatureUploadArea';
 import SignatureStatusDisplay from '@/components/signatures/SignatureStatusDisplay';
-import { QRCodeValidation } from '@/components/signatures/QRCodeValidation';
-import { SignatureUploadGuidelines } from '@/components/signatures/SignatureUploadGuidelines';
+import QRCodeValidation from '@/components/signatures/QRCodeValidation';
+import SignatureUploadGuidelines from '@/components/signatures/SignatureUploadGuidelines';
 
 const DigitalSignatureUpload = () => {
   const [activeTab, setActiveTab] = useState('upload');
