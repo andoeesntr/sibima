@@ -320,7 +320,7 @@ export class ProposalApprovalService {
         console.error(`❌ Failed to update ${failedUpdates.length} proposals:`, failedUpdates);
         return {
           success: false,
-          message: `Failed to update ${failedUpdates.length} proposals`,
+          message: `Failed to update ${failedUpdates.length} proposals yang mana`,
           errors: failedUpdates.map(f => 
             `Proposal ${f.id} (prev status: ${f.previousStatus}): ${f.error?.message || 'Unknown error'}`
           )
