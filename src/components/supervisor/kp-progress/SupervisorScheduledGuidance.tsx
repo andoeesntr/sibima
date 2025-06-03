@@ -11,6 +11,11 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
+interface StudentProfile {
+  full_name: string;
+  nim: string;
+}
+
 interface ScheduledGuidanceRequest {
   id: string;
   student_id: string;
@@ -21,11 +26,8 @@ interface ScheduledGuidanceRequest {
   meeting_link?: string;
   supervisor_notes?: string;
   created_at: string;
-  guidance_type: 'scheduled' | 'regular';
-  student: {
-    full_name: string;
-    nim: string;
-  } | null;
+  guidance_type?: string;
+  student: StudentProfile | null;
 }
 
 const SupervisorScheduledGuidance = () => {
@@ -57,8 +59,24 @@ const SupervisorScheduledGuidance = () => {
       if (error) throw error;
 
       console.log('Fetched scheduled guidance requests for supervisor:', data);
-      setGuidanceRequests(data || []);
-      setFilteredRequests(data || []);
+      
+      // Map the data to ensure it matches our interface
+      const mappedData: ScheduledGuidanceRequest[] = (data || []).map(item => ({
+        id: item.id,
+        student_id: item.student_id,
+        requested_date: item.requested_date,
+        location: item.location,
+        topic: item.topic,
+        status: item.status,
+        meeting_link: item.meeting_link,
+        supervisor_notes: item.supervisor_notes,
+        created_at: item.created_at,
+        guidance_type: item.guidance_type || 'scheduled',
+        student: item.student
+      }));
+
+      setGuidanceRequests(mappedData);
+      setFilteredRequests(mappedData);
     } catch (error) {
       console.error('Error fetching scheduled guidance requests:', error);
       toast.error('Gagal memuat permintaan bimbingan terjadwal');
@@ -127,7 +145,7 @@ const SupervisorScheduledGuidance = () => {
   };
 
   // Get unique students for filter
-  const uniqueStudents = guidanceRequests.reduce((acc, request) => {
+  const uniqueStudents = guidanceRequests.reduce((acc: Array<{ id: string; name: string; nim: string }>, request) => {
     if (request.student && !acc.find(s => s.id === request.student_id)) {
       acc.push({
         id: request.student_id,
@@ -136,7 +154,7 @@ const SupervisorScheduledGuidance = () => {
       });
     }
     return acc;
-  }, [] as Array<{ id: string; name: string; nim: string }>);
+  }, []);
 
   useEffect(() => {
     fetchScheduledGuidanceRequests();
