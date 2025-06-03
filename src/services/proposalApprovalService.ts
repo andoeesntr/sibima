@@ -282,48 +282,91 @@ export class ProposalApprovalService {
     }
   }
 
-  // Update all team proposals in a single operation
-  private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
-    try {
-      console.log(`🔄 Updating all proposals for team: ${teamId}`);
+  private static async updateAllTeamProposals(
+  teamId: string, 
+  status: string = 'approved', // Made status parameter more flexible
+  rejectionReason?: string
+): Promise<ApprovalResult> {
+  try {
+    console.log(`🔄 Updating all proposals for team: ${teamId} to status: ${status}`);
 
-      const { data: updatedProposals, error: updateError } = await supabase
-        .from('proposals')
-        .update({
-          status: 'approved',
-          rejection_reason: rejectionReason || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('team_id', teamId)
-        .select('id, student_id');
+    // First verify the team exists
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .select('id')
+      .eq('id', teamId)
+      .single();
 
-      if (updateError) {
-        console.error(`❌ Error updating team proposals:`, updateError);
-        return {
-          success: false,
-          message: `Failed to update team proposals: ${updateError.message}`,
-          errors: [updateError.message]
-        };
-      }
-
-      const affectedCount = updatedProposals?.length || 0;
-      console.log(`✅ Successfully updated ${affectedCount} team proposals`);
-
-      return {
-        success: true,
-        message: `Updated ${affectedCount} team proposals`,
-        affectedProposals: affectedCount
-      };
-
-    } catch (error: any) {
-      console.error(`❌ Error updating team proposals:`, error);
+    if (teamError || !team) {
+      const errorMsg = teamError?.message || 'Team not found';
+      console.error(`❌ Team verification failed:`, errorMsg);
       return {
         success: false,
-        message: `Failed to update team proposals: ${error.message}`,
-        errors: [error.message]
+        message: `Team verification failed: ${errorMsg}`,
+        errors: [errorMsg]
       };
     }
+
+    // Get current proposals count for validation
+    const { count: existingProposalsCount } = await supabase
+      .from('proposals')
+      .select('*', { count: 'exact', head: true })
+      .eq('team_id', teamId);
+
+    if (existingProposalsCount === 0) {
+      console.warn(`⚠️ No proposals found for team ${teamId}`);
+      return {
+        success: false,
+        message: 'No proposals found for this team',
+        errors: ['No proposals found']
+      };
+    }
+
+    // Update all team proposals
+    const { data: updatedProposals, error: updateError } = await supabase
+      .from('proposals')
+      .update({
+        status: status,
+        rejection_reason: rejectionReason || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('team_id', teamId)
+      .select('id, student_id, status');
+
+    if (updateError) {
+      console.error(`❌ Error updating team proposals:`, updateError);
+      return {
+        success: false,
+        message: `Failed to update team proposals: ${updateError.message}`,
+        errors: [updateError.message]
+      };
+    }
+
+    const affectedCount = updatedProposals?.length || 0;
+    
+    // Verify all expected proposals were updated
+    if (existingProposalsCount !== affectedCount) {
+      console.warn(`⚠️ Partial update: Expected ${existingProposalsCount} but updated ${affectedCount}`);
+    }
+
+    console.log(`✅ Successfully updated ${affectedCount} team proposals to status: ${status}`);
+
+    return {
+      success: true,
+      message: `Updated ${affectedCount} team proposals to ${status}`,
+      affectedProposals: affectedCount,
+      updatedStatus: status // Include new status in response
+    };
+
+  } catch (error: any) {
+    console.error(`❌ Unexpected error updating team proposals:`, error);
+    return {
+      success: false,
+      message: `Unexpected error: ${error.message}`,
+      errors: [error.message]
+    };
   }
+}
 
   // Rejection method with same robustness
   static async rejectProposal(proposalId: string, rejectionReason: string): Promise<ApprovalResult> {
