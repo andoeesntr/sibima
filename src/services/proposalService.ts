@@ -418,10 +418,10 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     console.log(`Found proposal with team_id: ${proposalData.team_id}`);
 
-    // Get all team members first
+    // Get all team members first - use user_id instead of student_id
     const { data: teamMembers, error: teamError } = await supabase
       .from('team_members')
-      .select('student_id')
+      .select('user_id')
       .eq('team_id', proposalData.team_id);
 
     if (teamError) {
@@ -439,21 +439,21 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       const { data: existingProposal, error: proposalCheckError } = await supabase
         .from('proposals')
         .select('id')
-        .eq('student_id', member.student_id)
+        .eq('student_id', member.user_id)
         .eq('team_id', proposalData.team_id)
         .maybeSingle();
 
       if (proposalCheckError) {
-        console.error(`Error checking proposal for student ${member.student_id}:`, proposalCheckError);
+        console.error(`Error checking proposal for student ${member.user_id}:`, proposalCheckError);
         continue;
       }
 
       if (!existingProposal) {
-        console.log(`Creating proposal for student ${member.student_id}`);
+        console.log(`Creating proposal for student ${member.user_id}`);
         const { error: createError } = await supabase
           .from('proposals')
           .insert({
-            student_id: member.student_id,
+            student_id: member.user_id,
             team_id: proposalData.team_id,
             title: proposalData.title,
             description: proposalData.description,
@@ -464,7 +464,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
           });
 
         if (createError) {
-          console.error(`Error creating proposal for student ${member.student_id}:`, createError);
+          console.error(`Error creating proposal for student ${member.user_id}:`, createError);
         }
       }
     }
