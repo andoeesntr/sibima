@@ -2,6 +2,29 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export async function fetchProposalFeedback(proposalId: string) {
+  try {
+    const { data: feedback, error } = await supabase
+      .from('proposal_feedback')
+      .select(`
+        id, content, created_at,
+        supervisor:profiles!supervisor_id(full_name)
+      `)
+      .eq('proposal_id', proposalId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching feedback:', error);
+      return [];
+    }
+
+    return feedback || [];
+  } catch (error) {
+    console.error('Error in fetchProposalFeedback:', error);
+    return [];
+  }
+}
+
 export async function sendProposalFeedback(
   proposalId: string,
   supervisorId: string,
