@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 
 interface SignatureStatusDisplayProps {
-  status: string | undefined;
+  status: string | null;
   previewUrl: string | null;
   onRequestUpload: () => void;
   onDelete: () => void;
@@ -58,6 +58,23 @@ const SignatureStatusDisplay = ({
               </p>
             </div>
           </div>
+
+          <div className="flex justify-between mt-4">
+            <Button 
+              variant="outline" 
+              onClick={onRequestUpload}
+            >
+              Upload Baru
+            </Button>
+            
+            <Button 
+              variant="destructive"
+              onClick={onDelete}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Menghapus...' : 'Hapus Tanda Tangan'}
+            </Button>
+          </div>
         </>
       ) : (
         <div className="bg-yellow-50 p-4 rounded border border-yellow-100 flex items-start">
@@ -68,25 +85,6 @@ const SignatureStatusDisplay = ({
               pada tab "Upload Tanda Tangan".
             </p>
           </div>
-        </div>
-      )}
-      
-      {previewUrl && (
-        <div className="flex justify-between mt-4">
-          <Button 
-            variant="outline" 
-            onClick={onRequestUpload}
-          >
-            Upload Baru
-          </Button>
-          
-          <Button 
-            variant="destructive"
-            onClick={onDelete}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Menghapus...' : 'Hapus Tanda Tangan'}
-          </Button>
         </div>
       )}
     </>
