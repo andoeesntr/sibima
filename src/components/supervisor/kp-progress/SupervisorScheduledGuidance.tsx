@@ -11,25 +11,24 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-interface ScheduledGuidanceRequest {
+// Simplified interface to avoid type instantiation issues
+interface GuidanceRequest {
   id: string;
   student_id: string;
   requested_date: string;
-  location?: string;
-  topic?: string;
+  location: string;
+  topic: string;
   status: string;
-  meeting_link?: string;
-  supervisor_notes?: string;
+  meeting_link: string;
+  supervisor_notes: string;
   created_at: string;
-  student?: {
-    full_name: string;
-    nim: string;
-  } | null;
+  student_name: string;
+  student_nim: string;
 }
 
 const SupervisorScheduledGuidance = () => {
-  const [guidanceRequests, setGuidanceRequests] = useState<ScheduledGuidanceRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<ScheduledGuidanceRequest[]>([]);
+  const [guidanceRequests, setGuidanceRequests] = useState<GuidanceRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<GuidanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [studentFilter, setStudentFilter] = useState<string>('all');
@@ -57,8 +56,8 @@ const SupervisorScheduledGuidance = () => {
 
       console.log('Fetched scheduled guidance requests for supervisor:', data);
       
-      // Transform the data to match our interface
-      const transformedData: ScheduledGuidanceRequest[] = (data || []).map(item => ({
+      // Transform the data to match our simplified interface
+      const transformedData: GuidanceRequest[] = (data || []).map(item => ({
         id: item.id,
         student_id: item.student_id,
         requested_date: item.requested_date,
@@ -68,7 +67,8 @@ const SupervisorScheduledGuidance = () => {
         meeting_link: item.meeting_link || '',
         supervisor_notes: item.supervisor_notes || '',
         created_at: item.created_at,
-        student: item.student
+        student_name: item.student?.full_name || 'Unknown Student',
+        student_nim: item.student?.nim || 'Unknown'
       }));
 
       setGuidanceRequests(transformedData);
@@ -142,11 +142,11 @@ const SupervisorScheduledGuidance = () => {
 
   // Get unique students for filter
   const uniqueStudents = guidanceRequests.reduce((acc: Array<{ id: string; name: string; nim: string }>, request) => {
-    if (request.student && !acc.find(s => s.id === request.student_id)) {
+    if (!acc.find(s => s.id === request.student_id)) {
       acc.push({
         id: request.student_id,
-        name: request.student.full_name,
-        nim: request.student.nim
+        name: request.student_name,
+        nim: request.student_nim
       });
     }
     return acc;
@@ -262,10 +262,10 @@ const SupervisorScheduledGuidance = () => {
                   <div>
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <User className="h-4 w-4" />
-                      {request.student?.full_name || 'Unknown Student'}
+                      {request.student_name}
                     </CardTitle>
                     <CardDescription className="flex items-center gap-4 mt-1">
-                      <span>NIM: {request.student?.nim || 'Unknown'}</span>
+                      <span>NIM: {request.student_nim}</span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         {formatDate(request.requested_date)}
