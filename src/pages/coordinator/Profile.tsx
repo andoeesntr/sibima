@@ -1,31 +1,60 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from 'sonner';
-import { users } from '@/services/mockData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from '@/contexts/AuthContext';
+import ProfileImageUploader from '@/components/ProfileImageUploader';
 
 const CoordinatorProfile = () => {
-  const [coordinator] = useState(users[1]);
-  const [name, setName] = useState(coordinator.name);
-  const [email, setEmail] = useState(coordinator.email);
+  const { profile, user, updateProfile } = useAuth();
+  
+  // State for form fields
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const handleUpdateProfile = () => {
+  // Debug info
+  console.log("Profile data in CoordinatorProfile:", profile);
+  console.log("User data in CoordinatorProfile:", user);
+  
+  // Update state when profile or user data changes
+  useEffect(() => {
+    if (profile) {
+      setName(profile.full_name || '');
+    }
+    if (user) {
+      setEmail(user.email || '');
+    }
+  }, [profile, user]);
+  
+  const handleUpdateProfile = async () => {
+    if (!user) {
+      toast.error('Anda harus login untuk memperbarui profil');
+      return;
+    }
+    
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await updateProfile({
+        full_name: name
+      });
+      
       toast.success('Profil berhasil diperbarui');
-    }, 1000);
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      toast.error(`Gagal memperbarui profil: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleChangePassword = () => {
@@ -54,12 +83,9 @@ const CoordinatorProfile = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center space-x-4">
-        <Avatar className="h-20 w-20">
-          <AvatarImage src="/placeholder.svg" />
-          <AvatarFallback>{coordinator.name[0]}</AvatarFallback>
-        </Avatar>
+        <ProfileImageUploader initialImage={profile?.profile_image} />
         <div>
-          <h1 className="text-2xl font-bold">{coordinator.name}</h1>
+          <h1 className="text-2xl font-bold">{profile?.full_name || 'Koordinator KP'}</h1>
           <p className="text-gray-600">Koordinator KP</p>
         </div>
       </div>
@@ -81,7 +107,7 @@ const CoordinatorProfile = () => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
-                <Input id="username" value={coordinator.username} disabled />
+                <Input id="username" value={user?.email?.split('@')[0] || ''} disabled />
                 <p className="text-sm text-gray-500">
                   Username tidak dapat diubah
                 </p>
@@ -102,8 +128,11 @@ const CoordinatorProfile = () => {
                   id="email" 
                   type="email" 
                   value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
+                  disabled
                 />
+                <p className="text-sm text-gray-500">
+                  Email tidak dapat diubah
+                </p>
               </div>
             </CardContent>
             <CardFooter>

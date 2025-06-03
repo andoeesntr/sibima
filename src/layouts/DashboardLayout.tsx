@@ -1,13 +1,13 @@
-
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   User, LogOut, FileText, Home, Users, Settings, 
-  FileSignature, BookOpen, Layout, Award, FileCheck
+  FileSignature, BookOpen, Layout, Award, FileCheck, GraduationCap,
+  ClipboardList, TrendingUp
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import { useAuth } from '@/contexts/AuthContext';
 
 type NavItem = {
@@ -20,12 +20,16 @@ const roleNavItems: Record<string, NavItem[]> = {
   student: [
     { title: 'Dashboard', href: '/student', icon: <Home size={18} /> },
     { title: 'Pengajuan Proposal', href: '/student/proposal-submission', icon: <FileText size={18} /> },
+    { title: 'Progress KP', href: '/student/kp-progress', icon: <TrendingUp size={18} /> },
     { title: 'Digital Signature', href: '/student/digital-signature', icon: <FileSignature size={18} /> },
     { title: 'Panduan KP', href: '/student/guide', icon: <BookOpen size={18} /> },
   ],
   coordinator: [
     { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} /> },
+    { title: 'Daftar Proposal', href: '/coordinator/proposal-list', icon: <ClipboardList size={18} /> },
     { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} /> },
+    { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} /> },
+    { title: 'Manajemen Bimbingan', href: '/coordinator/guidance-management', icon: <TrendingUp size={18} /> },
   ],
   admin: [
     { title: 'Dashboard', href: '/admin', icon: <Home size={18} /> },
@@ -34,6 +38,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   supervisor: [
     { title: 'Dashboard', href: '/supervisor', icon: <Home size={18} /> },
+    { title: 'Progress KP', href: '/supervisor/kp-progress', icon: <TrendingUp size={18} /> },
     { title: 'Tanda Tangan Digital', href: '/supervisor/digital-signature', icon: <FileSignature size={18} /> },
     { title: 'Feedback', href: '/supervisor/feedback', icon: <FileText size={18} /> },
   ],
@@ -77,9 +82,9 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
       >
         <div className="flex items-center px-4 py-5">
           {isSidebarOpen ? (
-            <div className="text-xl font-bold">KP Portal</div>
+            <div className="text-xl font-bold">SIBIMA</div>
           ) : (
-            <div className="text-xl font-bold mx-auto">KP</div>
+            <div className="text-xl font-bold mx-auto">SB</div>
           )}
           <Button 
             variant="ghost" 

@@ -12,7 +12,7 @@ type RegisterData = {
   password: string;
   full_name?: string;
   nim?: string;
-  nip?: string;
+  nid?: string;  // Changed from nip to nid
   faculty?: string;
   department?: string;
   role: 'student' | 'coordinator' | 'admin' | 'supervisor';
@@ -33,7 +33,7 @@ serve(async (req) => {
     // Create the admin client properly
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
     
-    const { email, password, full_name, role, nim, nip, faculty, department } = await req.json() as RegisterData
+    const { email, password, full_name, role, nim, nid, faculty, department } = await req.json() as RegisterData
 
     if (!email || !password || !role) {
       return new Response(
@@ -87,7 +87,7 @@ serve(async (req) => {
         full_name,
         role,
         nim,
-        nip, 
+        nid,  // Changed from nip to nid
         faculty,
         department
       })
