@@ -72,23 +72,6 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
       setIsSubmitting(false);
     }
   };
-
-  const handleTestProcedure = async () => {
-    try {
-      const testResult = await ProposalApprovalService.testStoredProcedure(proposalId);
-      
-      if (testResult.procedureExists && testResult.canExecute) {
-        toast.success('✅ Stored procedure berfungsi dengan baik');
-      } else {
-        toast.error('❌ Stored procedure tidak dapat diakses');
-      }
-      
-      console.log('🧪 Test result:', testResult);
-    } catch (error) {
-      toast.error('Error testing stored procedure');
-      console.error('Test error:', error);
-    }
-  };
   
   return (
     <>
@@ -128,15 +111,6 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
               <p><strong>Team Proposals:</strong> {debugInfo.teamProposals?.length || 0}</p>
             </div>
           )}
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTestProcedure}
-            className="mt-2 text-xs"
-          >
-            Test Stored Procedure
-          </Button>
         </div>
       )}
       
