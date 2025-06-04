@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { createProposalsForAllTeamMembers, saveDocumentToAllTeamProposals } from '@/services/proposalService';
 
 interface SubmissionData {
   user: any;
@@ -50,45 +49,18 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
       if (teamError) throw teamError;
       teamId = newTeam.id;
 
-      // Ensure the current user is the first member (team leader)
-      // This is critical for maintaining the submitter as the first member
-      const currentUserMember = teamMembers.find(member => member.id === user.id);
-      const otherMembers = teamMembers.filter(member => member.id !== user.id);
-      
-      let orderedTeamMembers;
-      if (currentUserMember) {
-        // Current user exists in team members, put them first
-        orderedTeamMembers = [currentUserMember, ...otherMembers];
-      } else {
-        // Current user not in team members (shouldn't happen, but as failsafe)
-        console.error('Current user not found in team members, adding them as leader');
-        const currentUserProfile = {
-          id: user.id,
-          full_name: profile.full_name || 'Unknown User',
-          nim: profile.nim
-        };
-        orderedTeamMembers = [currentUserProfile, ...teamMembers];
-      }
-
-      // Add team members with current user as leader FIRST
-      const teamMemberInserts = orderedTeamMembers.map((member, index) => ({
+      // Add team members
+      const teamMemberInserts = teamMembers.map(member => ({
         team_id: teamId,
         user_id: member.id,
-        role: index === 0 ? 'leader' : 'member' // First member is always leader (submitter)
+        role: member.id === user.id ? 'leader' : 'member'
       }));
-
-      console.log('Inserting team members with leader first:', teamMemberInserts);
 
       const { error: membersError } = await supabase
         .from('team_members')
         .insert(teamMemberInserts);
 
-      if (membersError) {
-        console.error('Error inserting team members:', membersError);
-        throw membersError;
-      }
-
-      console.log('Successfully created team members with current user as leader');
+      if (membersError) throw membersError;
     }
 
     // Handle team supervisors - this is the key fix
@@ -127,54 +99,41 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
       console.log('Successfully saved all supervisors');
     }
 
-    // Create proposals for all team members (NEW APPROACH)
-    let createdProposals: any[] = [];
-    let mainProposalId = proposalId;
+    // Create or update proposal
+    const proposalData = {
+      student_id: user.id,
+      title,
+      description,
+      company_name: companyName,
+      team_id: teamId,
+      status: 'submitted'
+    };
+
+    let finalProposalId = proposalId;
 
     if (isEditMode && proposalId) {
-      // Update existing proposal
       const { error: updateError } = await supabase
         .from('proposals')
-        .update({
-          title,
-          description,
-          company_name: companyName,
-          status: 'submitted'
-        })
+        .update(proposalData)
         .eq('id', proposalId);
 
       if (updateError) throw updateError;
-      mainProposalId = proposalId;
     } else {
-      // Create proposals for ALL team members
-      const proposalData = {
-        title,
-        description,
-        company_name: companyName,
-        status: 'submitted'
-      };
+      const { data: newProposal, error: proposalError } = await supabase
+        .from('proposals')
+        .insert(proposalData)
+        .select()
+        .single();
 
-      // Ensure ordered team members for proposal creation
-      const currentUserMember = teamMembers.find(member => member.id === user.id);
-      const otherMembers = teamMembers.filter(member => member.id !== user.id);
-      const orderedMembersForProposal = currentUserMember ? [currentUserMember, ...otherMembers] : teamMembers;
-
-      createdProposals = await createProposalsForAllTeamMembers(
-        teamId,
-        orderedMembersForProposal,
-        proposalData
-      );
-
-      // Use the submitter's proposal as the main one (should be first)
-      const submitterProposal = createdProposals.find(p => p.student_id === user.id);
-      mainProposalId = submitterProposal?.id || createdProposals[0]?.id;
+      if (proposalError) throw proposalError;
+      finalProposalId = newProposal.id;
     }
 
-    // Handle file upload - save to all team proposals
-    if (file && mainProposalId) {
+    // Handle file upload
+    if (file && finalProposalId) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `proposals/${mainProposalId}/${fileName}`;
+      const filePath = `proposals/${finalProposalId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('documents')
@@ -186,32 +145,19 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
         .from('documents')
         .getPublicUrl(filePath);
 
-      // Save document to all team members' proposals
-      if (!isEditMode) {
-        await saveDocumentToAllTeamProposals(
-          mainProposalId,
-          publicUrl,
-          file.name,
-          file.type,
-          user.id
-        );
-      } else {
-        // For edit mode, just save to the current proposal
-        const { error: docError } = await supabase
-          .from('proposal_documents')
-          .insert({
-            proposal_id: mainProposalId,
-            file_name: file.name,
-            file_url: publicUrl,
-            file_type: file.type,
-            uploaded_by: user.id
-          });
+      const { error: docError } = await supabase
+        .from('proposal_documents')
+        .insert({
+          proposal_id: finalProposalId,
+          file_name: file.name,
+          file_url: publicUrl,
+          file_type: file.type,
+          uploaded_by: user.id
+        });
 
-        if (docError) throw docError;
-      }
+      if (docError) throw docError;
     }
 
-    console.log(`Successfully handled proposal submission. Created ${createdProposals.length} proposals for team members.`);
     return { success: true };
   } catch (error) {
     console.error('Submission error:', error);

@@ -58,9 +58,7 @@ export const useProposals = () => {
   const fetchProposals = async () => {
     try {
       setLoading(true);
-      console.log('Fetching proposals list...');
       const rawProposals = await fetchProposalsList();
-      console.log('Raw proposals fetched:', rawProposals.length);
       
       const transformedProposals: Proposal[] = await Promise.all(rawProposals.map(async (rawProposal: any) => {
         // Fetch documents
@@ -97,7 +95,6 @@ export const useProposals = () => {
         };
       }));
       
-      console.log('Transformed proposals:', transformedProposals.length);
       setProposals(transformedProposals);
     } catch (error) {
       console.error("Error fetching proposals:", error);
@@ -109,32 +106,9 @@ export const useProposals = () => {
 
   useEffect(() => {
     fetchProposals();
-    
-    // Set up real-time subscription for proposal updates
-    const channel = supabase
-      .channel('proposals-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'proposals'
-        },
-        (payload) => {
-          console.log('Proposal change detected:', payload);
-          // Refresh proposals when changes occur
-          fetchProposals();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const refreshProposals = () => {
-    console.log('Manual refresh triggered');
     fetchProposals();
   };
 

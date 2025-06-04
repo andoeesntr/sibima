@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Proposal } from '@/types/proposals';
 import { toast } from 'sonner';
@@ -21,8 +20,7 @@ export async function fetchProposalsList() {
         rejection_reason,
         student:profiles!student_id (full_name, nim),
         team:teams (id, name)
-      `)
-      .order('created_at', { ascending: false });
+      `);
     
     if (error) {
       console.error("Error fetching proposals:", error);
@@ -265,87 +263,9 @@ async function syncFeedbackWithTeam(sourceProposalId: string, teamId: string, co
   }
 }
 
-// Enhanced function to ensure proposals exist for all team members
-export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
-  title: string;
-  description: string | null;
-  company_name: string | null;
-  supervisor_id: string | null;
-  status: string;
-  rejection_reason?: string | null;
-}) {
-  try {
-    console.log(`Ensuring proposals exist for team ${teamId}`);
-    
-    // Get all team members
-    const { data: teamMembers, error: teamMembersError } = await supabase
-      .from('team_members')
-      .select('user_id')
-      .eq('team_id', teamId);
-
-    if (teamMembersError || !teamMembers) {
-      console.error("Error fetching team members:", teamMembersError);
-      return false;
-    }
-
-    console.log(`Found ${teamMembers.length} team members for team ${teamId}`);
-
-    // Check which members already have proposals
-    const memberIds = teamMembers.map(member => member.user_id);
-    const { data: existingProposals, error: existingError } = await supabase
-      .from('proposals')
-      .select('student_id')
-      .in('student_id', memberIds)
-      .eq('team_id', teamId);
-
-    if (existingError) {
-      console.error("Error checking existing proposals:", existingError);
-      return false;
-    }
-
-    const existingMemberIds = (existingProposals || []).map(p => p.student_id);
-    const missingMemberIds = memberIds.filter(id => !existingMemberIds.includes(id));
-
-    console.log(`${existingMemberIds.length} members already have proposals, ${missingMemberIds.length} are missing`);
-
-    // Create proposals for missing members
-    if (missingMemberIds.length > 0) {
-      const newProposals = missingMemberIds.map(studentId => ({
-        student_id: studentId,
-        team_id: teamId,
-        title: baseProposal.title,
-        description: baseProposal.description,
-        company_name: baseProposal.company_name,
-        supervisor_id: baseProposal.supervisor_id,
-        status: baseProposal.status,
-        rejection_reason: baseProposal.rejection_reason || null
-      }));
-
-      const { data: insertedProposals, error: insertError } = await supabase
-        .from('proposals')
-        .insert(newProposals)
-        .select();
-
-      if (insertError) {
-        console.error("Error creating missing proposals:", insertError);
-        return false;
-      }
-
-      console.log(`Successfully created ${insertedProposals?.length || 0} missing proposals`);
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error in ensureTeamProposalsExist:", error);
-    return false;
-  }
-}
-
 // Improved function to sync proposal status with team members
 export async function syncProposalStatusWithTeam(proposalId: string, status: string, rejectionReason?: string) {
   try {
-    console.log(`Starting sync for proposal ${proposalId} with status ${status}`);
-    
     // First get the proposal to find the team
     const { data: proposalData, error: proposalError } = await supabase
       .from('proposals')
@@ -355,37 +275,102 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     if (proposalError || !proposalData?.team_id) {
       console.error("Error fetching proposal for team sync:", proposalError);
-      return false;
+      return;
     }
 
-    console.log(`Found proposal with team_id: ${proposalData.team_id}`);
-
-    // First ensure all team members have proposals
-    await ensureTeamProposalsExist(proposalData.team_id, {
-      title: proposalData.title,
-      description: proposalData.description,
-      company_name: proposalData.company_name,
-      supervisor_id: proposalData.supervisor_id,
-      status: status,
-      rejection_reason: rejectionReason
-    });
-
-    // Now update all proposals for this team with the new status
-    const { data: updateResult, error: updateError } = await supabase
-      .from('proposals')
-      .update({ 
-        status: status,
-        rejection_reason: rejectionReason || null,
-        updated_at: new Date().toISOString()
-      })
+    // Get all team members
+    const { data: teamMembersData, error: teamMembersError } = await supabase
+      .from('team_members')
+      .select('user_id')
       .eq('team_id', proposalData.team_id);
 
-    if (updateError) {
-      console.error("Error updating team proposals:", updateError);
-      return false;
+    if (teamMembersError || !teamMembersData) {
+      console.error("Error fetching team members for sync:", teamMembersError);
+      return;
     }
 
-    console.log(`Successfully synced status to all team proposals`);
+    // Get all existing proposals for these team members
+    const memberIds = teamMembersData.map(member => member.user_id);
+    
+    // If there are no members other than the proposer, we don't need to sync
+    if (memberIds.length <= 1) {
+      console.log("No other team members to sync with.");
+      return;
+    }
+
+    // Filter out the original proposer's ID to avoid duplication
+    const otherMemberIds = memberIds.filter(id => id !== proposalData.student_id);
+
+    if (otherMemberIds.length === 0) {
+      console.log("No other team members to sync with.");
+      return;
+    }
+
+    // Check if the other members already have proposals
+    const { data: existingProposals, error: existingProposalsError } = await supabase
+      .from('proposals')
+      .select('id, student_id')
+      .in('student_id', otherMemberIds)
+      .eq('team_id', proposalData.team_id);
+
+    if (existingProposalsError) {
+      console.error("Error checking existing proposals:", existingProposalsError);
+      return;
+    }
+
+    console.log("Existing proposals for team members:", existingProposals);
+
+    // For members who already have proposals, update their status
+    if (existingProposals && existingProposals.length > 0) {
+      const updatePromises = existingProposals.map(proposal => {
+        return supabase
+          .from('proposals')
+          .update({ 
+            status, 
+            rejection_reason: rejectionReason || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', proposal.id);
+      });
+
+      const updateResults = await Promise.all(updatePromises);
+      console.log("Update results for existing proposals:", updateResults);
+    }
+
+    // Calculate which member IDs don't have proposals yet
+    const memberIdsWithProposals = (existingProposals || []).map(p => p.student_id);
+    const memberIdsWithoutProposals = otherMemberIds.filter(
+      id => !memberIdsWithProposals.includes(id)
+    );
+
+    console.log("Members without proposals:", memberIdsWithoutProposals);
+
+    // For members who don't have proposals, create new ones
+    if (memberIdsWithoutProposals.length > 0) {
+      // Create new proposals for team members without one
+      const newProposals = memberIdsWithoutProposals.map(studentId => ({
+        student_id: studentId,
+        title: proposalData.title,
+        description: proposalData.description,
+        company_name: proposalData.company_name,
+        supervisor_id: proposalData.supervisor_id,
+        status,
+        rejection_reason: rejectionReason || null,
+        team_id: proposalData.team_id
+      }));
+
+      const { data: insertedProposals, error: insertError } = await supabase
+        .from('proposals')
+        .insert(newProposals)
+        .select();
+
+      if (insertError) {
+        console.error("Error creating proposals for team members:", insertError);
+      } else {
+        console.log("Created new proposals for team members:", insertedProposals);
+      }
+    }
+
     return true;
   } catch (error) {
     console.error("Error syncing proposal status with team:", error);
@@ -393,7 +378,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
   }
 }
 
-// Enhanced function to save document to all team members' proposals during initial submission
+// New function to save document to all team members' proposals
 export async function saveDocumentToAllTeamProposals(
   sourceProposalId: string, 
   fileUrl: string, 
@@ -448,47 +433,5 @@ export async function saveDocumentToAllTeamProposals(
   } catch (error) {
     console.error("Error in saveDocumentToAllTeamProposals:", error);
     return false;
-  }
-}
-
-// New function to create individual proposals for each team member during submission
-export async function createProposalsForAllTeamMembers(
-  teamId: string,
-  teamMembers: any[],
-  proposalData: {
-    title: string;
-    description: string;
-    company_name: string;
-    status: string;
-  }
-) {
-  try {
-    console.log(`Creating proposals for all ${teamMembers.length} team members`);
-    
-    // Create proposal entries for all team members
-    const proposalEntries = teamMembers.map(member => ({
-      student_id: member.id,
-      team_id: teamId,
-      title: proposalData.title,
-      description: proposalData.description,
-      company_name: proposalData.company_name,
-      status: proposalData.status
-    }));
-
-    const { data: createdProposals, error: insertError } = await supabase
-      .from('proposals')
-      .insert(proposalEntries)
-      .select();
-
-    if (insertError) {
-      console.error("Error creating proposals for team members:", insertError);
-      throw insertError;
-    }
-
-    console.log(`Successfully created ${createdProposals?.length || 0} proposals for team members`);
-    return createdProposals;
-  } catch (error) {
-    console.error("Error in createProposalsForAllTeamMembers:", error);
-    throw error;
   }
 }

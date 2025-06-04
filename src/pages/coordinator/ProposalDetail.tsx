@@ -22,13 +22,21 @@ const ProposalDetail = () => {
     setIsRejectDialogOpen,
     isRevisionDialogOpen,
     setIsRevisionDialogOpen,
+    rejectionReason,
+    setRejectionReason,
+    revisionFeedback,
+    setRevisionFeedback,
+    isSubmitting,
     previewDialogOpen,
     setPreviewDialogOpen,
     previewUrl,
     previewName,
     handleUpdateSupervisors,
     handlePreviewDocument,
-    handleDownloadFile
+    handleDownloadFile,
+    handleApprove,
+    handleReject,
+    handleRevision
   } = useCoordinatorProposalDetail();
 
   const navigate = useNavigate();
@@ -96,6 +104,14 @@ const ProposalDetail = () => {
         setIsRejectDialogOpen={setIsRejectDialogOpen}
         isRevisionDialogOpen={isRevisionDialogOpen}
         setIsRevisionDialogOpen={setIsRevisionDialogOpen}
+        rejectionReason={rejectionReason}
+        setRejectionReason={setRejectionReason}
+        revisionFeedback={revisionFeedback}
+        setRevisionFeedback={setRevisionFeedback}
+        handleApprove={handleApprove}
+        handleReject={handleReject}
+        handleRevision={handleRevision}
+        isSubmitting={isSubmitting}
         proposalId={proposal.id}
       />
 

@@ -11,6 +11,14 @@ interface ActionDialogsProps {
   setIsRejectDialogOpen: (isOpen: boolean) => void;
   isRevisionDialogOpen: boolean;
   setIsRevisionDialogOpen: (isOpen: boolean) => void;
+  rejectionReason: string;
+  setRejectionReason: (reason: string) => void;
+  revisionFeedback: string;
+  setRevisionFeedback: (feedback: string) => void;
+  handleApprove: () => Promise<void>;
+  handleReject: () => Promise<void>;
+  handleRevision: () => Promise<void>;
+  isSubmitting: boolean;
   proposalId: string;
 }
 
@@ -21,6 +29,14 @@ const ActionDialogs = ({
   setIsRejectDialogOpen,
   isRevisionDialogOpen,
   setIsRevisionDialogOpen,
+  rejectionReason,
+  setRejectionReason,
+  revisionFeedback,
+  setRevisionFeedback,
+  handleApprove,
+  handleReject,
+  handleRevision,
+  isSubmitting,
   proposalId
 }: ActionDialogsProps) => {
   return (
@@ -29,7 +45,10 @@ const ActionDialogs = ({
         <DialogContent>
           <ApproveDialog 
             onCancel={() => setIsApproveDialogOpen(false)} 
-            onApprove={() => setIsApproveDialogOpen(false)}
+            onApprove={() => {
+              handleApprove();
+              setIsApproveDialogOpen(false);
+            }}
             proposalId={proposalId}
           />
         </DialogContent>
@@ -39,7 +58,10 @@ const ActionDialogs = ({
         <DialogContent>
           <RejectDialog 
             onCancel={() => setIsRejectDialogOpen(false)} 
-            onReject={() => setIsRejectDialogOpen(false)}
+            onReject={() => {
+              handleReject();
+              setIsRejectDialogOpen(false);
+            }}
             proposalId={proposalId}
           />
         </DialogContent>
@@ -49,7 +71,10 @@ const ActionDialogs = ({
         <DialogContent>
           <RevisionDialog 
             onCancel={() => setIsRevisionDialogOpen(false)} 
-            onRevision={() => setIsRevisionDialogOpen(false)}
+            onRevision={() => {
+              handleRevision();
+              setIsRevisionDialogOpen(false);
+            }}
             proposalId={proposalId}
           />
         </DialogContent>
