@@ -59,7 +59,7 @@ const Login = () => {
           <CardTitle className="text-2xl font-bold tracking-tight">SIBIMA - SI</CardTitle>
           <div className="flex justify-center my-4">
     <img 
-      src="\images\LogoSI-removebg-preview.png"
+      src="/LogoSI-removebg-preview.png"
       alt="SIBIMA Logo"
       className="h-16 w-auto object-contain" // Ukuran lebih besar dan proporsional
       onError={(e) => {
