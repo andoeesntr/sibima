@@ -66,7 +66,7 @@ const Login = () => {
         const target = e.target as HTMLImageElement;
         target.src = '/placeholder-logo.png'; // Fallback lokal
         target.alt = 'Default Logo';
-        target.className = 'h-16 w-auto opacity-80'; // Styling fallback
+        target.className = 'h-24 w-auto opacity-80'; // Styling fallback
       }}
     />
   </div>
