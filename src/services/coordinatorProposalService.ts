@@ -5,7 +5,7 @@ export const fetchProposalById = async (proposalId: string) => {
   try {
     console.log('Fetching proposal by ID:', proposalId);
     
-    // Fetch the main proposal data
+    // Fetch the main proposal data with explicit column hints for relationships
     const { data: proposal, error: proposalError } = await supabase
       .from('proposals')
       .select(`
@@ -18,12 +18,12 @@ export const fetchProposalById = async (proposalId: string) => {
         rejection_reason,
         student_id,
         team_id,
-        student:student_id (
+        student:profiles!proposals_student_id_fkey (
           id,
           full_name,
           nim
         ),
-        team:team_id (
+        team:teams!proposals_team_id_fkey (
           id,
           name
         )
@@ -48,7 +48,7 @@ export const fetchProposalById = async (proposalId: string) => {
         .select(`
           user_id,
           role,
-          user:user_id (
+          user:profiles!team_members_user_id_fkey (
             id,
             full_name,
             nim
@@ -73,7 +73,7 @@ export const fetchProposalById = async (proposalId: string) => {
       const { data: supervisorsData, error: supervisorsError } = await supabase
         .from('team_supervisors')
         .select(`
-          supervisor:supervisor_id (
+          supervisor:profiles!team_supervisors_supervisor_id_fkey (
             id,
             full_name,
             email,
@@ -106,7 +106,7 @@ export const fetchProposalById = async (proposalId: string) => {
         content,
         created_at,
         supervisor_id,
-        supervisor:supervisor_id (
+        supervisor:profiles!proposal_feedback_supervisor_id_fkey (
           full_name
         )
       `)
@@ -118,7 +118,7 @@ export const fetchProposalById = async (proposalId: string) => {
     }
 
     // Ensure student property has proper structure
-    const studentData = proposal.student || { id: '', full_name: 'Unknown Student' };
+    const studentData = proposal.student || { id: proposal.student_id || '', full_name: 'Unknown Student' };
 
     const result = {
       ...proposal,
