@@ -117,8 +117,12 @@ export const fetchProposalById = async (proposalId: string) => {
       console.error('Error fetching feedback:', feedbackError);
     }
 
+    // Ensure student property has proper structure
+    const studentData = proposal.student || { id: '', full_name: 'Unknown Student' };
+
     const result = {
       ...proposal,
+      student: studentData,
       teamMembers,
       supervisors,
       documents: documents || [],

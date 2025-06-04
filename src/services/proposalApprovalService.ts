@@ -29,8 +29,8 @@ export const approveProposal = async (proposalId: string) => {
 
     console.log('Approval result:', data);
     
-    // Type cast the JSON response
-    const result = data as ApprovalResult;
+    // Type cast the JSON response with proper safety check
+    const result = data as unknown as ApprovalResult;
     
     if (result?.success) {
       toast.success(`Proposal berhasil disetujui. ${result.updated_count} proposal diperbarui.`);
@@ -63,8 +63,8 @@ export const rejectProposal = async (proposalId: string, rejectionReason: string
 
     console.log('Rejection result:', data);
     
-    // Type cast the JSON response
-    const result = data as ApprovalResult;
+    // Type cast the JSON response with proper safety check
+    const result = data as unknown as ApprovalResult;
     
     if (result?.success) {
       toast.success(`Proposal berhasil ditolak. ${result.updated_count} proposal diperbarui.`);
@@ -97,8 +97,8 @@ export const requestRevision = async (proposalId: string, revisionReason: string
 
     console.log('Revision request result:', data);
     
-    // Type cast the JSON response
-    const result = data as ApprovalResult;
+    // Type cast the JSON response with proper safety check
+    const result = data as unknown as ApprovalResult;
     
     if (result?.success) {
       toast.success(`Permintaan revisi berhasil dikirim. ${result.updated_count} proposal diperbarui.`);
