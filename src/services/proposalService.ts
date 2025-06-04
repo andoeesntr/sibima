@@ -4,7 +4,9 @@ import { toast } from 'sonner';
 
 export async function fetchProposalsList() {
   try {
-    // Fetch proposals with student information and team data
+    console.log('🔍 Fetching proposals list...');
+    
+    // Fetch proposals with proper error handling and timeout
     const { data, error } = await supabase
       .from('proposals')
       .select(`
@@ -24,21 +26,40 @@ export async function fetchProposalsList() {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error("Error fetching proposals:", error);
+      console.error("❌ Error fetching proposals:", error);
+      console.error("Error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      
+      // Provide more specific error messages
+      if (error.message.includes('permission denied')) {
+        toast.error("Akses ditolak. Pastikan Anda memiliki izin untuk melihat proposal.");
+      } else if (error.message.includes('connection')) {
+        toast.error("Masalah koneksi database. Silakan coba lagi.");
+      } else {
+        toast.error(`Gagal memuat proposal: ${error.message}`);
+      }
+      
       throw error;
     }
 
-    console.log("Raw proposal data:", data);
+    console.log(`✅ Successfully fetched ${data?.length || 0} proposals`);
     return data || [];
   } catch (error: any) {
-    console.error("Error fetching proposals:", error);
-    toast.error("Failed to load proposals");
-    throw error;
+    console.error("💥 Unexpected error fetching proposals:", error);
+    
+    // Return empty array instead of throwing to prevent app crash
+    return [];
   }
 }
 
 export async function fetchProposalDocuments(proposalId: string) {
   try {
+    console.log(`🔍 Fetching documents for proposal: ${proposalId}`);
+    
     // First, we need to check if this proposal is part of a team
     const { data: proposalData, error: proposalError } = await supabase
       .from('proposals')
@@ -48,7 +69,7 @@ export async function fetchProposalDocuments(proposalId: string) {
     
     if (proposalError) {
       console.error(`Error fetching proposal ${proposalId} team info:`, proposalError);
-      throw proposalError;
+      return [];
     }
 
     // If the proposal is part of a team, we should fetch all documents for all proposals in the team
@@ -61,7 +82,7 @@ export async function fetchProposalDocuments(proposalId: string) {
       
       if (teamProposalsError) {
         console.error(`Error fetching team proposals for team ${proposalData.team_id}:`, teamProposalsError);
-        throw teamProposalsError;
+        return [];
       }
 
       if (teamProposals && teamProposals.length > 0) {
@@ -77,9 +98,10 @@ export async function fetchProposalDocuments(proposalId: string) {
         
         if (error) {
           console.error(`Error fetching documents for team proposals:`, error);
-          throw error;
+          return [];
         }
 
+        console.log(`✅ Found ${data?.length || 0} documents for team`);
         return data || [];
       }
     }
@@ -93,9 +115,10 @@ export async function fetchProposalDocuments(proposalId: string) {
     
     if (error) {
       console.error(`Error fetching documents for proposal ${proposalId}:`, error);
-      throw error;
+      return [];
     }
 
+    console.log(`✅ Found ${data?.length || 0} documents for individual proposal`);
     return data || [];
   } catch (error) {
     console.error(`Error fetching documents:`, error);

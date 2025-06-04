@@ -940,6 +940,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bulk_approve_proposals: {
+        Args: { team_id: string; new_status: string }
+        Returns: Record<string, unknown>
+      }
       update_team_proposals: {
         Args: { p_team_id: string; p_status: string; p_reason: string }
         Returns: undefined
