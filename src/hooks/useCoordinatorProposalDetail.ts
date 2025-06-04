@@ -35,12 +35,30 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      console.log(`🚀 Starting approval process for proposal ${proposal.id}`);
+      console.log(`🚀 Starting approval process using stored procedure for proposal ${proposal.id}`);
       
       const result = await ProposalApprovalService.approveProposal(proposal.id);
       
       if (result.success) {
-        toast.success(result.message);
+        // Enhanced success message
+        let successMessage = result.message;
+        if (result.affectedProposals && result.affectedProposals > 1) {
+          successMessage += ` (${result.affectedProposals} anggota tim)`;
+        }
+        
+        toast.success(successMessage);
+        
+        // Show additional info for team approvals
+        if (result.teamId) {
+          console.log(`👥 Team approval completed for team: ${result.teamId}`);
+        }
+        
+        // Warning for partial failures
+        if (result.failedUpdates && result.failedUpdates.length > 0) {
+          console.warn('⚠️ Some proposals failed to update:', result.failedUpdates);
+          toast.warning(`${result.failedUpdates.length} proposal gagal diupdate dari total ${result.affectedProposals}`);
+        }
+        
         setIsApproveDialogOpen(false);
         // Refresh the proposal data would be handled by parent component
       } else {
@@ -49,6 +67,11 @@ export const useCoordinatorProposalDetail = () => {
           result.errors.forEach(error => {
             console.error('📋 Approval error detail:', error);
           });
+        }
+        
+        // Log bulk error if available
+        if (result.bulkError) {
+          console.error('💥 Bulk operation failed:', result.bulkError);
         }
       }
     } catch (error: any) {
@@ -70,12 +93,17 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      console.log(`🚫 Starting rejection process for proposal ${proposal.id}`);
+      console.log(`🚫 Starting rejection process using stored procedure for proposal ${proposal.id}`);
       
       const result = await ProposalApprovalService.rejectProposal(proposal.id, rejectionReason);
       
       if (result.success) {
-        toast.success(result.message);
+        let successMessage = result.message;
+        if (result.affectedProposals && result.affectedProposals > 1) {
+          successMessage += ` (${result.affectedProposals} anggota tim)`;
+        }
+        
+        toast.success(successMessage);
         setIsRejectDialogOpen(false);
         setRejectionReason(''); // Clear the reason
       } else {
@@ -105,12 +133,17 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      console.log(`📝 Starting revision process for proposal ${proposal.id}`);
+      console.log(`📝 Starting revision process using stored procedure for proposal ${proposal.id}`);
       
       const result = await ProposalApprovalService.requestRevision(proposal.id, revisionFeedback);
       
       if (result.success) {
-        toast.success(result.message);
+        let successMessage = result.message;
+        if (result.affectedProposals && result.affectedProposals > 1) {
+          successMessage += ` (${result.affectedProposals} anggota tim)`;
+        }
+        
+        toast.success(successMessage);
         setIsRevisionDialogOpen(false);
         setRevisionFeedback(''); // Clear the feedback
       } else {

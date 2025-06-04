@@ -932,6 +932,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_team_proposals: {
+        Args: {
+          p_proposal_id: string
+          p_new_status?: string
+          p_rejection_reason?: string
+        }
+        Returns: Json
+      }
       update_team_proposals: {
         Args: { p_team_id: string; p_status: string; p_reason: string }
         Returns: undefined
