@@ -36,8 +36,6 @@ export interface GuidanceReport {
 // Fetch all guidance sessions (for coordinator) - includes both tables
 export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => {
   try {
-    console.log('Fetching all guidance sessions...');
-    
     // Fetch from guidance_sessions table
     const { data: guidanceSessions, error: guidanceError } = await supabase
       .from('guidance_sessions')
@@ -49,7 +47,6 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
       .order('created_at', { ascending: false });
 
     if (guidanceError) {
-      console.error('Error fetching guidance_sessions:', guidanceError);
       throw guidanceError;
     }
 
@@ -64,12 +61,8 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
       .order('created_at', { ascending: false });
 
     if (kpError) {
-      console.error('Error fetching kp_guidance_schedule:', kpError);
       throw kpError;
     }
-
-    console.log('Found guidance_sessions:', guidanceSessions?.length || 0);
-    console.log('Found kp_guidance_schedule:', kpGuidanceSchedule?.length || 0);
 
     // Convert kp_guidance_schedule to GuidanceSession format
     const convertedKpSessions: GuidanceSession[] = (kpGuidanceSchedule || []).map(session => ({
@@ -96,7 +89,6 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
     // Sort by created_at
     allSessions.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
 
-    console.log('Total combined sessions:', allSessions.length);
     return allSessions;
   } catch (error: any) {
     console.error('Error fetching guidance sessions:', error);
@@ -108,8 +100,6 @@ export const fetchAllGuidanceSessions = async (): Promise<GuidanceSession[]> => 
 // Fetch guidance sessions for a specific supervisor - includes both tables
 export const fetchSupervisorGuidanceSessions = async (supervisorId: string): Promise<GuidanceSession[]> => {
   try {
-    console.log('Fetching supervisor guidance sessions for:', supervisorId);
-    
     // Fetch from guidance_sessions table
     const { data: guidanceSessions, error: guidanceError } = await supabase
       .from('guidance_sessions')
@@ -122,7 +112,6 @@ export const fetchSupervisorGuidanceSessions = async (supervisorId: string): Pro
       .order('session_date', { ascending: false });
 
     if (guidanceError) {
-      console.error('Error fetching supervisor guidance_sessions:', guidanceError);
       throw guidanceError;
     }
 
@@ -138,12 +127,8 @@ export const fetchSupervisorGuidanceSessions = async (supervisorId: string): Pro
       .order('requested_date', { ascending: false });
 
     if (kpError) {
-      console.error('Error fetching supervisor kp_guidance_schedule:', kpError);
       throw kpError;
     }
-
-    console.log('Found supervisor guidance_sessions:', guidanceSessions?.length || 0);
-    console.log('Found supervisor kp_guidance_schedule:', kpGuidanceSchedule?.length || 0);
 
     // Convert kp_guidance_schedule to GuidanceSession format
     const convertedKpSessions: GuidanceSession[] = (kpGuidanceSchedule || []).map(session => ({
@@ -170,7 +155,6 @@ export const fetchSupervisorGuidanceSessions = async (supervisorId: string): Pro
     // Sort by session_date/requested_date
     allSessions.sort((a, b) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime());
 
-    console.log('Total supervisor sessions:', allSessions.length);
     return allSessions;
   } catch (error: any) {
     console.error('Error fetching supervisor guidance sessions:', error);

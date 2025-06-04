@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -21,8 +22,7 @@ const KpProgressTracker = () => {
       label: 'Bimbingan',
       description: 'Sesi bimbingan dengan dosen pembimbing',
       icon: MessageSquare,
-      status: progressData?.guidance_sessions_completed >= 8 ? 'completed' : 
-               progressData?.guidance_sessions_completed > 0 ? 'in_progress' : 'pending'
+      status: progressData?.guidance_sessions_completed > 0 ? 'in_progress' : 'pending'
     },
     {
       key: 'report',
@@ -81,8 +81,38 @@ const KpProgressTracker = () => {
   const getProgressPercentage = () => {
     if (!progressData) return 0;
     
-    // Use the overall_progress from database which is now properly updated by triggers
-    return progressData.overall_progress || 0;
+    let totalProgress = 0;
+    let completedStages = 0;
+
+    // Proposal stage
+    if (progressData.proposal_status === 'approved') {
+      completedStages += 1;
+    } else if (progressData.proposal_status === 'submitted') {
+      totalProgress += 0.5;
+    }
+
+    // Guidance stage
+    if (progressData.guidance_sessions_completed >= 8) {
+      completedStages += 1;
+    } else if (progressData.guidance_sessions_completed > 0) {
+      totalProgress += (progressData.guidance_sessions_completed / 8) * 25;
+    }
+
+    // Report stage
+    if (progressData.report_status === 'completed') {
+      completedStages += 1;
+    } else if (progressData.report_status === 'in_progress') {
+      totalProgress += 0.5;
+    }
+
+    // Presentation stage
+    if (progressData.presentation_status === 'completed') {
+      completedStages += 1;
+    } else if (progressData.presentation_status === 'scheduled') {
+      totalProgress += 0.5;
+    }
+
+    return Math.min(100, (completedStages * 25) + totalProgress);
   };
 
   if (loading) {
@@ -115,7 +145,7 @@ const KpProgressTracker = () => {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Progress</span>
-              <span className="text-sm text-gray-600">{getProgressPercentage()}%</span>
+              <span className="text-sm text-gray-600">{Math.round(getProgressPercentage())}%</span>
             </div>
             <Progress value={getProgressPercentage()} className="h-3" />
           </div>
@@ -152,19 +182,14 @@ const KpProgressTracker = () => {
                     
                     {/* Stage-specific details */}
                     {stage.key === 'guidance' && progressData && (
-                      <div className="space-y-2">
-                        <div className="text-sm text-gray-700">
-                          <p>Sesi bimbingan: {progressData.guidance_sessions_completed}/8 (minimum)</p>
-                          {progressData.guidance_sessions_completed > 0 && (
-                            <Progress 
-                              value={(progressData.guidance_sessions_completed / 8) * 100} 
-                              className="h-2 mt-1" 
-                            />
-                          )}
-                          <p className="text-xs text-gray-500 mt-1">
-                            Ajukan sesi bimbingan melalui tab "Jadwal"
-                          </p>
-                        </div>
+                      <div className="text-sm text-gray-700">
+                        <p>Sesi bimbingan: {progressData.guidance_sessions_completed}/8 (minimum)</p>
+                        {progressData.guidance_sessions_completed > 0 && (
+                          <Progress 
+                            value={(progressData.guidance_sessions_completed / 8) * 100} 
+                            className="h-2 mt-1" 
+                          />
+                        )}
                       </div>
                     )}
                     
@@ -204,7 +229,7 @@ const KpProgressTracker = () => {
             
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {getProgressPercentage()}%
+                {Math.round(getProgressPercentage())}%
               </div>
               <div className="text-sm text-gray-600">Progress Keseluruhan</div>
             </div>
