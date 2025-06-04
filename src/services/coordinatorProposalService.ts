@@ -42,6 +42,8 @@ export const fetchProposalById = async (proposalId: string) => {
 
     // Fetch team members if it's a team proposal
     let teamMembers = [];
+    let teamData = null;
+    
     if (proposal.team_id) {
       const { data: teamMembersData, error: teamMembersError } = await supabase
         .from('team_members')
@@ -64,6 +66,15 @@ export const fetchProposalById = async (proposalId: string) => {
           nim: member.user?.nim,
           role: member.role
         }));
+      }
+
+      // Structure team data with members
+      if (proposal.team) {
+        teamData = {
+          id: proposal.team.id,
+          name: proposal.team.name,
+          members: teamMembers
+        };
       }
     }
 
@@ -123,7 +134,7 @@ export const fetchProposalById = async (proposalId: string) => {
     const result = {
       ...proposal,
       student: studentData,
-      teamMembers,
+      team: teamData,
       supervisors,
       documents: documents || [],
       feedback: feedback || []
