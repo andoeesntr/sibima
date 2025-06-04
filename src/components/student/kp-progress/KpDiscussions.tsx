@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,17 +19,12 @@ interface Discussion {
   title: string;
   content: string;
   author_id: string;
-  student_id: string;
   parent_id: string | null;
   created_at: string;
   updated_at: string;
   author: {
     full_name: string;
     role: string;
-  } | null;
-  student: {
-    full_name: string;
-    nim: string;
   } | null;
   replies?: Discussion[];
 }
@@ -52,89 +48,24 @@ const KpDiscussions = () => {
     if (!user?.id) return;
 
     try {
-      setLoading(true);
-      console.log('Fetching discussions for user:', user.id);
-
-      // First, try to get all discussions for this student
-      const { data: studentDiscussions, error: studentError } = await supabase
+      const { data, error } = await supabase
         .from('kp_discussions')
         .select(`
           *,
           author:profiles!kp_discussions_author_id_fkey (
             full_name,
             role
-          ),
-          student:profiles!kp_discussions_student_id_fkey (
-            full_name,
-            nim
           )
         `)
         .eq('student_id', user.id)
         .is('parent_id', null)
         .order('created_at', { ascending: false });
 
-      if (studentError) {
-        console.error('Error fetching student discussions:', studentError);
-        throw studentError;
-      }
-
-      console.log('Student discussions found:', studentDiscussions?.length || 0);
-
-      // Also try to get discussions from other students under the same supervisor (if any)
-      let allDiscussions = studentDiscussions || [];
-
-      // Get current user's proposal to find supervisor relationship
-      const { data: proposalData, error: proposalError } = await supabase
-        .from('proposals')
-        .select('supervisor_id')
-        .eq('student_id', user.id)
-        .eq('status', 'approved')
-        .maybeSingle();
-
-      if (!proposalError && proposalData?.supervisor_id) {
-        console.log('Found supervisor:', proposalData.supervisor_id);
-        
-        // Get all students under the same supervisor
-        const { data: studentsData, error: studentsError } = await supabase
-          .from('proposals')
-          .select('student_id')
-          .eq('supervisor_id', proposalData.supervisor_id)
-          .eq('status', 'approved');
-
-        if (!studentsError && studentsData) {
-          const studentIds = studentsData.map(p => p.student_id);
-          console.log('Students under same supervisor:', studentIds);
-
-          // Fetch discussions from all students under the same supervisor
-          const { data: groupDiscussions, error: groupError } = await supabase
-            .from('kp_discussions')
-            .select(`
-              *,
-              author:profiles!kp_discussions_author_id_fkey (
-                full_name,
-                role
-              ),
-              student:profiles!kp_discussions_student_id_fkey (
-                full_name,
-                nim
-              )
-            `)
-            .in('student_id', studentIds)
-            .is('parent_id', null)
-            .order('created_at', { ascending: false });
-
-          if (!groupError && groupDiscussions) {
-            console.log('Group discussions found:', groupDiscussions.length);
-            allDiscussions = groupDiscussions;
-          }
-        }
-      } else {
-        console.log('No approved proposal found or no supervisor assigned');
-      }
+      if (error) throw error;
 
       // Fetch replies for each discussion
       const discussionsWithReplies = await Promise.all(
-        allDiscussions.map(async (discussion) => {
+        (data || []).map(async (discussion) => {
           const { data: replies, error: repliesError } = await supabase
             .from('kp_discussions')
             .select(`
@@ -142,19 +73,12 @@ const KpDiscussions = () => {
               author:profiles!kp_discussions_author_id_fkey (
                 full_name,
                 role
-              ),
-              student:profiles!kp_discussions_student_id_fkey (
-                full_name,
-                nim
               )
             `)
             .eq('parent_id', discussion.id)
             .order('created_at', { ascending: true });
 
-          if (repliesError) {
-            console.error('Error fetching replies for discussion', discussion.id, repliesError);
-            return { ...discussion, replies: [] };
-          }
+          if (repliesError) throw repliesError;
 
           return {
             ...discussion,
@@ -163,7 +87,6 @@ const KpDiscussions = () => {
         })
       );
 
-      console.log('Final discussions with replies:', discussionsWithReplies.length);
       setDiscussions(discussionsWithReplies);
     } catch (error) {
       console.error('Error fetching discussions:', error);
@@ -180,7 +103,6 @@ const KpDiscussions = () => {
     }
 
     try {
-      console.log('Creating discussion for user:', user.id);
       const { data, error } = await supabase
         .from('kp_discussions')
         .insert({
@@ -195,20 +117,12 @@ const KpDiscussions = () => {
           author:profiles!kp_discussions_author_id_fkey (
             full_name,
             role
-          ),
-          student:profiles!kp_discussions_student_id_fkey (
-            full_name,
-            nim
           )
         `)
         .single();
 
-      if (error) {
-        console.error('Error creating discussion:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('Discussion created successfully:', data);
       setDiscussions(prev => [{ ...data, replies: [] }, ...prev]);
       setNewDiscussion({ stage: 'general', title: '', content: '' });
       setIsCreating(false);
@@ -226,17 +140,10 @@ const KpDiscussions = () => {
     }
 
     try {
-      // Get the original discussion to get student_id
-      const originalDiscussion = discussions.find(d => d.id === discussionId);
-      if (!originalDiscussion) {
-        toast.error('Diskusi tidak ditemukan');
-        return;
-      }
-
       const { data, error } = await supabase
         .from('kp_discussions')
         .insert({
-          student_id: originalDiscussion.student_id,
+          student_id: user.id,
           author_id: user.id,
           parent_id: discussionId,
           stage: 'reply',
@@ -248,10 +155,6 @@ const KpDiscussions = () => {
           author:profiles!kp_discussions_author_id_fkey (
             full_name,
             role
-          ),
-          student:profiles!kp_discussions_student_id_fkey (
-            full_name,
-            nim
           )
         `)
         .single();
@@ -390,7 +293,6 @@ const KpDiscussions = () => {
             <CardContent className="pt-6 text-center">
               <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-2" />
               <p className="text-gray-500">Belum ada diskusi. Mulai diskusi pertama Anda!</p>
-              <p className="text-sm text-gray-400 mt-1">User ID: {user?.id}</p>
             </CardContent>
           </Card>
         ) : (
@@ -405,12 +307,6 @@ const KpDiscussions = () => {
                         <User className="h-4 w-4" />
                         {discussion.author?.full_name || 'Unknown'}
                       </span>
-                      {discussion.student && (
-                        <span className="flex items-center gap-1">
-                          <span className="text-xs">Mahasiswa:</span>
-                          {discussion.student.full_name} ({discussion.student.nim})
-                        </span>
-                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
                         {format(new Date(discussion.created_at), 'dd MMM yyyy HH:mm', { locale: id })}
@@ -439,9 +335,6 @@ const KpDiscussions = () => {
                             </span>
                             {reply.author?.role === 'supervisor' && (
                               <Badge variant="outline" className="text-xs">Dosen</Badge>
-                            )}
-                            {reply.author?.role === 'student' && (
-                              <Badge variant="outline" className="text-xs">Mahasiswa</Badge>
                             )}
                           </div>
                           <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.content}</p>

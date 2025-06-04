@@ -1,8 +1,9 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useProposalData } from '@/hooks/useCoordinatorProposal';
-import { ProposalApprovalService } from '@/services/proposalApprovalService';
+import { syncProposalStatusWithTeam } from '@/services/proposalService';
 
 export const useCoordinatorProposalDetail = () => {
   const { proposal, loading, supervisors, handleUpdateSupervisors } = useProposalData();
@@ -35,25 +36,25 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      console.log(`🚀 Starting approval process for proposal ${proposal.id}`);
+      // Update the current proposal
+      const { error } = await supabase
+        .from('proposals')
+        .update({ 
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposal.id);
+        
+      if (error) throw error;
+
+      // Sync with team members
+      await syncProposalStatusWithTeam(proposal.id, 'approved');
       
-      const result = await ProposalApprovalService.approveProposal(proposal.id);
-      
-      if (result.success) {
-        toast.success(result.message);
-        setIsApproveDialogOpen(false);
-        // Refresh the proposal data would be handled by parent component
-      } else {
-        toast.error(result.message);
-        if (result.errors) {
-          result.errors.forEach(error => {
-            console.error('📋 Approval error detail:', error);
-          });
-        }
-      }
+      toast.success("Proposal berhasil disetujui untuk seluruh tim");
+      setIsApproveDialogOpen(false);
     } catch (error: any) {
-      console.error("💥 Unexpected error during approval:", error);
-      toast.error(`Unexpected error: ${error.message}`);
+      console.error("Error approving proposal:", error);
+      toast.error(`Failed to approve proposal: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -70,25 +71,26 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      console.log(`🚫 Starting rejection process for proposal ${proposal.id}`);
+      // Update the current proposal
+      const { error } = await supabase
+        .from('proposals')
+        .update({ 
+          status: 'rejected',
+          updated_at: new Date().toISOString(),
+          rejection_reason: rejectionReason
+        })
+        .eq('id', proposal.id);
+        
+      if (error) throw error;
+
+      // Sync with team members
+      await syncProposalStatusWithTeam(proposal.id, 'rejected', rejectionReason);
       
-      const result = await ProposalApprovalService.rejectProposal(proposal.id, rejectionReason);
-      
-      if (result.success) {
-        toast.success(result.message);
-        setIsRejectDialogOpen(false);
-        setRejectionReason(''); // Clear the reason
-      } else {
-        toast.error(result.message);
-        if (result.errors) {
-          result.errors.forEach(error => {
-            console.error('📋 Rejection error detail:', error);
-          });
-        }
-      }
+      toast.success("Proposal berhasil ditolak untuk seluruh tim");
+      setIsRejectDialogOpen(false);
     } catch (error: any) {
-      console.error("💥 Unexpected error during rejection:", error);
-      toast.error(`Unexpected error: ${error.message}`);
+      console.error("Error rejecting proposal:", error);
+      toast.error(`Failed to reject proposal: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -105,25 +107,26 @@ export const useCoordinatorProposalDetail = () => {
     setIsSubmitting(true);
     
     try {
-      console.log(`📝 Starting revision process for proposal ${proposal.id}`);
+      // Update the current proposal
+      const { error: proposalError } = await supabase
+        .from('proposals')
+        .update({ 
+          status: 'revision',
+          updated_at: new Date().toISOString(),
+          rejection_reason: revisionFeedback
+        })
+        .eq('id', proposal.id);
+        
+      if (proposalError) throw proposalError;
+
+      // Sync with team members
+      await syncProposalStatusWithTeam(proposal.id, 'revision', revisionFeedback);
       
-      const result = await ProposalApprovalService.requestRevision(proposal.id, revisionFeedback);
-      
-      if (result.success) {
-        toast.success(result.message);
-        setIsRevisionDialogOpen(false);
-        setRevisionFeedback(''); // Clear the feedback
-      } else {
-        toast.error(result.message);
-        if (result.errors) {
-          result.errors.forEach(error => {
-            console.error('📋 Revision error detail:', error);
-          });
-        }
-      }
+      toast.success("Permintaan revisi berhasil dikirim ke seluruh tim");
+      setIsRevisionDialogOpen(false);
     } catch (error: any) {
-      console.error("💥 Unexpected error during revision:", error);
-      toast.error(`Unexpected error: ${error.message}`);
+      console.error("Error requesting revision:", error);
+      toast.error(`Failed to request revision: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }

@@ -26,13 +26,6 @@ export const EditUserForm = ({ user, onClose, onSuccess }: EditUserFormProps) =>
   const [department, setDepartment] = useState(user.department || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Validation function for numeric input
-  const handleNumericInput = (value: string, setter: (value: string) => void) => {
-    // Only allow numbers
-    const numericValue = value.replace(/[^0-9]/g, '');
-    setter(numericValue);
-  };
-
   const handleSubmit = async () => {
     if (!name || !role) {
       toast.error('Harap isi semua bidang yang diperlukan');
@@ -46,19 +39,8 @@ export const EditUserForm = ({ user, onClose, onSuccess }: EditUserFormProps) =>
     }
     
     // Validate supervisor specific fields
-    if (role === 'supervisor' && !nid) {
-      toast.error('NID diperlukan untuk dosen');
-      return;
-    }
-
-    // Additional validation for numeric fields
-    if (role === 'student' && nim && !/^\d+$/.test(nim)) {
-      toast.error('NIM harus berupa angka saja');
-      return;
-    }
-
-    if (role === 'supervisor' && nid && !/^\d+$/.test(nid)) {
-      toast.error('NID harus berupa angka saja');
+    if (role === 'supervisor' && !nid) { // Changed from nip to nid
+      toast.error('NID diperlukan untuk dosen'); // Changed from NIP to NID
       return;
     }
     
@@ -141,8 +123,8 @@ export const EditUserForm = ({ user, onClose, onSuccess }: EditUserFormProps) =>
             <Input
               id="edit-nim"
               value={nim}
-              onChange={(e) => handleNumericInput(e.target.value, setNim)}
-              placeholder="Masukkan NIM (angka saja)"
+              onChange={(e) => setNim(e.target.value)}
+              placeholder="Masukkan NIM"
             />
           </div>
           
@@ -173,12 +155,13 @@ export const EditUserForm = ({ user, onClose, onSuccess }: EditUserFormProps) =>
       {role === 'supervisor' && (
         <>
           <div className="space-y-2">
+            {/* Changed from nip to nid */}
             <Label htmlFor="edit-nid">NID</Label>
             <Input
               id="edit-nid" 
               value={nid}
-              onChange={(e) => handleNumericInput(e.target.value, setNid)}
-              placeholder="Masukkan NID (angka saja)"
+              onChange={(e) => setNid(e.target.value)}
+              placeholder="Masukkan NID"
             />
           </div>
           

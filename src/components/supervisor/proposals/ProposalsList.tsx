@@ -29,17 +29,7 @@ const ProposalsList = ({
   loading, 
   selectedProposal, 
   onSelectProposal,
-  formatDate = (date) => {
-    if (!date) return '';
-    const dateObj = new Date(date);
-    return dateObj.toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
+  formatDate = (date) => date
 }: ProposalsListProps) => {
   const selectedId = typeof selectedProposal === 'string' 
     ? selectedProposal 

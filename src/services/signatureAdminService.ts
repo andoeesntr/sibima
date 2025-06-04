@@ -23,8 +23,6 @@ interface DigitalSignature {
 
 export const fetchSignatures = async (): Promise<DigitalSignature[]> => {
   try {
-    console.log('Fetching digital signatures...');
-    
     const { data, error } = await supabase
       .from('digital_signatures')
       .select(`
@@ -41,41 +39,25 @@ export const fetchSignatures = async (): Promise<DigitalSignature[]> => {
           nip,
           department
         )
-      `)
-      .not('status', 'eq', 'deleted');
+      `);
 
-    if (error) {
-      console.error('Error fetching signatures:', error);
-      throw error;
-    }
-
-    console.log('Raw signature data:', data);
-
-    if (!data || data.length === 0) {
-      console.log('No signatures found');
-      return [];
-    }
+    if (error) throw error;
 
     // Transform data to match our DigitalSignature interface
-    const transformedData = data
-      .filter(signature => signature.profiles) // Only include signatures with valid profiles
-      .map((signature: any) => ({
-        id: signature.id,
-        supervisor: {
-          id: signature.profiles.id,
-          name: signature.profiles.full_name || 'Unnamed Supervisor',
-          nip: signature.profiles.nip || '-',
-          department: signature.profiles.department || '-'
-        },
-        status: signature.status as SignatureStatus,
-        signature_url: signature.signature_url,
-        qr_code_url: signature.qr_code_url,
-        created_at: signature.created_at,
-        updated_at: signature.updated_at
-      }));
-
-    console.log('Transformed signature data:', transformedData);
-    return transformedData;
+    return data.map((signature: any) => ({
+      id: signature.id,
+      supervisor: {
+        id: signature.profiles.id,
+        name: signature.profiles.full_name || 'Unnamed Supervisor',
+        nip: signature.profiles.nip || '-',
+        department: signature.profiles.department || '-'
+      },
+      status: signature.status as SignatureStatus,
+      signature_url: signature.signature_url,
+      qr_code_url: signature.qr_code_url,
+      created_at: signature.created_at,
+      updated_at: signature.updated_at
+    }));
   } catch (error) {
     console.error('Error fetching signatures:', error);
     throw error;
@@ -84,9 +66,7 @@ export const fetchSignatures = async (): Promise<DigitalSignature[]> => {
 
 export const approveSignature = async (signatureId: string, signatureSupervisorId: string, signatureSupervisorName: string): Promise<{ qr_code_url?: string }> => {
   try {
-    console.log('Approving signature:', { signatureId, signatureSupervisorId, signatureSupervisorName });
-    
-    // First update status to approved in database
+    // First update status to approved in database to avoid race conditions
     const { error: updateError } = await supabase
       .from('digital_signatures')
       .update({ 
@@ -95,30 +75,51 @@ export const approveSignature = async (signatureId: string, signatureSupervisorI
       })
       .eq('id', signatureId);
 
-    if (updateError) {
-      console.error('Error updating signature status:', updateError);
-      throw updateError;
+    if (updateError) throw updateError;
+    
+    // Get Supabase URL from client
+    const supabaseUrl = "https://ciaymvntmwwbnvewedue.supabase.co";
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    
+    if (!accessToken) {
+      throw new Error('No authentication token available');
     }
     
-    console.log('Signature status updated to approved, now generating QR code...');
-    
-    // Generate QR code using edge function
-    const { data: qrData, error: qrError } = await supabase.functions.invoke('generate-qrcode', {
-      body: {
+    // Generate QR code using direct API call to edge function
+    const response = await fetch(`${supabaseUrl}/functions/v1/generate-qrcode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({
         signatureId,
         supervisorId: signatureSupervisorId,
         supervisorName: signatureSupervisorName,
         baseUrl: window.location.origin
-      }
+      })
     });
     
-    if (qrError) {
-      console.error('Error generating QR code:', qrError);
-      toast.error('Tanda tangan disetujui, namun QR code gagal dibuat');
+    if (!response.ok) {
+      // Even if the QR code generation fails, the signature is still approved
+      // Log error but don't throw since the status update succeeded
+      console.error(`Error generating QR code: ${response.statusText}`);
+      
+      // Create activity log for the approval
+      await supabase.from('activity_logs').insert({
+        user_id: '0', // System user or should be replaced with actual admin ID
+        user_name: 'Admin',
+        action: 'menyetujui tanda tangan digital',
+        target_type: 'signature',
+        target_id: signatureId
+      });
+      
+      // Return empty object but don't throw error since approval did succeed
       return {};
     }
     
-    console.log('QR code generated successfully:', qrData);
+    const qrData = await response.json();
     
     // Create activity log
     await supabase.from('activity_logs').insert({

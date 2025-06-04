@@ -41,45 +41,6 @@ const KpDocuments = () => {
     { key: 'attachment', label: 'Lampiran' }
   ];
 
-  const ensureBucketExists = async () => {
-    try {
-      // Check if bucket exists
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error('Error listing buckets:', bucketsError);
-        return false;
-      }
-
-      const bucketExists = buckets?.some(bucket => bucket.name === 'kp-documents');
-      
-      if (!bucketExists) {
-        console.log('Creating kp-documents bucket...');
-        
-        // Try to create bucket using edge function
-        const { error: functionError } = await supabase.functions.invoke('upload-file', {
-          body: {
-            action: 'create_bucket',
-            bucket: 'kp-documents'
-          }
-        });
-        
-        if (functionError) {
-          console.error('Function error creating bucket:', functionError);
-          toast.error('Gagal membuat storage bucket');
-          return false;
-        }
-        
-        console.log('Bucket created successfully');
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error ensuring bucket exists:', error);
-      return false;
-    }
-  };
-
   const fetchDocuments = async () => {
     if (!user?.id) return;
 
@@ -105,56 +66,22 @@ const KpDocuments = () => {
 
     try {
       setIsUploading(true);
-      setUploadingType(documentType);
-
-      // Ensure bucket exists first
-      const bucketReady = await ensureBucketExists();
-      if (!bucketReady) {
-        throw new Error('Storage bucket tidak tersedia');
-      }
 
       // Create file path
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${documentType}/${Date.now()}.${fileExt}`;
 
-      console.log('Uploading file:', fileName);
-
-      // Try direct upload first
+      // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('kp-documents')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          contentType: file.type,
-          upsert: false
-        });
+        .upload(fileName, file);
 
-      let publicUrl: string;
+      if (uploadError) throw uploadError;
 
-      if (uploadError) {
-        console.log('Direct upload failed, trying via edge function:', uploadError);
-        
-        // Use edge function as fallback
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', fileName);
-        formData.append('bucket', 'kp-documents');
-
-        const { data: functionData, error: functionError } = await supabase.functions.invoke('upload-file', {
-          body: formData
-        });
-
-        if (functionError) {
-          throw new Error(`Upload failed: ${functionError.message}`);
-        }
-
-        publicUrl = functionData.publicUrl;
-      } else {
-        // Get public URL for direct upload
-        const { data: { publicUrl: directUrl } } = supabase.storage
-          .from('kp-documents')
-          .getPublicUrl(fileName);
-        publicUrl = directUrl;
-      }
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('kp-documents')
+        .getPublicUrl(fileName);
 
       // Check if document type already exists
       const existingDoc = documents.find(doc => doc.document_type === documentType);
@@ -181,7 +108,7 @@ const KpDocuments = () => {
       toast.success('Dokumen berhasil diunggah');
     } catch (error) {
       console.error('Error uploading document:', error);
-      toast.error(`Gagal mengunggah dokumen: ${error.message}`);
+      toast.error('Gagal mengunggah dokumen');
     } finally {
       setIsUploading(false);
       setUploadingType(null);

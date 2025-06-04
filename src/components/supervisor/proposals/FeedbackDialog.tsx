@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface FeedbackDialogProps {
   isOpen: boolean;
-  setIsOpen?: (open: boolean) => void;
+  setIsOpen?: (open: boolean) => void; // Made optional
   proposalId?: string;
   onFeedbackSaved?: () => void;
   // New props to match Dashboard and Feedback pages usage
@@ -76,27 +76,14 @@ const FeedbackDialog = ({
 
     // Otherwise use internal handler
     if (onSendFeedback && content !== undefined) {
-      // Validate that there is content to send
-      if (!content.trim()) {
-        toast.error('Harap masukkan feedback');
-        return false;
-      }
-      
       // Use the provided onSendFeedback function with the content
-      const success = await onSendFeedback(content);
-      if (success && setContent) {
-        setContent(''); // Clear the content after successful submission
-        handleOpenChange(false); // Close dialog after successful submission
-      }
-      return success;
+      await onSendFeedback(content);
+      return true;
     }
 
     // Default internal implementation for direct proposal feedback
-    const currentFeedback = content !== undefined ? content : feedback;
-    
-    // Fixed validation: only require feedback content, file is optional
-    if (!currentFeedback.trim()) {
-      toast.error('Harap masukkan feedback');
+    if (!proposalId || (!feedback.trim() && !file)) {
+      toast.error('Harap masukkan feedback atau unggah dokumen');
       return false;
     }
 
@@ -147,20 +134,13 @@ const FeedbackDialog = ({
       }
 
       // Save feedback if provided
-      if (currentFeedback.trim() && user && proposalId) {
-        await saveProposalFeedback(proposalId, user.id, currentFeedback);
+      if (feedback.trim() && user && proposalId) {
+        await saveProposalFeedback(proposalId, user.id, feedback);
       }
 
       toast.success('Feedback berhasil disimpan');
-      
-      // Clear form
-      if (content !== undefined && setContent) {
-        setContent('');
-      } else {
-        setFeedback('');
-      }
+      setFeedback('');
       setFile(null);
-      
       if (setIsOpen) setIsOpen(false);
       if (onFeedbackSaved) onFeedbackSaved();
       return true;
@@ -211,7 +191,7 @@ const FeedbackDialog = ({
         <DialogFooter className="flex justify-between sm:justify-end">
           <Button 
             variant="outline" 
-            onClick={() => handleOpenChange(false)} 
+            onClick={() => setIsOpen ? setIsOpen(false) : handleOpenChange(false)} 
             disabled={isCurrentlySubmitting}
           >
             Batal
@@ -219,7 +199,7 @@ const FeedbackDialog = ({
           <Button 
             className="bg-primary hover:bg-primary/90" 
             onClick={handleSubmit}
-            disabled={isCurrentlySubmitting || !currentFeedback.trim()}
+            disabled={isCurrentlySubmitting}
           >
             {isCurrentlySubmitting ? 'Memproses...' : 'Kirim Feedback'}
             {isCurrentlySubmitting && <FileUp className="ml-1 h-4 w-4 animate-bounce" />}

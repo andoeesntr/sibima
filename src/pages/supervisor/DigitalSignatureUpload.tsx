@@ -1,35 +1,67 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { FileImage, QrCode, Trash, UploadCloud } from 'lucide-react';
+import { QrCode, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { uploadSignature, saveSignatureToDatabase, deleteSignature } from '@/services/signatureService';
-import { useSignatureStatus } from '@/hooks/useSignatureStatus';
+
+// Import refactored components
 import SignatureUploadArea from '@/components/signatures/SignatureUploadArea';
+import SignatureUploadGuidelines from '@/components/signatures/SignatureUploadGuidelines';
 import SignatureStatusDisplay from '@/components/signatures/SignatureStatusDisplay';
 import QRCodeValidation from '@/components/signatures/QRCodeValidation';
-import SignatureUploadGuidelines from '@/components/signatures/SignatureUploadGuidelines';
+import { uploadSignature, saveSignatureToDatabase, deleteSignature } from '@/services/signatureService';
 
 const DigitalSignatureUpload = () => {
   const [activeTab, setActiveTab] = useState('upload');
   const [signature, setSignature] = useState<File | null>(null);
+  const [hasUploadedSignature, setHasUploadedSignature] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+  const [signatureData, setSignatureData] = useState<any>(null);
   const { user } = useAuth();
-  const { signatureStatus, isLoading, refetchSignatureStatus } = useSignatureStatus();
 
-  const hasSignature = signatureStatus.signature_url !== null;
+  useEffect(() => {
+    if (user) {
+      fetchSignatureData();
+    }
+  }, [user]);
+
+  const fetchSignatureData = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('digital_signatures')
+        .select('*')
+        .eq('supervisor_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setSignatureData(data);
+        setHasUploadedSignature(true);
+        setPreviewUrl(data.signature_url);
+      }
+    } catch (error) {
+      console.error('Error fetching signature data:', error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSignature(file);
       
+      // Create preview URL
       const reader = new FileReader();
       reader.onload = () => {
         setPreviewUrl(reader.result as string);
@@ -38,16 +70,13 @@ const DigitalSignatureUpload = () => {
     }
   };
 
-  const handleRemovePreview = () => {
-    setSignature(null);
-    setPreviewUrl(null);
-  };
-
   const validateFile = (file: File): string | null => {
+    // Check file size (1MB limit)
     if (file.size > 1024 * 1024) {
       return 'Ukuran file terlalu besar. Maksimal 1MB';
     }
     
+    // Validate file type
     const allowedTypes = ['image/png', 'image/jpeg', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
       return 'Format file tidak didukung. Gunakan PNG, JPEG atau GIF';
@@ -65,29 +94,27 @@ const DigitalSignatureUpload = () => {
     setIsSubmitting(true);
     
     try {
+      // Validate file
       const validationError = validateFile(signature);
       if (validationError) {
         toast.error(validationError);
         return;
       }
       
-      console.log('Starting signature upload process...');
-      
+      // Upload signature and get public URL
       const publicUrl = await uploadSignature(signature, user.id);
       console.log('Signature uploaded successfully to storage. Public URL:', publicUrl);
       
+      // Save to database
       await saveSignatureToDatabase(user.id, publicUrl);
-      console.log('Signature saved to database successfully');
       
-      toast.success('Tanda tangan berhasil diupload dan disimpan');
-      
-      // Refresh signature status
-      await refetchSignatureStatus();
-      
-      // Clear preview and switch to status tab
-      setSignature(null);
-      setPreviewUrl(null);
+      toast.success('Tanda tangan berhasil diupload');
+      setHasUploadedSignature(true);
+      setSignatureData({ signature_url: publicUrl, status: 'pending' });
       setActiveTab('status');
+      
+      // Refresh signature data
+      fetchSignatureData();
       
     } catch (error: any) {
       console.error('Error uploading signature:', error);
@@ -105,11 +132,10 @@ const DigitalSignatureUpload = () => {
     try {
       await deleteSignature(user.id);
       
-      // Refresh signature status
-      await refetchSignatureStatus();
-      
+      setHasUploadedSignature(false);
       setSignature(null);
       setPreviewUrl(null);
+      setSignatureData(null);
       toast.success('Tanda tangan berhasil dihapus');
       setActiveTab('upload');
       
@@ -121,14 +147,10 @@ const DigitalSignatureUpload = () => {
     }
   };
 
-  const handleRequestUpload = () => {
-    setActiveTab('upload');
-  };
-
-  if (isLoading) {
+  if (loadingData) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -165,9 +187,12 @@ const DigitalSignatureUpload = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <SignatureUploadArea 
-                previewUrl={previewUrl}
-                onFileChange={handleFileChange}
-                onRemove={handleRemovePreview}
+                previewUrl={previewUrl} 
+                onFileChange={handleFileChange} 
+                onRemove={() => {
+                  setSignature(null);
+                  setPreviewUrl(null);
+                }} 
               />
               
               <SignatureUploadGuidelines />
@@ -201,9 +226,9 @@ const DigitalSignatureUpload = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <SignatureStatusDisplay
-                status={signatureStatus.status}
-                previewUrl={signatureStatus.signature_url}
-                onRequestUpload={handleRequestUpload}
+                status={signatureData?.status}
+                previewUrl={previewUrl}
+                onRequestUpload={() => setActiveTab('upload')}
                 onDelete={handleDelete}
                 isSubmitting={isSubmitting}
               />
@@ -213,9 +238,9 @@ const DigitalSignatureUpload = () => {
       </Tabs>
 
       <QRCodeValidation 
-        hasSignature={hasSignature}
-        qrCodeUrl={signatureStatus.qr_code_url}
-        status={signatureStatus.status}
+        hasSignature={hasUploadedSignature}
+        status={signatureData?.status} 
+        qrCodeUrl={signatureData?.qr_code_url}
       />
     </div>
   );

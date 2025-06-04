@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, MessageSquare, User, Filter } from 'lucide-react';
+import { Calendar, Clock, MapPin, CheckCircle, XCircle, MessageSquare, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -30,10 +29,7 @@ interface GuidanceRequest {
 
 const SupervisorGuidanceManagement = () => {
   const [guidanceRequests, setGuidanceRequests] = useState<GuidanceRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<GuidanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [studentFilter, setStudentFilter] = useState<string>('all');
   const { user } = useAuth();
 
   const fetchGuidanceRequests = async () => {
@@ -51,13 +47,12 @@ const SupervisorGuidanceManagement = () => {
           )
         `)
         .eq('supervisor_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('requested_date', { ascending: false });
 
       if (error) throw error;
 
       console.log('Fetched guidance requests for supervisor:', data);
       setGuidanceRequests(data || []);
-      setFilteredRequests(data || []);
     } catch (error) {
       console.error('Error fetching guidance requests:', error);
       toast.error('Gagal memuat permintaan bimbingan');
@@ -65,28 +60,6 @@ const SupervisorGuidanceManagement = () => {
       setLoading(false);
     }
   };
-
-  // Filter function
-  const applyFilters = () => {
-    let filtered = [...guidanceRequests];
-
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(request => request.status === statusFilter);
-    }
-
-    // Filter by student
-    if (studentFilter !== 'all') {
-      filtered = filtered.filter(request => request.student_id === studentFilter);
-    }
-
-    setFilteredRequests(filtered);
-  };
-
-  // Apply filters when filter values change
-  useEffect(() => {
-    applyFilters();
-  }, [statusFilter, studentFilter, guidanceRequests]);
 
   const updateRequestStatus = async (requestId: string, status: string, notes?: string) => {
     try {
@@ -125,18 +98,6 @@ const SupervisorGuidanceManagement = () => {
     return format(new Date(dateString), 'dd MMMM yyyy HH:mm', { locale: id });
   };
 
-  // Get unique students for filter
-  const uniqueStudents = guidanceRequests.reduce((acc, request) => {
-    if (request.student && !acc.find(s => s.id === request.student_id)) {
-      acc.push({
-        id: request.student_id,
-        name: request.student.full_name,
-        nim: request.student.nim
-      });
-    }
-    return acc;
-  }, [] as Array<{ id: string; name: string; nim: string }>);
-
   useEffect(() => {
     fetchGuidanceRequests();
   }, [user?.id]);
@@ -151,96 +112,21 @@ const SupervisorGuidanceManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold">Manajemen Jadwal Bimbingan</h2>
-          <p className="text-gray-600">Kelola jadwal dan approve permintaan bimbingan dari mahasiswa</p>
-        </div>
-
-        {/* Compact Filters */}
-        <div className="flex items-center gap-2">
-          {/* Status Filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Status
-                {statusFilter !== 'all' && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {statusFilter === 'requested' ? 'Menunggu' : 
-                     statusFilter === 'approved' ? 'Disetujui' : 
-                     statusFilter === 'rejected' ? 'Ditolak' : 'Selesai'}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => setStatusFilter('all')}>
-                Semua Status
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('requested')}>
-                Menunggu
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('approved')}>
-                Disetujui
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('rejected')}>
-                Ditolak
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter('completed')}>
-                Selesai
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Student Filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <User className="h-4 w-4" />
-                Mahasiswa
-                {studentFilter !== 'all' && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {uniqueStudents.find(s => s.id === studentFilter)?.name}
-                  </Badge>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem onClick={() => setStudentFilter('all')}>
-                Semua Mahasiswa
-              </DropdownMenuItem>
-              {uniqueStudents.map((student) => (
-                <DropdownMenuItem key={student.id} onClick={() => setStudentFilter(student.id)}>
-                  {student.name} ({student.nim})
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      <div>
+        <h2 className="text-xl font-semibold">Manajemen Jadwal Bimbingan</h2>
+        <p className="text-gray-600">Kelola jadwal dan approve permintaan bimbingan dari mahasiswa</p>
       </div>
 
-      {filteredRequests.length === 0 ? (
+      {guidanceRequests.length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500">
-              {guidanceRequests.length === 0 
-                ? "Belum ada permintaan bimbingan dari mahasiswa" 
-                : "Tidak ada permintaan yang sesuai dengan filter"
-              }
-            </p>
+            <p className="text-gray-500">Belum ada permintaan bimbingan dari mahasiswa</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-600">
-              Menampilkan {filteredRequests.length} dari {guidanceRequests.length} permintaan
-            </p>
-          </div>
-          
-          {filteredRequests.map((request) => (
+          {guidanceRequests.map((request) => (
             <Card key={request.id}>
               <CardHeader>
                 <div className="flex justify-between items-start">

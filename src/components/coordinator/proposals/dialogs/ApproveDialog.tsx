@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CheckCircle } from 'lucide-react';
-import { ProposalApprovalService } from '@/services/proposalApprovalService';
+import { supabase } from '@/integrations/supabase/client';
+import { syncProposalStatusWithTeam } from '@/services/proposalService';
 
 interface ApproveDialogProps {
   onCancel: () => void;
@@ -18,29 +19,49 @@ const ApproveDialog = ({ onCancel, onApprove, proposalId }: ApproveDialogProps) 
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      console.log('🚀 Starting proposal approval process for:', proposalId);
-      
-      const result = await ProposalApprovalService.approveProposal(proposalId);
-      
-      if (result.success) {
-        console.log('✅ Proposal approval completed successfully');
-        toast.success(result.message);
-        onApprove();
-      } else {
-        console.error('❌ Proposal approval failed:', result.message);
-        toast.error(result.message);
+      // Get current user info
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      // Get proposal info for activity log
+      const { data: proposal } = await supabase
+        .from('proposals')
+        .select('title, student_id, profiles!student_id(full_name)')
+        .eq('id', proposalId)
+        .single();
+
+      // Update proposal status
+      const { error } = await supabase
+        .from('proposals')
+        .update({
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', proposalId);
         
-        // Log detailed errors if available
-        if (result.errors) {
-          result.errors.forEach(error => {
-            console.error('📋 Error detail:', error);
-          });
-        }
-      }
-    } catch (error: any) {
-      console.error('💥 Unexpected error during approval:', error);
-      const errorMessage = error.message || 'Terjadi kesalahan tidak terduga saat menyetujui proposal';
-      toast.error(errorMessage);
+      if (error) throw error;
+      
+      // Log the activity
+      await supabase.from('activity_logs').insert({
+        action: `Menyetujui proposal "${proposal?.title}" dari ${proposal?.profiles?.full_name}`,
+        target_type: 'proposal',
+        target_id: proposalId,
+        user_id: user?.id || 'coordinator',
+        user_name: profile?.full_name || 'Coordinator'
+      });
+      
+      // Sync status with team members
+      await syncProposalStatusWithTeam(proposalId, 'approved');
+      
+      toast.success("Proposal berhasil disetujui");
+      onApprove();
+    } catch (error) {
+      console.error('Error approving proposal:', error);
+      toast.error("Gagal menyetujui proposal");
     } finally {
       setIsSubmitting(false);
     }

@@ -26,7 +26,6 @@ const SupervisorFeedback = () => {
   
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('detail');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   useEffect(() => {
     if (proposalId && proposals.length > 0) {
@@ -46,15 +45,8 @@ const SupervisorFeedback = () => {
     toast.success(`Downloading ${fileName}`);
   };
 
-  const handleFeedbackSaved = () => {
-    // Trigger a refresh to reload feedback
-    setRefreshTrigger(prev => prev + 1);
-    // Switch to feedback tab to show the new feedback
-    setActiveTab('feedback');
-  };
-
   return (
-    <div className="space-y-6" key={refreshTrigger}>
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button 
@@ -87,7 +79,6 @@ const SupervisorFeedback = () => {
           handlePreviewFile={handlePreviewFile}
           handleDownloadFile={handleDownloadFile}
           onFeedbackClick={() => setIsFeedbackDialogOpen(true)}
-          onFeedbackSaved={handleFeedbackSaved}
         />
       </div>
       
@@ -96,13 +87,7 @@ const SupervisorFeedback = () => {
         isOpen={isFeedbackDialogOpen}
         setIsOpen={setIsFeedbackDialogOpen}
         onOpenChange={setIsFeedbackDialogOpen}
-        onSendFeedback={async (feedback: string) => {
-          const success = await handleSendFeedback(feedback);
-          if (success) {
-            handleFeedbackSaved();
-          }
-          return success;
-        }}
+        onSendFeedback={handleSendFeedback}
         proposalTitle={selectedProposal?.title}
       />
     </div>

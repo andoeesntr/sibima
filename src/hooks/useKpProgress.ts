@@ -24,56 +24,25 @@ export const useKpProgress = () => {
   const { user } = useAuth();
 
   const calculateGuidanceProgress = async (studentId: string) => {
-    console.log('Calculating guidance progress for student:', studentId);
-    
-    // Count approved journal entries (these represent completed guidance sessions)
-    const { data: approvedJournalEntries, error: journalError } = await supabase
+    // Count completed journal entries
+    const { data: journalEntries } = await supabase
       .from('kp_journal_entries')
-      .select('id, entry_date, status')
+      .select('id')
       .eq('student_id', studentId)
       .eq('status', 'approved');
 
-    if (journalError) {
-      console.error('Error fetching journal entries:', journalError);
-    }
-
-    // Count completed guidance sessions from schedule
-    const { data: completedGuidanceSessions, error: scheduleError } = await supabase
+    // Count completed guidance sessions
+    const { data: guidanceSessions } = await supabase
       .from('kp_guidance_schedule')
-      .select('id, requested_date, status')
+      .select('id')
       .eq('student_id', studentId)
       .eq('status', 'completed');
 
-    if (scheduleError) {
-      console.error('Error fetching guidance sessions:', scheduleError);
-    }
-
-    // Count all journal entries (including draft) as they represent actual sessions
-    const { data: allJournalEntries, error: allJournalError } = await supabase
-      .from('kp_journal_entries')
-      .select('id, entry_date, status')
-      .eq('student_id', studentId);
-
-    if (allJournalError) {
-      console.error('Error fetching all journal entries:', allJournalError);
-    }
-
-    const approvedJournalCount = approvedJournalEntries?.length || 0;
-    const completedSessionCount = completedGuidanceSessions?.length || 0;
-    const totalJournalCount = allJournalEntries?.length || 0;
+    const journalCount = journalEntries?.length || 0;
+    const sessionCount = guidanceSessions?.length || 0;
     
-    console.log('Guidance progress calculation:', {
-      approvedJournalCount,
-      completedSessionCount,
-      totalJournalCount
-    });
-    
-    // Return the count that best represents actual guidance sessions
-    // Priority: approved journals > all journals > completed sessions
-    const actualSessions = Math.max(approvedJournalCount, totalJournalCount, completedSessionCount);
-    
-    console.log('Final guidance sessions count:', actualSessions);
-    return actualSessions;
+    // Take the higher count between journal entries and guidance sessions
+    return Math.max(journalCount, sessionCount);
   };
 
   const fetchProgressData = async () => {
@@ -81,11 +50,6 @@ export const useKpProgress = () => {
 
     try {
       setLoading(true);
-      
-      console.log('Fetching progress data for user:', user.id);
-      
-      // Calculate actual guidance sessions completed
-      const actualGuidanceSessions = await calculateGuidanceProgress(user.id);
       
       // First check if progress record exists
       let { data: existingProgress, error: fetchError } = await supabase
@@ -95,11 +59,11 @@ export const useKpProgress = () => {
         .maybeSingle();
 
       if (fetchError) {
-        console.error('Error fetching progress:', fetchError);
         throw fetchError;
       }
 
-      console.log('Existing progress:', existingProgress);
+      // Calculate actual guidance sessions completed
+      const actualGuidanceSessions = await calculateGuidanceProgress(user.id);
 
       // If no progress record exists, create one
       if (!existingProgress) {
@@ -124,63 +88,46 @@ export const useKpProgress = () => {
             proposal_status: initialProposalStatus,
             guidance_sessions_completed: actualGuidanceSessions,
             report_status: 'not_started',
-            presentation_status: 'not_scheduled',
-            last_activity: new Date().toISOString()
+            presentation_status: 'not_scheduled'
           })
           .select()
           .single();
 
         if (createError) {
-          console.error('Error creating progress:', createError);
           throw createError;
         }
 
-        console.log('Created new progress:', newProgress);
         setProgressData(newProgress);
       } else {
-        // Always update guidance sessions count and progress
-        let newOverallProgress = existingProgress.overall_progress;
-        let newCurrentStage = existingProgress.current_stage;
-        
-        // Update progress based on guidance sessions
-        if (actualGuidanceSessions >= 8) {
-          newOverallProgress = Math.max(newOverallProgress, 50); // 25% proposal + 25% guidance
-          if (newCurrentStage === 'guidance') {
-            newCurrentStage = 'report'; // Move to next stage
+        // Update guidance sessions count if different
+        if (existingProgress.guidance_sessions_completed !== actualGuidanceSessions) {
+          // Calculate new overall progress
+          let newOverallProgress = existingProgress.overall_progress;
+          
+          // Add guidance progress (25% for completing guidance phase)
+          if (actualGuidanceSessions >= 8 && existingProgress.guidance_sessions_completed < 8) {
+            newOverallProgress = Math.max(newOverallProgress, 50); // 25% proposal + 25% guidance
           }
-        } else if (actualGuidanceSessions > 0 && existingProgress.proposal_status === 'approved') {
-          newOverallProgress = Math.max(newOverallProgress, 25 + Math.floor((actualGuidanceSessions / 8) * 25));
+
+          const { data: updatedProgress, error: updateError } = await supabase
+            .from('kp_progress')
+            .update({
+              guidance_sessions_completed: actualGuidanceSessions,
+              overall_progress: newOverallProgress,
+              updated_at: new Date().toISOString()
+            })
+            .eq('student_id', user.id)
+            .select()
+            .single();
+
+          if (updateError) {
+            throw updateError;
+          }
+
+          setProgressData(updatedProgress);
+        } else {
+          setProgressData(existingProgress);
         }
-
-        console.log('Updating progress:', {
-          currentSessions: existingProgress.guidance_sessions_completed,
-          newSessions: actualGuidanceSessions,
-          currentProgress: existingProgress.overall_progress,
-          newProgress: newOverallProgress,
-          currentStage: existingProgress.current_stage,
-          newStage: newCurrentStage
-        });
-
-        const { data: updatedProgress, error: updateError } = await supabase
-          .from('kp_progress')
-          .update({
-            guidance_sessions_completed: actualGuidanceSessions,
-            overall_progress: newOverallProgress,
-            current_stage: newCurrentStage,
-            last_activity: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('student_id', user.id)
-          .select()
-          .single();
-
-        if (updateError) {
-          console.error('Error updating progress:', updateError);
-          throw updateError;
-        }
-
-        console.log('Updated progress:', updatedProgress);
-        setProgressData(updatedProgress);
       }
     } catch (error) {
       console.error('Error fetching progress data:', error);

@@ -191,27 +191,6 @@ export async function fetchMainSupervisor(supervisorId: string) {
   }
 }
 
-// Fetch all supervisors for sharing functionality
-export async function fetchAllSupervisors() {
-  try {
-    const { data: supervisors, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, profile_image')
-      .eq('role', 'supervisor')
-      .order('full_name');
-    
-    if (error) {
-      console.error('Error fetching all supervisors:', error);
-      throw error;
-    }
-
-    return supervisors || [];
-  } catch (error) {
-    console.error('Error in fetchAllSupervisors:', error);
-    throw error;
-  }
-}
-
 export async function saveProposalFeedback(proposalId: string, supervisorId: string, content: string) {
   try {
     const { data, error } = await supabase
@@ -286,7 +265,7 @@ async function syncFeedbackWithTeam(sourceProposalId: string, teamId: string, co
   }
 }
 
-// IMPROVED: Enhanced function to safely ensure proposals exist for all team members
+// Enhanced function to ensure proposals exist for all team members
 export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
   title: string;
   description: string | null;
@@ -311,7 +290,7 @@ export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
 
     console.log(`Found ${teamMembers.length} team members for team ${teamId}`);
 
-    // Check which members already have proposals for this team
+    // Check which members already have proposals
     const memberIds = teamMembers.map(member => member.user_id);
     const { data: existingProposals, error: existingError } = await supabase
       .from('proposals')
@@ -329,44 +308,30 @@ export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
 
     console.log(`${existingMemberIds.length} members already have proposals, ${missingMemberIds.length} are missing`);
 
-    // Create proposals for missing members using individual inserts to avoid constraint issues
+    // Create proposals for missing members
     if (missingMemberIds.length > 0) {
-      const insertPromises = missingMemberIds.map(async (studentId) => {
-        try {
-          const { data: insertedProposal, error: insertError } = await supabase
-            .from('proposals')
-            .insert({
-              student_id: studentId,
-              team_id: teamId,
-              title: baseProposal.title,
-              description: baseProposal.description,
-              company_name: baseProposal.company_name,
-              supervisor_id: baseProposal.supervisor_id,
-              status: baseProposal.status,
-              rejection_reason: baseProposal.rejection_reason || null
-            })
-            .select()
-            .single();
+      const newProposals = missingMemberIds.map(studentId => ({
+        student_id: studentId,
+        team_id: teamId,
+        title: baseProposal.title,
+        description: baseProposal.description,
+        company_name: baseProposal.company_name,
+        supervisor_id: baseProposal.supervisor_id,
+        status: baseProposal.status,
+        rejection_reason: baseProposal.rejection_reason || null
+      }));
 
-          if (insertError) {
-            console.error(`Error creating proposal for student ${studentId}:`, insertError);
-            return null;
-          }
+      const { data: insertedProposals, error: insertError } = await supabase
+        .from('proposals')
+        .insert(newProposals)
+        .select();
 
-          console.log(`Successfully created proposal for student ${studentId}`);
-          return insertedProposal;
-        } catch (error) {
-          console.error(`Exception creating proposal for student ${studentId}:`, error);
-          return null;
-        }
-      });
+      if (insertError) {
+        console.error("Error creating missing proposals:", insertError);
+        return false;
+      }
 
-      const results = await Promise.allSettled(insertPromises);
-      const successCount = results.filter(result => 
-        result.status === 'fulfilled' && result.value !== null
-      ).length;
-      
-      console.log(`Successfully created ${successCount} out of ${missingMemberIds.length} missing proposals`);
+      console.log(`Successfully created ${insertedProposals?.length || 0} missing proposals`);
     }
 
     return true;
@@ -376,7 +341,7 @@ export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
   }
 }
 
-// Enhanced function to sync proposal status with team members
+// Improved function to sync proposal status with team members
 export async function syncProposalStatusWithTeam(proposalId: string, status: string, rejectionReason?: string) {
   try {
     console.log(`Starting sync for proposal ${proposalId} with status ${status}`);
@@ -388,151 +353,43 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       .eq('id', proposalId)
       .single();
 
-    if (proposalError) {
+    if (proposalError || !proposalData?.team_id) {
       console.error("Error fetching proposal for team sync:", proposalError);
-      throw new Error(`Failed to fetch proposal: ${proposalError.message}`);
-    }
-
-    console.log('Proposal data for sync:', proposalData);
-
-    if (!proposalData?.team_id) {
-      console.log("No team associated with this proposal, updating single proposal only");
-      // Update just this proposal
-      const { error: singleUpdateError } = await supabase
-        .from('proposals')
-        .update({ 
-          status: status,
-          rejection_reason: rejectionReason || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposalId);
-
-      if (singleUpdateError) {
-        console.error("Error updating single proposal:", singleUpdateError);
-        throw new Error(`Failed to update proposal: ${singleUpdateError.message}`);
-      }
-
-      console.log(`Successfully updated single proposal ${proposalId}`);
-      return true;
+      return false;
     }
 
     console.log(`Found proposal with team_id: ${proposalData.team_id}`);
 
-    // Get all team members first - use user_id instead of student_id
-    const { data: teamMembers, error: teamError } = await supabase
-      .from('team_members')
-      .select('user_id')
-      .eq('team_id', proposalData.team_id);
+    // First ensure all team members have proposals
+    await ensureTeamProposalsExist(proposalData.team_id, {
+      title: proposalData.title,
+      description: proposalData.description,
+      company_name: proposalData.company_name,
+      supervisor_id: proposalData.supervisor_id,
+      status: status,
+      rejection_reason: rejectionReason
+    });
 
-    if (teamError) {
-      console.error("Error fetching team members:", teamError);
-      throw new Error(`Failed to fetch team members: ${teamError.message}`);
-    }
-
-    if (!teamMembers || teamMembers.length === 0) {
-      console.error("No team members found for this team");
-      throw new Error("No team members found for this team");
-    }
-
-    // Check and create missing proposals for team members
-    for (const member of teamMembers) {
-      const { data: existingProposal, error: proposalCheckError } = await supabase
-        .from('proposals')
-        .select('id')
-        .eq('student_id', member.user_id)
-        .eq('team_id', proposalData.team_id)
-        .maybeSingle();
-
-      if (proposalCheckError) {
-        console.error(`Error checking proposal for student ${member.user_id}:`, proposalCheckError);
-        continue;
-      }
-
-      if (!existingProposal) {
-        console.log(`Creating proposal for student ${member.user_id}`);
-        const { error: createError } = await supabase
-          .from('proposals')
-          .insert({
-            student_id: member.user_id,
-            team_id: proposalData.team_id,
-            title: proposalData.title,
-            description: proposalData.description,
-            company_name: proposalData.company_name,
-            supervisor_id: proposalData.supervisor_id,
-            status: status,
-            rejection_reason: rejectionReason || null
-          });
-
-        if (createError) {
-          console.error(`Error creating proposal for student ${member.user_id}:`, createError);
-        }
-      }
-    }
-
-    // Now update ALL proposals for this team
-    const { data: updatedProposals, error: updateError } = await supabase
+    // Now update all proposals for this team with the new status
+    const { data: updateResult, error: updateError } = await supabase
       .from('proposals')
       .update({ 
         status: status,
         rejection_reason: rejectionReason || null,
         updated_at: new Date().toISOString()
       })
-      .eq('team_id', proposalData.team_id)
-      .select('id, student_id');
+      .eq('team_id', proposalData.team_id);
 
     if (updateError) {
       console.error("Error updating team proposals:", updateError);
-      throw new Error(`Failed to update team proposals: ${updateError.message}`);
+      return false;
     }
 
-    console.log(`Successfully synced status to ${updatedProposals?.length || 0} total proposals in team`);
+    console.log(`Successfully synced status to all team proposals`);
     return true;
   } catch (error) {
     console.error("Error syncing proposal status with team:", error);
-    throw error;
-  }
-}
-
-// Function to share proposal with supervisors
-export async function shareProposalWithSupervisors(proposalId: string, supervisorIds: string[]) {
-  try {
-    console.log(`Sharing proposal ${proposalId} with supervisors:`, supervisorIds);
-    
-    // Get proposal details
-    const { data: proposal, error: proposalError } = await supabase
-      .from('proposals')
-      .select('title, student_id, team_id, profiles!student_id(full_name)')
-      .eq('id', proposalId)
-      .single();
-
-    if (proposalError) {
-      console.error('Error fetching proposal:', proposalError);
-      throw new Error(`Failed to fetch proposal details: ${proposalError.message}`);
-    }
-
-    // Create notifications for each supervisor
-    const notifications = supervisorIds.map(supervisorId => ({
-      user_id: supervisorId,
-      title: 'Proposal Baru untuk Review',
-      type: 'proposal_shared',
-      message: `Proposal "${proposal.title}" dari ${proposal.profiles?.full_name} telah dibagikan kepada Anda untuk review`,
-      related_id: proposalId
-    }));
-
-    const { error: notificationError } = await supabase
-      .from('kp_notifications')
-      .insert(notifications);
-
-    if (notificationError) {
-      console.error('Error creating notifications:', notificationError);
-      throw new Error(`Failed to notify supervisors: ${notificationError.message}`);
-    }
-
-    console.log('Successfully shared proposal with supervisors');
-    return true;
-  } catch (error) {
-    console.error('Error sharing proposal:', error);
-    throw error;
+    return false;
   }
 }
 
@@ -608,41 +465,27 @@ export async function createProposalsForAllTeamMembers(
   try {
     console.log(`Creating proposals for all ${teamMembers.length} team members`);
     
-    // Create proposal entries for all team members using individual inserts
-    const insertPromises = teamMembers.map(async (member) => {
-      try {
-        const { data: createdProposal, error: insertError } = await supabase
-          .from('proposals')
-          .insert({
-            student_id: member.id,
-            team_id: teamId,
-            title: proposalData.title,
-            description: proposalData.description,
-            company_name: proposalData.company_name,
-            status: proposalData.status
-          })
-          .select()
-          .single();
+    // Create proposal entries for all team members
+    const proposalEntries = teamMembers.map(member => ({
+      student_id: member.id,
+      team_id: teamId,
+      title: proposalData.title,
+      description: proposalData.description,
+      company_name: proposalData.company_name,
+      status: proposalData.status
+    }));
 
-        if (insertError) {
-          console.error(`Error creating proposal for member ${member.id}:`, insertError);
-          return null;
-        }
+    const { data: createdProposals, error: insertError } = await supabase
+      .from('proposals')
+      .insert(proposalEntries)
+      .select();
 
-        console.log(`Successfully created proposal for member ${member.id}`);
-        return createdProposal;
-      } catch (error) {
-        console.error(`Exception creating proposal for member ${member.id}:`, error);
-        return null;
-      }
-    });
+    if (insertError) {
+      console.error("Error creating proposals for team members:", insertError);
+      throw insertError;
+    }
 
-    const results = await Promise.allSettled(insertPromises);
-    const createdProposals = results
-      .filter(result => result.status === 'fulfilled' && result.value !== null)
-      .map(result => (result as PromiseFulfilledResult<any>).value);
-
-    console.log(`Successfully created ${createdProposals.length} out of ${teamMembers.length} proposals for team members`);
+    console.log(`Successfully created ${createdProposals?.length || 0} proposals for team members`);
     return createdProposals;
   } catch (error) {
     console.error("Error in createProposalsForAllTeamMembers:", error);

@@ -98,7 +98,6 @@ function App() {
                 <Route path="user-management" element={<UserManagement />} />
                 <Route path="guide-management" element={<GuideManagement />} />
                 <Route path="digital-signature-management" element={<DigitalSignatureManagement />} />
-                <Route path="digital-signatures" element={<DigitalSignatureManagement />} />
               </Route>
 
               {/* Supervisor routes */}
