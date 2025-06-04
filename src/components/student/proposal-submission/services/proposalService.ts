@@ -13,8 +13,7 @@ export async function fetchExistingProposal(proposalId: string) {
     const { data: proposalData, error: proposalError } = await supabase
       .from('proposals')
       .select(`
-        id, title, description, company_name, team_id, supervisor_id, 
-        team:team_id (id, name)
+        id, title, description, company_name, team_id, supervisor_id
       `)
       .eq('id', proposalId)
       .single();
@@ -25,6 +24,20 @@ export async function fetchExistingProposal(proposalId: string) {
 
     if (!proposalData) {
       return null;
+    }
+
+    // Fetch team details separately to avoid relationship ambiguity
+    let teamData = null;
+    if (proposalData.team_id) {
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('id', proposalData.team_id)
+        .single();
+      
+      if (!teamError && team) {
+        teamData = team;
+      }
     }
 
     // Fetch team members
@@ -75,6 +88,7 @@ export async function fetchExistingProposal(proposalId: string) {
     
     return {
       ...proposalData,
+      team: teamData,
       teamMembers,
       supervisorIds,
       documentId
