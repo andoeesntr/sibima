@@ -701,6 +701,70 @@ export type Database = {
         }
         Relationships: []
       }
+      proposals: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          description: string | null
+          id: string
+          rejection_reason: string | null
+          status: string
+          student_id: string | null
+          supervisor_id: string | null
+          team_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          rejection_reason?: string | null
+          status?: string
+          student_id?: string | null
+          supervisor_id?: string | null
+          team_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          rejection_reason?: string | null
+          status?: string
+          student_id?: string | null
+          supervisor_id?: string | null
+          team_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_timesheets: {
         Row: {
           activity_description: string
