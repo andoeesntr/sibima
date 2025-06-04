@@ -61,7 +61,7 @@ const Login = () => {
     <img 
       src="/LogoSI-removebg-preview.png"
       alt="SIBIMA Logo"
-      className="h-16 w-auto object-contain" // Ukuran lebih besar dan proporsional
+      className="h-24 w-auto object-contain" // Ukuran lebih besar dan proporsional
       onError={(e) => {
         const target = e.target as HTMLImageElement;
         target.src = '/placeholder-logo.png'; // Fallback lokal
