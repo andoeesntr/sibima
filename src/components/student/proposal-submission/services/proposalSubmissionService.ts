@@ -159,6 +159,7 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
       const otherMembers = teamMembers.filter(member => member.id !== user.id);
       const orderedMembersForProposal = currentUserMember ? [currentUserMember, ...otherMembers] : teamMembers;
 
+      // Fixed function call with correct parameters
       createdProposals = await createProposalsForAllTeamMembers(
         teamId,
         orderedMembersForProposal,
@@ -186,29 +187,14 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
         .from('documents')
         .getPublicUrl(filePath);
 
-      // Save document to all team members' proposals
-      if (!isEditMode) {
-        await saveDocumentToAllTeamProposals(
-          mainProposalId,
-          publicUrl,
-          file.name,
-          file.type,
-          user.id
-        );
-      } else {
-        // For edit mode, just save to the current proposal
-        const { error: docError } = await supabase
-          .from('proposal_documents')
-          .insert({
-            proposal_id: mainProposalId,
-            file_name: file.name,
-            file_url: publicUrl,
-            file_type: file.type,
-            uploaded_by: user.id
-          });
-
-        if (docError) throw docError;
-      }
+      // Fixed function call with correct parameters
+      await saveDocumentToAllTeamProposals(
+        mainProposalId,
+        publicUrl,
+        file.name,
+        file.type,
+        user.id
+      );
     }
 
     console.log(`Successfully handled proposal submission. Created ${createdProposals.length} proposals for team members.`);

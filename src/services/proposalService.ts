@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Proposal } from '@/types/proposals';
 import { toast } from 'sonner';
@@ -168,30 +167,15 @@ export async function saveProposalFeedback(proposalId: string, supervisorId: str
   }
 }
 
-// Add missing functions that were referenced in imports
-export async function createProposalsForAllTeamMembers(teamId: string, proposalData: any) {
+// Fixed function signatures to match expected calls
+export async function createProposalsForAllTeamMembers(teamId: string, teamMembers: any[], proposalData: any) {
   try {
     console.log(`Creating proposals for all team members in team: ${teamId}`);
     
-    // Get all team members
-    const { data: teamMembers, error: teamMembersError } = await supabase
-      .from('team_members')
-      .select('user_id')
-      .eq('team_id', teamId);
-
-    if (teamMembersError) {
-      console.error('Error fetching team members:', teamMembersError);
-      throw teamMembersError;
-    }
-
-    if (!teamMembers || teamMembers.length === 0) {
-      throw new Error('No team members found');
-    }
-
     // Create proposals for each team member
     const proposals = teamMembers.map(member => ({
       ...proposalData,
-      student_id: member.user_id,
+      student_id: member.id,
       team_id: teamId
     }));
 
@@ -212,15 +196,48 @@ export async function createProposalsForAllTeamMembers(teamId: string, proposalD
   }
 }
 
-export async function saveDocumentToAllTeamProposals(teamId: string, documentData: any) {
+export async function saveDocumentToAllTeamProposals(proposalId: string, documentUrl: string, documentName: string, documentType: string, uploadedBy: string) {
   try {
-    console.log(`Saving document to all team proposals in team: ${teamId}`);
+    console.log(`Saving document to proposal: ${proposalId}`);
     
+    // Get the proposal to find the team
+    const { data: proposal, error: proposalError } = await supabase
+      .from('proposals')
+      .select('team_id')
+      .eq('id', proposalId)
+      .single();
+
+    if (proposalError) {
+      console.error('Error fetching proposal:', proposalError);
+      throw proposalError;
+    }
+
+    if (!proposal.team_id) {
+      // Single proposal, just save to this proposal
+      const { data, error } = await supabase
+        .from('proposal_documents')
+        .insert({
+          proposal_id: proposalId,
+          file_name: documentName,
+          file_url: documentUrl,
+          file_type: documentType,
+          uploaded_by: uploadedBy
+        })
+        .select();
+
+      if (error) {
+        console.error('Error saving document to proposal:', error);
+        throw error;
+      }
+
+      return data;
+    }
+
     // Get all proposals for this team
     const { data: teamProposals, error: proposalsError } = await supabase
       .from('proposals')
       .select('id')
-      .eq('team_id', teamId);
+      .eq('team_id', proposal.team_id);
 
     if (proposalsError) {
       console.error('Error fetching team proposals:', proposalsError);
@@ -232,9 +249,12 @@ export async function saveDocumentToAllTeamProposals(teamId: string, documentDat
     }
 
     // Create document entries for each proposal
-    const documents = teamProposals.map(proposal => ({
-      ...documentData,
-      proposal_id: proposal.id
+    const documents = teamProposals.map(teamProposal => ({
+      proposal_id: teamProposal.id,
+      file_name: documentName,
+      file_url: documentUrl,
+      file_type: documentType,
+      uploaded_by: uploadedBy
     }));
 
     const { data, error } = await supabase

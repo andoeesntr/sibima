@@ -134,9 +134,9 @@ const FeedbackDialog = ({
             documentName = fileName;
             documentType = fileExt;
 
-            // Save document to all team members' proposals
+            // Fixed function call with correct parameters
             await saveDocumentToAllTeamProposals(
-              proposalId,
+              proposalId!,
               documentUrl,
               documentName,
               documentType,
