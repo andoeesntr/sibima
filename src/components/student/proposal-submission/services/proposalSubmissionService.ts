@@ -49,18 +49,25 @@ export const handleProposalSubmission = async (data: SubmissionData) => {
       if (teamError) throw teamError;
       teamId = newTeam.id;
 
-      // Add team members
+      // Add team members - IMPORTANT: Add the current user as leader FIRST
       const teamMemberInserts = teamMembers.map(member => ({
         team_id: teamId,
         user_id: member.id,
         role: member.id === user.id ? 'leader' : 'member'
       }));
 
+      console.log('Inserting team members:', teamMemberInserts);
+
       const { error: membersError } = await supabase
         .from('team_members')
         .insert(teamMemberInserts);
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Error inserting team members:', membersError);
+        throw membersError;
+      }
+
+      console.log('Successfully created team members');
     }
 
     // Handle team supervisors - this is the key fix
