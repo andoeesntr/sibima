@@ -2,6 +2,16 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Type definitions for the stored procedure response
+interface ApprovalResult {
+  success: boolean;
+  message: string;
+  updated_count: number;
+  failed_updates?: any[];
+  team_id?: string;
+  bulk_error?: string;
+}
+
 export const approveProposal = async (proposalId: string) => {
   try {
     console.log('Approving proposal:', proposalId);
@@ -19,11 +29,14 @@ export const approveProposal = async (proposalId: string) => {
 
     console.log('Approval result:', data);
     
-    if (data?.success) {
-      toast.success(`Proposal berhasil disetujui. ${data.updated_count} proposal diperbarui.`);
-      return { success: true, data };
+    // Type cast the JSON response
+    const result = data as ApprovalResult;
+    
+    if (result?.success) {
+      toast.success(`Proposal berhasil disetujui. ${result.updated_count} proposal diperbarui.`);
+      return { success: true, data: result };
     } else {
-      throw new Error(data?.message || 'Failed to approve proposal');
+      throw new Error(result?.message || 'Failed to approve proposal');
     }
   } catch (error) {
     console.error('Error in approveProposal:', error);
@@ -50,11 +63,14 @@ export const rejectProposal = async (proposalId: string, rejectionReason: string
 
     console.log('Rejection result:', data);
     
-    if (data?.success) {
-      toast.success(`Proposal berhasil ditolak. ${data.updated_count} proposal diperbarui.`);
-      return { success: true, data };
+    // Type cast the JSON response
+    const result = data as ApprovalResult;
+    
+    if (result?.success) {
+      toast.success(`Proposal berhasil ditolak. ${result.updated_count} proposal diperbarui.`);
+      return { success: true, data: result };
     } else {
-      throw new Error(data?.message || 'Failed to reject proposal');
+      throw new Error(result?.message || 'Failed to reject proposal');
     }
   } catch (error) {
     console.error('Error in rejectProposal:', error);
@@ -81,15 +97,25 @@ export const requestRevision = async (proposalId: string, revisionReason: string
 
     console.log('Revision request result:', data);
     
-    if (data?.success) {
-      toast.success(`Permintaan revisi berhasil dikirim. ${data.updated_count} proposal diperbarui.`);
-      return { success: true, data };
+    // Type cast the JSON response
+    const result = data as ApprovalResult;
+    
+    if (result?.success) {
+      toast.success(`Permintaan revisi berhasil dikirim. ${result.updated_count} proposal diperbarui.`);
+      return { success: true, data: result };
     } else {
-      throw new Error(data?.message || 'Failed to request revision');
+      throw new Error(result?.message || 'Failed to request revision');
     }
   } catch (error) {
     console.error('Error in requestRevision:', error);
     toast.error('Gagal mengirim permintaan revisi');
     throw error;
   }
+};
+
+// Export as a service object for backward compatibility
+export const ProposalApprovalService = {
+  approveProposal,
+  rejectProposal,
+  requestRevision
 };

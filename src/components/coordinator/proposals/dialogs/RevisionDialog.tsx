@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { FileEdit } from 'lucide-react';
-import { ProposalApprovalService } from '@/services/proposalApprovalService';
+import { requestRevision } from '@/services/proposalApprovalService';
 
 interface RevisionDialogProps {
   onCancel: () => void;
@@ -28,21 +28,15 @@ const RevisionDialog = ({ onCancel, onRevision, proposalId }: RevisionDialogProp
     try {
       console.log('📝 Starting revision request process for:', proposalId);
       
-      const result = await ProposalApprovalService.requestRevision(proposalId, revisionFeedback);
+      const result = await requestRevision(proposalId, revisionFeedback);
       
       if (result.success) {
         console.log('✅ Revision request completed successfully');
-        toast.success(result.message);
+        toast.success('Permintaan revisi berhasil dikirim');
         onRevision();
       } else {
-        console.error('❌ Revision request failed:', result.message);
-        toast.error(result.message);
-        
-        if (result.errors) {
-          result.errors.forEach(error => {
-            console.error('📋 Error detail:', error);
-          });
-        }
+        console.error('❌ Revision request failed');
+        toast.error('Gagal mengirim permintaan revisi');
       }
     } catch (error: any) {
       console.error('💥 Unexpected error during revision request:', error);

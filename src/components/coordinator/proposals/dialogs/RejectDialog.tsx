@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { XCircle } from 'lucide-react';
-import { ProposalApprovalService } from '@/services/proposalApprovalService';
+import { rejectProposal } from '@/services/proposalApprovalService';
 
 interface RejectDialogProps {
   onCancel: () => void;
@@ -28,21 +28,15 @@ const RejectDialog = ({ onCancel, onReject, proposalId }: RejectDialogProps) => 
     try {
       console.log('🚫 Starting proposal rejection process for:', proposalId);
       
-      const result = await ProposalApprovalService.rejectProposal(proposalId, rejectionReason);
+      const result = await rejectProposal(proposalId, rejectionReason);
       
       if (result.success) {
         console.log('✅ Proposal rejection completed successfully');
-        toast.success(result.message);
+        toast.success('Proposal berhasil ditolak');
         onReject();
       } else {
-        console.error('❌ Proposal rejection failed:', result.message);
-        toast.error(result.message);
-        
-        if (result.errors) {
-          result.errors.forEach(error => {
-            console.error('📋 Error detail:', error);
-          });
-        }
+        console.error('❌ Proposal rejection failed');
+        toast.error('Gagal menolak proposal');
       }
     } catch (error: any) {
       console.error('💥 Unexpected error during rejection:', error);
