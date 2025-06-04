@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -226,31 +227,31 @@ export class ProposalApprovalService {
       console.log(`📊 ${existingMemberIds.length} members have proposals, ${missingMemberIds.length} missing`);
 
       // Create missing proposals one by one
-     if (missingMemberIds.length > 0) {
-      const createResults = await Promise.allSettled(
-        missingMemberIds.map(async (studentId) => {
-          // Gunakan insert + tangkap error duplikasi
-          const { error } = await supabase
-            .from('proposals')
-            .insert({
-              student_id: studentId,
-              team_id: baseProposal.team_id,
-              title: baseProposal.title,
-              description: baseProposal.description,
-              company_name: baseProposal.company_name,
-              supervisor_id: baseProposal.supervisor_id,
-              status: 'submitted'
-            });
+      if (missingMemberIds.length > 0) {
+        const createResults = await Promise.allSettled(
+          missingMemberIds.map(async (studentId) => {
+            // Gunakan insert + tangkap error duplikasi
+            const { error } = await supabase
+              .from('proposals')
+              .insert({
+                student_id: studentId,
+                team_id: baseProposal.team_id,
+                title: baseProposal.title,
+                description: baseProposal.description,
+                company_name: baseProposal.company_name,
+                supervisor_id: baseProposal.supervisor_id,
+                status: 'submitted'
+              });
 
-          if (error) {
-            // Abaikan error duplikasi (jika constraint belum ada)
-            if (!error.message.includes('duplicate key')) {
-              throw error;
+            if (error) {
+              // Abaikan error duplikasi (jika constraint belum ada)
+              if (!error.message.includes('duplicate key')) {
+                throw error;
+              }
             }
-          }
-          return true;
-        })
-      );
+            return true;
+          })
+        );
 
         const failures = createResults.filter(result => result.status === 'rejected');
         if (failures.length > 0) {
@@ -266,7 +267,6 @@ export class ProposalApprovalService {
       }
 
       return { success: true, message: 'All team members have proposals' };
-  } catch (error) {
 
     } catch (error: any) {
       console.error(`❌ Error ensuring team proposals:`, error);
