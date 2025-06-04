@@ -57,6 +57,7 @@ const Login = () => {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">SIBIMA - SI</CardTitle>
+          <a href="https://imgbb.com/"><img src="https://i.ibb.co/RTPKgw2z/Logo-SI-removebg-preview-1.png" alt="Logo-SI-removebg-preview-1" border="0"></a>
           <CardDescription>
             Masukkan kredensial Anda untuk mengakses sistem
           </CardDescription>
