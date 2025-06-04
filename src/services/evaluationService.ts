@@ -1,26 +1,21 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 export interface Evaluation {
   id: string;
   student_id: string;
+  evaluator_id: string;
   evaluator_type: 'supervisor' | 'field_supervisor';
-  evaluator_id?: string;
   score: number;
   comments?: string;
-  created_at?: string;
-  updated_at?: string;
+  evaluation_date: string;
+  document_url?: string;
   student?: {
-    id: string;
     full_name: string;
-    nim?: string;
-    profile_image?: string;
+    nim: string;
   };
   evaluator?: {
-    id: string;
-    name: string;
-    profile_image?: string;
+    full_name: string;
   };
 }
 
@@ -30,26 +25,20 @@ export const fetchAllEvaluations = async (): Promise<Evaluation[]> => {
       .from('evaluations')
       .select(`
         *,
-        student:profiles!evaluations_student_id_fkey (id, full_name, nim, profile_image),
-        evaluator:profiles!evaluations_evaluator_id_fkey (id, full_name:full_name, profile_image)
+        student:profiles!student_id(full_name, nim),
+        evaluator:profiles!evaluator_id(full_name)
       `)
-      .order('created_at', { ascending: false });
-      
-    if (error) throw error;
-    
-    // Transform the data to match the Evaluation interface
-    const transformedData = data.map(item => ({
-      ...item,
-      evaluator: item.evaluator ? {
-        ...item.evaluator,
-        name: item.evaluator.full_name
-      } : undefined
-    }));
-    
-    return transformedData as Evaluation[];
+      .order('evaluation_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching evaluations:', error);
+      throw error;
+    }
+
+    return (data || []) as Evaluation[];
   } catch (error) {
-    console.error('Error fetching evaluations:', error);
-    return [];
+    console.error('Error in fetchAllEvaluations:', error);
+    throw error;
   }
 };
 
@@ -59,79 +48,170 @@ export const fetchStudentEvaluations = async (studentId: string): Promise<Evalua
       .from('evaluations')
       .select(`
         *,
-        student:profiles!evaluations_student_id_fkey (id, full_name, nim, profile_image),
-        evaluator:profiles!evaluations_evaluator_id_fkey (id, full_name:full_name, profile_image)
+        student:profiles!student_id(full_name, nim),
+        evaluator:profiles!evaluator_id(full_name)
       `)
       .eq('student_id', studentId)
-      .order('created_at', { ascending: false });
-      
-    if (error) throw error;
-    
-    // Transform the data to match the Evaluation interface
-    const transformedData = data.map(item => ({
-      ...item,
-      evaluator: item.evaluator ? {
-        ...item.evaluator,
-        name: item.evaluator.full_name
-      } : undefined
-    }));
-    
-    return transformedData as Evaluation[];
+      .order('evaluation_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching student evaluations:', error);
+      throw error;
+    }
+
+    return (data || []) as Evaluation[];
   } catch (error) {
-    console.error('Error fetching student evaluations:', error);
-    return [];
+    console.error('Error in fetchStudentEvaluations:', error);
+    throw error;
   }
 };
 
-export const createEvaluation = async (evaluation: Omit<Evaluation, 'id'>): Promise<Evaluation | null> => {
+export const createEvaluation = async (evaluationData: {
+  student_id: string;
+  evaluator_id: string;
+  evaluator_type: 'supervisor' | 'field_supervisor';
+  score: number;
+  comments?: string;
+  document_url?: string;
+}): Promise<Evaluation> => {
   try {
+    // Get current user info for activity log
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user?.id)
+      .single();
+
+    // Get student info for activity log
+    const { data: student } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', evaluationData.student_id)
+      .single();
+
     const { data, error } = await supabase
       .from('evaluations')
-      .insert({
-        student_id: evaluation.student_id,
-        evaluator_id: evaluation.evaluator_id,
-        evaluator_type: evaluation.evaluator_type,
-        score: evaluation.score,
-        comments: evaluation.comments
-      })
+      .insert(evaluationData)
       .select(`
         *,
-        student:profiles!evaluations_student_id_fkey (id, full_name, nim, profile_image),
-        evaluator:profiles!evaluations_evaluator_id_fkey (id, full_name:full_name, profile_image)
+        student:profiles!student_id(full_name, nim),
+        evaluator:profiles!evaluator_id(full_name)
       `)
       .single();
-      
-    if (error) throw error;
-    
-    // Transform to match the Evaluation interface
-    const transformedData = {
-      ...data,
-      evaluator: data.evaluator ? {
-        ...data.evaluator,
-        name: data.evaluator.full_name
-      } : undefined
-    };
-    
-    return transformedData as Evaluation;
+
+    if (error) {
+      console.error('Error creating evaluation:', error);
+      throw error;
+    }
+
+    // Log the activity
+    await supabase.from('activity_logs').insert({
+      action: `Menambahkan penilaian untuk ${student?.full_name} dengan nilai ${evaluationData.score}`,
+      target_type: 'evaluation',
+      target_id: data.id,
+      user_id: user?.id || 'coordinator',
+      user_name: profile?.full_name || 'Coordinator'
+    });
+
+    return data as Evaluation;
   } catch (error) {
-    console.error('Error creating evaluation:', error);
-    toast.error('Gagal menambahkan penilaian');
-    return null;
+    console.error('Error in createEvaluation:', error);
+    throw error;
+  }
+};
+
+export const updateEvaluation = async (
+  id: string,
+  updates: Partial<Evaluation>
+): Promise<Evaluation> => {
+  try {
+    // Get current user info for activity log
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user?.id)
+      .single();
+
+    // Get current evaluation for activity log
+    const { data: currentEvaluation } = await supabase
+      .from('evaluations')
+      .select('student_id, profiles!student_id(full_name)')
+      .eq('id', id)
+      .single();
+
+    const { data, error } = await supabase
+      .from('evaluations')
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        student:profiles!student_id(full_name, nim),
+        evaluator:profiles!evaluator_id(full_name)
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error updating evaluation:', error);
+      throw error;
+    }
+
+    // Log the activity
+    await supabase.from('activity_logs').insert({
+      action: `Mengedit penilaian untuk ${currentEvaluation?.profiles?.full_name}`,
+      target_type: 'evaluation',
+      target_id: id,
+      user_id: user?.id || 'coordinator',
+      user_name: profile?.full_name || 'Coordinator'
+    });
+
+    return data as Evaluation;
+  } catch (error) {
+    console.error('Error in updateEvaluation:', error);
+    throw error;
   }
 };
 
 export const deleteEvaluation = async (id: string): Promise<boolean> => {
   try {
+    // Get current user info for activity log
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user?.id)
+      .single();
+
+    // Get evaluation info for activity log
+    const { data: evaluation } = await supabase
+      .from('evaluations')
+      .select('student_id, profiles!student_id(full_name)')
+      .eq('id', id)
+      .single();
+
     const { error } = await supabase
       .from('evaluations')
       .delete()
       .eq('id', id);
-      
-    if (error) throw error;
+
+    if (error) {
+      console.error('Error deleting evaluation:', error);
+      throw error;
+    }
+
+    // Log the activity
+    await supabase.from('activity_logs').insert({
+      action: `Menghapus penilaian untuk ${evaluation?.profiles?.full_name}`,
+      target_type: 'evaluation',
+      target_id: id,
+      user_id: user?.id || 'coordinator',
+      user_name: profile?.full_name || 'Coordinator'
+    });
+
     return true;
   } catch (error) {
-    console.error('Error deleting evaluation:', error);
-    toast.error('Gagal menghapus penilaian');
+    console.error('Error in deleteEvaluation:', error);
     return false;
   }
 };

@@ -22,77 +22,116 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Parse the multipart form data
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const path = formData.get("path") as string;
-    const bucketName = formData.get("bucket") as string || "guide_documents";
-
-    if (!file || !path) {
-      throw new Error("File and path are required");
-    }
-
-    // Read the file as an array buffer
-    const fileBuffer = await file.arrayBuffer();
-
-    // Check if bucket exists and create if needed
-    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-
-    if (!bucketExists) {
-      console.log(`Creating bucket: ${bucketName}`);
-      const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
-        public: true,
-        fileSizeLimit: 10485760 // 10MB
-      });
-      
-      if (createError) {
-        console.error(`Error creating bucket: ${createError.message}`);
-        // Continue anyway, as the bucket may have been created in another request
-      }
-    }
-
-    // Ensure public access policies exist
-    try {
-      await ensurePublicPolicies(supabaseAdmin, bucketName);
-    } catch (policyError) {
-      console.error("Policy error:", policyError);
-      // Continue anyway
-    }
-
-    // Upload the file using admin privileges
-    console.log(`Uploading file to ${bucketName}/${path}`);
+    const contentType = req.headers.get("content-type") || "";
     
-    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-      .from(bucketName)
-      .upload(path, fileBuffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: true
-      });
-
-    if (uploadError) {
-      throw new Error(`Upload error: ${uploadError.message}`);
+    // Handle bucket creation requests
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      
+      if (body.action === "create_bucket") {
+        const bucketName = body.bucket || "kp-documents";
+        
+        console.log(`Creating bucket: ${bucketName}`);
+        
+        // Check if bucket exists first
+        const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+        
+        if (!bucketExists) {
+          const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
+            public: true,
+            fileSizeLimit: 10485760 // 10MB
+          });
+          
+          if (createError) {
+            throw new Error(`Failed to create bucket: ${createError.message}`);
+          }
+          
+          console.log(`Bucket ${bucketName} created successfully`);
+        }
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: `Bucket ${bucketName} ready`
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      }
     }
 
-    // Get the public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from(bucketName)
-      .getPublicUrl(path);
+    // Handle file upload requests
+    if (contentType.includes("multipart/form-data")) {
+      // Parse the multipart form data
+      const formData = await req.formData();
+      const file = formData.get("file") as File;
+      const path = formData.get("path") as string;
+      const bucketName = formData.get("bucket") as string || "kp-documents";
 
-    console.log("File uploaded successfully:", publicUrl);
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        publicUrl,
-        message: "File uploaded successfully"
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+      if (!file || !path) {
+        throw new Error("File and path are required");
       }
-    );
+
+      // Read the file as an array buffer
+      const fileBuffer = await file.arrayBuffer();
+
+      // Check if bucket exists and create if needed
+      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+
+      if (!bucketExists) {
+        console.log(`Creating bucket: ${bucketName}`);
+        const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
+          public: true,
+          fileSizeLimit: 10485760 // 10MB
+        });
+        
+        if (createError) {
+          console.error(`Error creating bucket: ${createError.message}`);
+          // Continue anyway, as the bucket may have been created in another request
+        }
+      }
+
+      // Upload the file using admin privileges
+      console.log(`Uploading file to ${bucketName}/${path}`);
+      
+      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+        .from(bucketName)
+        .upload(path, fileBuffer, {
+          contentType: file.type,
+          cacheControl: "3600",
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw new Error(`Upload error: ${uploadError.message}`);
+      }
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabaseAdmin.storage
+        .from(bucketName)
+        .getPublicUrl(path);
+
+      console.log("File uploaded successfully:", publicUrl);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          publicUrl,
+          message: "File uploaded successfully"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    throw new Error("Invalid request format");
+    
   } catch (error) {
     console.error("Error:", error);
     
@@ -108,29 +147,3 @@ serve(async (req) => {
     );
   }
 });
-
-// Helper function to ensure public access policies
-async function ensurePublicPolicies(supabase: any, bucketName: string) {
-  try {
-    // Create policies for public select access
-    await supabase.rpc('create_storage_policy', {
-      bucket_name: bucketName,
-      policy_name: `${bucketName}_public_select`,
-      definition: true, // Allow public access for SELECT
-      operation: 'SELECT',
-      role_name: 'anon'
-    });
-    
-    // Create policies for authenticated users to insert
-    await supabase.rpc('create_storage_policy', {
-      bucket_name: bucketName,
-      policy_name: `${bucketName}_auth_insert`,
-      definition: true, // Allow all authenticated users to INSERT
-      operation: 'INSERT',
-      role_name: 'authenticated'
-    });
-  } catch (error) {
-    console.error("Error creating policies:", error);
-    // Continue anyway
-  }
-}

@@ -2,59 +2,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export const createBucketIfNotExists = async (): Promise<boolean> => {
-  try {
-    // Check if the bucket exists
-    const { data: buckets, error: bucketsError } = await supabase
-      .storage
-      .listBuckets();
-    
-    if (bucketsError) {
-      throw new Error(`Could not list buckets: ${bucketsError.message}`);
-    }
-    
-    // Check if signatures bucket exists
-    const signaturesBucketExists = buckets?.find(bucket => bucket.name === 'signatures');
-    
-    // If bucket doesn't exist, create it using functions service
-    if (!signaturesBucketExists) {
-      console.log('Signatures bucket not found, creating it...');
-      
-      // Use service role to create bucket (can't create buckets with normal permissions)
-      const { error: createBucketError, data } = await supabase.functions.invoke(
-        'create-storage-bucket',
-        {
-          body: {
-            name: 'signatures',
-            public: true
-          }
-        }
-      );
-      
-      if (createBucketError) {
-        throw new Error(`Failed to create signatures bucket: ${createBucketError.message}`);
-      }
-      
-      console.log('Bucket creation response:', data);
-      
-      // Add a small delay to ensure the bucket and policies are properly created
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    return true;
-  } catch (error: any) {
-    console.error('Error checking/creating bucket:', error);
-    throw error;
-  }
-};
-
 export const uploadSignature = async (
   file: File, 
   userId: string
 ): Promise<string> => {
-  // Ensure the bucket exists
-  await createBucketIfNotExists();
-
   // Upload file to Supabase Storage
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}.${fileExt}`;
@@ -104,7 +55,6 @@ export const uploadSignature = async (
         const errorText = await response.text();
         console.error('Edge function error response:', errorText);
         try {
-          // Try to parse as JSON, but handle case where it's not JSON
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || `Edge function error: ${response.statusText}`);
         } catch (parseError) {
@@ -128,10 +78,11 @@ export const uploadSignature = async (
       .from('signatures')
       .getPublicUrl(filePath);
     
+    console.log('Upload successful, public URL:', publicUrl);
     return publicUrl;
   } catch (error: any) {
     console.error('Upload error:', error);
-    throw new Error(`Storage permission error: ${error.message}`);
+    throw new Error(`Upload failed: ${error.message}`);
   }
 };
 
@@ -140,7 +91,10 @@ export const saveSignatureToDatabase = async (
   publicUrl: string
 ): Promise<void> => {
   try {
-    // Use the update-signature edge function to save to database with service role
+    console.log('Saving signature to database:', { userId, publicUrl });
+    
+    // Always use edge function to ensure reliable database operations
+    console.log('Using edge function for database save');
     const { data: functionData, error: functionError } = await supabase.functions.invoke(
       'update-signature',
       {
@@ -156,6 +110,53 @@ export const saveSignatureToDatabase = async (
       console.error('Function error:', functionError);
       throw new Error(`Function error: ${functionError.message}`);
     }
+    
+    console.log('Successfully saved via edge function:', functionData);
+    
+    // Add multiple verification attempts with delays
+    let retryCount = 0;
+    const maxRetries = 5;
+    const verifySignature = async (): Promise<boolean> => {
+      try {
+        console.log(`Verification attempt ${retryCount + 1}/${maxRetries}`);
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('digital_signatures')
+          .select('id, signature_url, status, supervisor_id')
+          .eq('supervisor_id', userId)
+          .not('status', 'eq', 'deleted')
+          .single();
+        
+        if (verifyError) {
+          console.error('Verification error:', verifyError);
+          return false;
+        } else {
+          console.log('Signature verification successful:', verifyData);
+          return true;
+        }
+      } catch (verifyError) {
+        console.error('Failed to verify signature:', verifyError);
+        return false;
+      }
+    };
+
+    // Retry verification with increasing delays
+    const delays = [1000, 2000, 3000, 5000, 8000]; // 1s, 2s, 3s, 5s, 8s
+    
+    for (const delay of delays) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      const verified = await verifySignature();
+      retryCount++;
+      
+      if (verified) {
+        console.log(`Signature verified successfully after ${retryCount} attempts`);
+        break;
+      }
+      
+      if (retryCount >= maxRetries) {
+        console.warn('Max verification attempts reached, but signature may still be saved');
+      }
+    }
+    
   } catch (error: any) {
     console.error('Error saving signature to database:', error);
     throw error;
@@ -166,7 +167,7 @@ export const deleteSignature = async (userId: string): Promise<void> => {
   try {
     console.log('Deleting signature for user:', userId);
     
-    // Use the update-signature edge function to delete from database with service role
+    // Use edge function for delete operation
     const { data: functionData, error: functionError } = await supabase.functions.invoke(
       'update-signature',
       {
@@ -181,6 +182,8 @@ export const deleteSignature = async (userId: string): Promise<void> => {
       console.error('Error deleting signature:', functionError);
       throw new Error(`Function error: ${functionError.message}`);
     }
+    
+    console.log('Signature deletion successful:', functionData);
   } catch (error: any) {
     console.error('Error deleting signature:', error);
     throw error;

@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { TabsContent, Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +37,7 @@ interface ProposalDetailCardProps {
   handlePreviewFile: (url: string) => void;
   handleDownloadFile: (url: string, fileName: string) => void;
   onFeedbackClick: () => void;
+  onFeedbackSaved?: () => void; // Add callback for when feedback is saved
 }
 
 const ProposalDetailCard = ({
@@ -45,7 +47,8 @@ const ProposalDetailCard = ({
   formatDate,
   handlePreviewFile,
   handleDownloadFile,
-  onFeedbackClick
+  onFeedbackClick,
+  onFeedbackSaved
 }: ProposalDetailCardProps) => {
   if (!proposal) {
     return (
@@ -97,6 +100,7 @@ const ProposalDetailCard = ({
             <FeedbackList 
               feedback={proposal.feedback || []}
               formatDate={formatDate}
+              proposalId={proposal.id}
             />
           </CardContent>
         </TabsContent>

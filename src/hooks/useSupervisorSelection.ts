@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { Supervisor } from '@/services/supervisorService';
 
 interface UseSupervisorSelectionProps {
@@ -22,117 +22,120 @@ export const useSupervisorSelection = ({
   const [availableSupervisors, setAvailableSupervisors] = useState<Supervisor[]>([]);
   const [selectedSupervisorIds, setSelectedSupervisorIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    fetchSupervisors();
-    // Initialize selected supervisors from current
+    fetchAvailableSupervisors();
+    // Initialize selected supervisors
     setSelectedSupervisorIds(currentSupervisors.map(s => s.id));
-    setError(null);
   }, [currentSupervisors]);
 
-  const fetchSupervisors = async () => {
+  const fetchAvailableSupervisors = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, profile_image')
         .eq('role', 'supervisor');
-        
+
       if (error) throw error;
       setAvailableSupervisors(data || []);
     } catch (error) {
-      console.error("Error fetching supervisors:", error);
-      toast.error("Gagal memuat daftar dosen pembimbing");
+      console.error('Error fetching supervisors:', error);
+      setError('Gagal memuat daftar dosen pembimbing');
     }
   };
 
-  const handleSupervisorSelect = (index: number, value: string) => {
-    const newSelected = [...selectedSupervisorIds];
-    newSelected[index] = value;
-    setSelectedSupervisorIds(newSelected);
+  const handleSupervisorSelect = (index: number, supervisorId: string) => {
+    const newSelectedIds = [...selectedSupervisorIds];
+    newSelectedIds[index] = supervisorId;
+    setSelectedSupervisorIds(newSelectedIds);
+    setError('');
   };
 
   const handleUpdateSupervisors = async () => {
-    if (!proposalId) return;
+    // Filter out empty selections
+    const validSupervisorIds = selectedSupervisorIds.filter(id => id && id.trim() !== '');
     
+    if (validSupervisorIds.length === 0) {
+      setError('Pilih minimal satu dosen pembimbing');
+      return;
+    }
+
     setIsSubmitting(true);
-    setError(null);
-    
+    setError('');
+
     try {
-      // First update the proposal with the first supervisor
-      const { error: proposalError } = await supabase
+      // Get current user info for activity log
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      // Get proposal info for activity log
+      const { data: proposal } = await supabase
         .from('proposals')
-        .update({ 
-          supervisor_id: selectedSupervisorIds[0] || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposalId);
-        
-      if (proposalError) throw proposalError;
-      
-      // If we have a team, update or create team_supervisors records
+        .select('title, student_id, profiles!student_id(full_name)')
+        .eq('id', proposalId)
+        .single();
+
       if (teamId) {
-        // First delete existing team_supervisors for this team
-        const { error: deleteError } = await supabase
+        // Remove existing supervisors for the team
+        await supabase
           .from('team_supervisors')
           .delete()
           .eq('team_id', teamId);
-          
-        if (deleteError) throw deleteError;
-        
-        // Then insert new team_supervisors
-        const teamSupervisorsToInsert = selectedSupervisorIds
-          .filter(id => id) // Filter out null/empty values
-          .map(supervisorId => ({
-            team_id: teamId,
-            supervisor_id: supervisorId,
-          }));
-          
-        if (teamSupervisorsToInsert.length > 0) {
-          const { error: insertError } = await supabase
-            .from('team_supervisors')
-            .insert(teamSupervisorsToInsert);
-            
-          if (insertError) {
-            console.error("Error inserting team supervisors:", insertError);
-            throw insertError;
-          }
-        }
+
+        // Add new supervisors
+        const supervisorInserts = validSupervisorIds.map(supervisorId => ({
+          team_id: teamId,
+          supervisor_id: supervisorId
+        }));
+
+        const { error: insertError } = await supabase
+          .from('team_supervisors')
+          .insert(supervisorInserts);
+
+        if (insertError) throw insertError;
+      } else {
+        // Update proposal directly with the first supervisor
+        const { error: updateError } = await supabase
+          .from('proposals')
+          .update({ supervisor_id: validSupervisorIds[0] })
+          .eq('id', proposalId);
+
+        if (updateError) throw updateError;
       }
-      
-      // Get the supervisor details for the updated list
-      const updatedSupervisors: Supervisor[] = [];
-      
-      for (const supervisorId of selectedSupervisorIds) {
-        if (!supervisorId) continue;
-        
-        const { data: supervisorData, error: supervisorError } = await supabase
-          .from('profiles')
-          .select('id, full_name, profile_image')
-          .eq('id', supervisorId)
-          .single();
-          
-        if (supervisorError) {
-          console.error("Error fetching supervisor details:", supervisorError);
-          continue;
-        }
-        
-        if (supervisorData) {
-          updatedSupervisors.push({
-            id: supervisorData.id,
-            full_name: supervisorData.full_name,
-            profile_image: supervisorData.profile_image
-          });
-        }
-      }
-      
+
+      // Get supervisor names for activity log
+      const { data: supervisorProfiles } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .in('id', validSupervisorIds);
+
+      const supervisorNames = supervisorProfiles?.map(s => s.full_name).join(', ') || '';
+
+      // Log the activity
+      await supabase.from('activity_logs').insert({
+        action: `Mengedit dosen pembimbing untuk proposal "${proposal?.title}" dari ${proposal?.profiles?.full_name}. Dosen pembimbing: ${supervisorNames}`,
+        target_type: 'proposal',
+        target_id: proposalId,
+        user_id: user?.id || 'coordinator',
+        user_name: profile?.full_name || 'Coordinator'
+      });
+
+      // Fetch updated supervisors
+      const updatedSupervisors = availableSupervisors.filter(supervisor => 
+        validSupervisorIds.includes(supervisor.id)
+      );
+
       onSupervisorsUpdated(updatedSupervisors);
       toast.success('Dosen pembimbing berhasil diperbarui');
       onClose();
     } catch (error: any) {
-      console.error("Error updating supervisors:", error);
-      setError(error.message || 'Gagal memperbarui dosen pembimbing');
-      toast.error(`Gagal memperbarui dosen pembimbing: ${error.message}`);
+      console.error('Error updating supervisors:', error);
+      setError('Gagal memperbarui dosen pembimbing: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
