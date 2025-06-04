@@ -379,82 +379,64 @@ export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
 // Enhanced function to sync proposal status with team members
 export async function syncProposalStatusWithTeam(proposalId: string, status: string, rejectionReason?: string) {
   try {
-    console.log(`Starting sync for proposal ${proposalId} with status ${status}`);
-    
-    // First get the proposal to find the team
-    const { data: proposalData, error: proposalError } = await supabase
+    // 1. Dapatkan proposal utama dengan LOCKING
+    const { data: mainProposal, error: fetchError } = await supabase
       .from('proposals')
-      .select('team_id, student_id, title, description, company_name, supervisor_id')
+      .select('team_id, status')
       .eq('id', proposalId)
-      .single();
+      .single()
+      .not('status', 'eq', status); // Hindari update tidak perlu
 
-    if (proposalError || !proposalData) {
-      console.error("Error fetching proposal for team sync:", proposalError);
-      throw new Error(`Failed to fetch proposal: ${proposalError?.message || 'No data returned'}`);
+    if (fetchError || !mainProposal?.team_id) {
+      console.error('Proposal not found or no team', { fetchError });
+      return { success: false, error: fetchError?.message || 'No team associated' };
     }
 
-    console.log('Proposal data for sync:', proposalData);
+    // 2. Verifikasi anggota tim
+    const { data: teamMembers, error: teamError } = await supabase
+      .from('team_members')
+      .select('user_id')
+      .eq('team_id', mainProposal.team_id);
 
-    if (!proposalData.team_id) {
-      console.log("No team associated with this proposal, updating single proposal only");
-      // Update just this proposal
-      const { error: singleUpdateError } = await supabase
-        .from('proposals')
-        .update({ 
-          status: status,
-          rejection_reason: rejectionReason || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', proposalId);
-
-      if (singleUpdateError) {
-        console.error("Error updating single proposal:", singleUpdateError);
-        throw new Error(`Failed to update proposal: ${singleUpdateError.message}`);
-      }
-
-      console.log(`Successfully updated single proposal ${proposalId}`);
-      return true;
+    if (teamError || !teamMembers?.length) {
+      console.error('Invalid team composition', { teamError });
+      return { success: false, error: teamError?.message || 'Empty team' };
     }
 
-    console.log(`Found proposal with team_id: ${proposalData.team_id}`);
+    // 3. Atomic Update dengan Transaction
+    const updateResults = await supabase.rpc('update_team_proposals', {
+      p_team_id: mainProposal.team_id,
+      p_status: status,
+      p_reason: rejectionReason || null
+    });
 
-    // First update the current proposal to ensure it has the latest status
-    const { error: initialUpdateError } = await supabase
+    if (updateResults.error) {
+      console.error('Bulk update failed', updateResults.error);
+      throw updateResults.error;
+    }
+
+    // 4. Verifikasi hasil update
+    const { count } = await supabase
       .from('proposals')
-      .update({ 
-        status: status,
-        rejection_reason: rejectionReason || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', proposalId);
+      .select('*', { count: 'exact' })
+      .eq('team_id', mainProposal.team_id)
+      .eq('status', status);
 
-    if (initialUpdateError) {
-      console.error("Error updating initial proposal:", initialUpdateError);
-      throw new Error(`Failed to update initial proposal: ${initialUpdateError.message}`);
+    if (count === 0) {
+      throw new Error('No proposals were updated');
     }
 
-    // Now update all other proposals in the team
-    const { data: updatedProposals, error: updateError } = await supabase
-      .from('proposals')
-      .update({ 
-        status: status,
-        rejection_reason: rejectionReason || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('team_id', proposalData.team_id)
-      .neq('id', proposalId) // Exclude the original proposal we already updated
-      .select('id, student_id');
+    return { 
+      success: true, 
+      updatedCount: count 
+    };
 
-    if (updateError) {
-      console.error("Error updating team proposals:", updateError);
-      throw new Error(`Failed to update team proposals: ${updateError.message}`);
-    }
-
-    console.log(`Successfully synced status to ${updatedProposals?.length || 0} team proposals`);
-    return true;
   } catch (error) {
-    console.error("Error syncing proposal status with team:", error);
-    throw error;
+    console.error('Sync failed completely:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 }
 
