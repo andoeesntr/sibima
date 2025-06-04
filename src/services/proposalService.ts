@@ -167,3 +167,89 @@ export async function saveProposalFeedback(proposalId: string, supervisorId: str
     throw error;
   }
 }
+
+// Add missing functions that were referenced in imports
+export async function createProposalsForAllTeamMembers(teamId: string, proposalData: any) {
+  try {
+    console.log(`Creating proposals for all team members in team: ${teamId}`);
+    
+    // Get all team members
+    const { data: teamMembers, error: teamMembersError } = await supabase
+      .from('team_members')
+      .select('user_id')
+      .eq('team_id', teamId);
+
+    if (teamMembersError) {
+      console.error('Error fetching team members:', teamMembersError);
+      throw teamMembersError;
+    }
+
+    if (!teamMembers || teamMembers.length === 0) {
+      throw new Error('No team members found');
+    }
+
+    // Create proposals for each team member
+    const proposals = teamMembers.map(member => ({
+      ...proposalData,
+      student_id: member.user_id,
+      team_id: teamId
+    }));
+
+    const { data, error } = await supabase
+      .from('proposals')
+      .insert(proposals)
+      .select();
+
+    if (error) {
+      console.error('Error creating team proposals:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in createProposalsForAllTeamMembers:', error);
+    throw error;
+  }
+}
+
+export async function saveDocumentToAllTeamProposals(teamId: string, documentData: any) {
+  try {
+    console.log(`Saving document to all team proposals in team: ${teamId}`);
+    
+    // Get all proposals for this team
+    const { data: teamProposals, error: proposalsError } = await supabase
+      .from('proposals')
+      .select('id')
+      .eq('team_id', teamId);
+
+    if (proposalsError) {
+      console.error('Error fetching team proposals:', proposalsError);
+      throw proposalsError;
+    }
+
+    if (!teamProposals || teamProposals.length === 0) {
+      throw new Error('No team proposals found');
+    }
+
+    // Create document entries for each proposal
+    const documents = teamProposals.map(proposal => ({
+      ...documentData,
+      proposal_id: proposal.id
+    }));
+
+    const { data, error } = await supabase
+      .from('proposal_documents')
+      .insert(documents)
+      .select();
+
+    if (error) {
+      console.error('Error saving documents to team proposals:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in saveDocumentToAllTeamProposals:', error);
+    throw error;
+  }
+}
