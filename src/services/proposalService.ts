@@ -388,14 +388,14 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       .eq('id', proposalId)
       .single();
 
-    if (proposalError) {
+    if (proposalError || !proposalData) {
       console.error("Error fetching proposal for team sync:", proposalError);
-      throw new Error(`Failed to fetch proposal: ${proposalError.message}`);
+      throw new Error(`Failed to fetch proposal: ${proposalError?.message || 'No data returned'}`);
     }
 
     console.log('Proposal data for sync:', proposalData);
 
-    if (!proposalData?.team_id) {
+    if (!proposalData.team_id) {
       console.log("No team associated with this proposal, updating single proposal only");
       // Update just this proposal
       const { error: singleUpdateError } = await supabase
@@ -418,58 +418,22 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
 
     console.log(`Found proposal with team_id: ${proposalData.team_id}`);
 
-    // Get all team members first - use user_id instead of student_id
-    const { data: teamMembers, error: teamError } = await supabase
-      .from('team_members')
-      .select('user_id')
-      .eq('team_id', proposalData.team_id);
+    // First update the current proposal to ensure it has the latest status
+    const { error: initialUpdateError } = await supabase
+      .from('proposals')
+      .update({ 
+        status: status,
+        rejection_reason: rejectionReason || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', proposalId);
 
-    if (teamError) {
-      console.error("Error fetching team members:", teamError);
-      throw new Error(`Failed to fetch team members: ${teamError.message}`);
+    if (initialUpdateError) {
+      console.error("Error updating initial proposal:", initialUpdateError);
+      throw new Error(`Failed to update initial proposal: ${initialUpdateError.message}`);
     }
 
-    if (!teamMembers || teamMembers.length === 0) {
-      console.error("No team members found for this team");
-      throw new Error("No team members found for this team");
-    }
-
-    // Check and create missing proposals for team members
-    for (const member of teamMembers) {
-      const { data: existingProposal, error: proposalCheckError } = await supabase
-        .from('proposals')
-        .select('id')
-        .eq('student_id', member.user_id)
-        .eq('team_id', proposalData.team_id)
-        .maybeSingle();
-
-      if (proposalCheckError) {
-        console.error(`Error checking proposal for student ${member.user_id}:`, proposalCheckError);
-        continue;
-      }
-
-      if (!existingProposal) {
-        console.log(`Creating proposal for student ${member.user_id}`);
-        const { error: createError } = await supabase
-          .from('proposals')
-          .insert({
-            student_id: member.user_id,
-            team_id: proposalData.team_id,
-            title: proposalData.title,
-            description: proposalData.description,
-            company_name: proposalData.company_name,
-            supervisor_id: proposalData.supervisor_id,
-            status: status,
-            rejection_reason: rejectionReason || null
-          });
-
-        if (createError) {
-          console.error(`Error creating proposal for student ${member.user_id}:`, createError);
-        }
-      }
-    }
-
-    // Now update ALL proposals for this team
+    // Now update all other proposals in the team
     const { data: updatedProposals, error: updateError } = await supabase
       .from('proposals')
       .update({ 
@@ -478,6 +442,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
         updated_at: new Date().toISOString()
       })
       .eq('team_id', proposalData.team_id)
+      .neq('id', proposalId) // Exclude the original proposal we already updated
       .select('id, student_id');
 
     if (updateError) {
@@ -485,7 +450,7 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       throw new Error(`Failed to update team proposals: ${updateError.message}`);
     }
 
-    console.log(`Successfully synced status to ${updatedProposals?.length || 0} total proposals in team`);
+    console.log(`Successfully synced status to ${updatedProposals?.length || 0} team proposals`);
     return true;
   } catch (error) {
     console.error("Error syncing proposal status with team:", error);
