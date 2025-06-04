@@ -175,7 +175,7 @@ export class ProposalApprovalService {
     }
   }
 
-  // Ensure all team members have proposal records
+  // FIXED: Ensure all team members have proposal records using safe check-then-insert
   private static async ensureAllTeamMembersHaveProposals(baseProposal: ProposalData): Promise<ApprovalResult> {
     try {
       console.log(`🔍 Checking team members for team: ${baseProposal.team_id}`);
@@ -204,7 +204,7 @@ export class ProposalApprovalService {
 
       console.log(`👥 Found ${teamMembers.length} team members`);
 
-      // Check existing proposals
+      // Check existing proposals for this team
       const memberIds = teamMembers.map(m => m.user_id);
       const { data: existingProposals, error: existingError } = await supabase
         .from('proposals')
@@ -226,12 +226,29 @@ export class ProposalApprovalService {
 
       console.log(`📊 ${existingMemberIds.length} members have proposals, ${missingMemberIds.length} missing`);
 
-      // Create missing proposals one by one
+      // Create missing proposals using safe individual inserts
       if (missingMemberIds.length > 0) {
-        const createResults = await Promise.allSettled(
-          missingMemberIds.map(async (studentId) => {
-            // Gunakan insert + tangkap error duplikasi
-            const { error } = await supabase
+        let successCount = 0;
+        let errors: string[] = [];
+
+        for (const studentId of missingMemberIds) {
+          try {
+            // Double-check if proposal doesn't exist (race condition protection)
+            const { data: existingCheck } = await supabase
+              .from('proposals')
+              .select('id')
+              .eq('student_id', studentId)
+              .eq('team_id', baseProposal.team_id)
+              .single();
+
+            if (existingCheck) {
+              console.log(`ℹ️ Proposal already exists for student ${studentId}, skipping`);
+              successCount++;
+              continue;
+            }
+
+            // Safe insert without ON CONFLICT
+            const { error: insertError } = await supabase
               .from('proposals')
               .insert({
                 student_id: studentId,
@@ -243,27 +260,29 @@ export class ProposalApprovalService {
                 status: 'submitted'
               });
 
-            if (error) {
-              // Abaikan error duplikasi (jika constraint belum ada)
-              if (!error.message.includes('duplicate key')) {
-                throw error;
-              }
+            if (insertError) {
+              console.error(`❌ Error creating proposal for student ${studentId}:`, insertError);
+              errors.push(`Failed to create proposal for student ${studentId}: ${insertError.message}`);
+            } else {
+              console.log(`✅ Successfully created proposal for student ${studentId}`);
+              successCount++;
             }
-            return true;
-          })
-        );
 
-        const failures = createResults.filter(result => result.status === 'rejected');
-        if (failures.length > 0) {
-          console.error(`❌ Failed to create ${failures.length} proposals`);
+          } catch (error: any) {
+            console.error(`❌ Exception creating proposal for student ${studentId}:`, error);
+            errors.push(`Exception for student ${studentId}: ${error.message}`);
+          }
+        }
+
+        if (errors.length > 0 && successCount === 0) {
           return {
             success: false,
-            message: `Failed to create proposals for ${failures.length} team members`,
-            errors: failures.map(f => (f as PromiseRejectedResult).reason.message)
+            message: `Failed to create proposals for all missing team members`,
+            errors: errors
           };
         }
 
-        console.log(`✅ Successfully created ${missingMemberIds.length} missing proposals`);
+        console.log(`✅ Successfully ensured ${successCount} proposals exist`);
       }
 
       return { success: true, message: 'All team members have proposals' };
@@ -278,17 +297,16 @@ export class ProposalApprovalService {
     }
   }
 
-  // Update all team proposals in a single operation
+  // FIXED: Update all team proposals using simple update without ON CONFLICT
   private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
     try {
       console.log(`🔄 Updating all team proposals for team: ${teamId}`);
       
-      // First, get all proposals for this team that need updating
-      const { data: proposals, error: fetchError } = await supabase
+      // Get all current proposals for this team
+      const { data: existingProposals, error: fetchError } = await supabase
         .from('proposals')
         .select('id, student_id, status')
-        .eq('team_id', teamId)
-        .neq('status', 'approved');
+        .eq('team_id', teamId);
 
       if (fetchError) {
         console.error(`❌ Error fetching team proposals:`, fetchError);
@@ -299,45 +317,71 @@ export class ProposalApprovalService {
         };
       }
 
-      if (!proposals || proposals.length === 0) {
-        console.log(`ℹ️ No proposals found to update for team: ${teamId}`);
+      if (!existingProposals || existingProposals.length === 0) {
+        console.log(`ℹ️ No proposals found for team: ${teamId}`);
         return {
           success: true,
-          message: 'No proposals need updating',
+          message: 'No proposals found to update',
           affectedProposals: 0
         };
       }
 
-      console.log(`📊 Found ${proposals.length} proposals to update`);
+      console.log(`📊 Found ${existingProposals.length} proposals to potentially update`);
 
-      // Update all team proposals
-      const { data: updatedProposals, error: updateError } = await supabase
-        .from('proposals')
-        .update({
-          status: 'approved',
-          rejection_reason: rejectionReason || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('team_id', teamId)
-        .neq('status', 'approved')
-        .select('id');
-
-      if (updateError) {
-        console.error(`❌ Error updating team proposals:`, updateError);
+      // Filter proposals that need updating (not already approved)
+      const proposalsToUpdate = existingProposals.filter(p => p.status !== 'approved');
+      
+      if (proposalsToUpdate.length === 0) {
+        console.log(`ℹ️ All proposals already approved for team: ${teamId}`);
         return {
-          success: false,
-          message: `Failed to update team proposals: ${updateError.message}`,
-          errors: [updateError.message]
+          success: true,
+          message: 'All proposals already approved',
+          affectedProposals: 0
         };
       }
 
-      const affectedCount = updatedProposals?.length || 0;
-      console.log(`✅ Successfully updated ${affectedCount} team proposals`);
+      // Update each proposal individually to avoid any conflict issues
+      let updatedCount = 0;
+      let errors: string[] = [];
+
+      for (const proposal of proposalsToUpdate) {
+        try {
+          const { error: updateError } = await supabase
+            .from('proposals')
+            .update({
+              status: 'approved',
+              rejection_reason: rejectionReason || null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', proposal.id);
+
+          if (updateError) {
+            console.error(`❌ Error updating proposal ${proposal.id}:`, updateError);
+            errors.push(`Failed to update proposal ${proposal.id}: ${updateError.message}`);
+          } else {
+            console.log(`✅ Updated proposal ${proposal.id} for student ${proposal.student_id}`);
+            updatedCount++;
+          }
+        } catch (error: any) {
+          console.error(`❌ Exception updating proposal ${proposal.id}:`, error);
+          errors.push(`Exception updating proposal ${proposal.id}: ${error.message}`);
+        }
+      }
+
+      if (errors.length > 0 && updatedCount === 0) {
+        return {
+          success: false,
+          message: `Failed to update any team proposals`,
+          errors: errors
+        };
+      }
+
+      console.log(`✅ Successfully updated ${updatedCount} team proposals`);
 
       return {
         success: true,
-        message: `Successfully updated ${affectedCount} proposals`,
-        affectedProposals: affectedCount
+        message: `Successfully updated ${updatedCount} proposals`,
+        affectedProposals: updatedCount
       };
 
     } catch (error: any) {
