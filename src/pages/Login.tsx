@@ -57,7 +57,19 @@ const Login = () => {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">SIBIMA - SI</CardTitle>
-          <img src="https://i.ibb.co/RTPKgw2z/Logo-SI-removebg-preview-1.png" alt="Logo-SI-removebg-preview-1" className="mx-auto" />
+          <div className="flex justify-center my-4">
+    <img 
+      src="https://imgur.com/a/ONxwMXo" 
+      alt="SIBIMA Logo"
+      className="h-16 w-auto object-contain" // Ukuran lebih besar dan proporsional
+      onError={(e) => {
+        const target = e.target as HTMLImageElement;
+        target.src = '/placeholder-logo.png'; // Fallback lokal
+        target.alt = 'Default Logo';
+        target.className = 'h-16 w-auto opacity-80'; // Styling fallback
+      }}
+    />
+  </div>
           <CardDescription>
             Masukkan kredensial Anda untuk mengakses sistem
           </CardDescription>
