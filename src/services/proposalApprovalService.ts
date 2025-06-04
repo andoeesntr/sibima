@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { createClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
 interface ApprovalResult {
@@ -279,47 +278,75 @@ export class ProposalApprovalService {
 
   // Update all team proposals in a single operation
   private static async updateAllTeamProposals(teamId: string, rejectionReason?: string): Promise<ApprovalResult> {
-  // Gunakan service role client jika RLS mengganggu
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+    try {
+      console.log(`🔄 Updating all team proposals for team: ${teamId}`);
+      
+      // First, get all proposals for this team that need updating
+      const { data: proposals, error: fetchError } = await supabase
+        .from('proposals')
+        .select('id, student_id, status')
+        .eq('team_id', teamId)
+        .neq('status', 'approved');
 
-  try {
-    const { data: proposals, error } = await supabaseAdmin
-      .from('proposals')
-      .select('id')
-      .eq('team_id', teamId)
-      .neq('status', 'approved');
+      if (fetchError) {
+        console.error(`❌ Error fetching team proposals:`, fetchError);
+        return {
+          success: false,
+          message: `Failed to fetch team proposals: ${fetchError.message}`,
+          errors: [fetchError.message]
+        };
+      }
 
-    if (error) throw error;
+      if (!proposals || proposals.length === 0) {
+        console.log(`ℹ️ No proposals found to update for team: ${teamId}`);
+        return {
+          success: true,
+          message: 'No proposals need updating',
+          affectedProposals: 0
+        };
+      }
 
-    const { data: updated, error: updateError } = await supabaseAdmin
-      .from('proposals')
-      .update({
-        status: 'approved',
-        rejection_reason: rejectionReason,
-        updated_at: new Date().toISOString()
-      })
-      .eq('team_id', teamId)
-      .select('id');
+      console.log(`📊 Found ${proposals.length} proposals to update`);
 
-    if (updateError) throw updateError;
+      // Update all team proposals
+      const { data: updatedProposals, error: updateError } = await supabase
+        .from('proposals')
+        .update({
+          status: 'approved',
+          rejection_reason: rejectionReason || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('team_id', teamId)
+        .neq('status', 'approved')
+        .select('id');
 
-    return {
-      success: true,
-      message: `Updated ${updated?.length || 0} proposals`,
-      affectedProposals: updated?.length || 0
-    };
-  } catch (error: any) {
-    console.error('Update error:', error);
-    return {
-      success: false,
-      message: error.message,
-      errors: [error.details || error.message]
-    };
+      if (updateError) {
+        console.error(`❌ Error updating team proposals:`, updateError);
+        return {
+          success: false,
+          message: `Failed to update team proposals: ${updateError.message}`,
+          errors: [updateError.message]
+        };
+      }
+
+      const affectedCount = updatedProposals?.length || 0;
+      console.log(`✅ Successfully updated ${affectedCount} team proposals`);
+
+      return {
+        success: true,
+        message: `Successfully updated ${affectedCount} proposals`,
+        affectedProposals: affectedCount
+      };
+
+    } catch (error: any) {
+      console.error(`❌ Error in updateAllTeamProposals:`, error);
+      return {
+        success: false,
+        message: `Team approval failed: ${error.message}`,
+        errors: [error.message]
+      };
+    }
   }
-}
 
   // Rejection method with same robustness
   static async rejectProposal(proposalId: string, rejectionReason: string): Promise<ApprovalResult> {
