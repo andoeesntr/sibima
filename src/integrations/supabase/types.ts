@@ -759,6 +759,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_team"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "proposals_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -925,7 +932,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_team_proposals: {
+        Args: { p_team_id: string; p_status: string; p_reason: string }
+        Returns: undefined
+      }
     }
     Enums: {
       user_role: "student" | "coordinator" | "admin" | "supervisor"

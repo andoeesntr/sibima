@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Proposal } from '@/types/proposals';
 import { toast } from 'sonner';
@@ -379,20 +378,25 @@ export async function ensureTeamProposalsExist(teamId: string, baseProposal: {
 // Enhanced function to sync proposal status with team members
 export async function syncProposalStatusWithTeam(proposalId: string, status: string, rejectionReason?: string) {
   try {
-    // 1. Dapatkan proposal utama dengan LOCKING
+    // 1. Get proposal details including team_id and current status
     const { data: mainProposal, error: fetchError } = await supabase
       .from('proposals')
       .select('team_id, status')
       .eq('id', proposalId)
-      .single()
-      .not('status', 'eq', status); // Hindari update tidak perlu
+      .single();
 
     if (fetchError || !mainProposal?.team_id) {
       console.error('Proposal not found or no team', { fetchError });
       return { success: false, error: fetchError?.message || 'No team associated' };
     }
 
-    // 2. Verifikasi anggota tim
+    // Skip if status is already the same
+    if (mainProposal.status === status) {
+      console.log('Proposal already has the target status');
+      return { success: true, updatedCount: 0 };
+    }
+
+    // 2. Verify team members exist
     const { data: teamMembers, error: teamError } = await supabase
       .from('team_members')
       .select('user_id')
@@ -403,32 +407,29 @@ export async function syncProposalStatusWithTeam(proposalId: string, status: str
       return { success: false, error: teamError?.message || 'Empty team' };
     }
 
-    // 3. Atomic Update dengan Transaction
-    const updateResults = await supabase.rpc('update_team_proposals', {
-      p_team_id: mainProposal.team_id,
-      p_status: status,
-      p_reason: rejectionReason || null
-    });
-
-    if (updateResults.error) {
-      console.error('Bulk update failed', updateResults.error);
-      throw updateResults.error;
-    }
-
-    // 4. Verifikasi hasil update
-    const { count } = await supabase
+    // 3. Update all team proposals with simple update query
+    const { data: updatedProposals, error: updateError } = await supabase
       .from('proposals')
-      .select('*', { count: 'exact' })
+      .update({
+        status: status,
+        rejection_reason: rejectionReason || null,
+        updated_at: new Date().toISOString()
+      })
       .eq('team_id', mainProposal.team_id)
-      .eq('status', status);
+      .neq('status', status) // Only update if status is different
+      .select('id');
 
-    if (count === 0) {
-      throw new Error('No proposals were updated');
+    if (updateError) {
+      console.error('Bulk update failed', updateError);
+      return { success: false, error: updateError.message };
     }
+
+    const updatedCount = updatedProposals?.length || 0;
+    console.log(`Successfully updated ${updatedCount} proposals`);
 
     return { 
       success: true, 
-      updatedCount: count 
+      updatedCount: updatedCount 
     };
 
   } catch (error) {
