@@ -52,7 +52,7 @@ export class ProposalApprovalService {
         };
       }
 
-      const procedureResult = result as StoredProcedureResult;
+      const procedureResult = result as unknown as StoredProcedureResult;
       console.log(`📊 Stored procedure result:`, procedureResult);
 
       // Transform the result to match our interface
@@ -133,7 +133,7 @@ export class ProposalApprovalService {
         };
       }
 
-      const procedureResult = result as StoredProcedureResult;
+      const procedureResult = result as unknown as StoredProcedureResult;
       console.log(`📊 Rejection result:`, procedureResult);
 
       return {
@@ -188,7 +188,7 @@ export class ProposalApprovalService {
         };
       }
 
-      const procedureResult = result as StoredProcedureResult;
+      const procedureResult = result as unknown as StoredProcedureResult;
       console.log(`📊 Revision result:`, procedureResult);
 
       return {
