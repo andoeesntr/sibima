@@ -672,15 +672,7 @@ export type Database = {
           uploaded_at?: string | null
           uploaded_by?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "proposal_documents_proposal_id_fkey"
-            columns: ["proposal_id"]
-            isOneToOne: false
-            referencedRelation: "proposals"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       proposal_feedback: {
         Row: {
@@ -707,86 +699,7 @@ export type Database = {
           supervisor_id?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "proposal_feedback_proposal_id_fkey"
-            columns: ["proposal_id"]
-            isOneToOne: false
-            referencedRelation: "proposals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      proposals: {
-        Row: {
-          company_name: string | null
-          created_at: string | null
-          description: string | null
-          id: string
-          rejection_reason: string | null
-          status: string | null
-          student_id: string
-          supervisor_id: string | null
-          team_id: string | null
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          company_name?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          rejection_reason?: string | null
-          status?: string | null
-          student_id: string
-          supervisor_id?: string | null
-          team_id?: string | null
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          company_name?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          rejection_reason?: string | null
-          status?: string | null
-          student_id?: string
-          supervisor_id?: string | null
-          team_id?: string | null
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_team"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proposals_student_id_fkey"
-            columns: ["student_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proposals_supervisor_id_fkey"
-            columns: ["supervisor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proposals_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       student_timesheets: {
         Row: {
