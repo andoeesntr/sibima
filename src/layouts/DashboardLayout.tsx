@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
@@ -76,21 +77,22 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-primary text-white transition-all duration-300 ease-in-out flex flex-col",
+          "fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out flex flex-col",
+          "bg-green-800 text-white", // Changed to dark green background with white text
           isSidebarOpen ? "w-64" : "w-20"
         )}
       >
         <div className="flex items-center px-4 py-5">
           {isSidebarOpen ? (
-            <div className="text-xl font-bold">SIBIMA</div>
+            <div className="text-xl font-bold text-yellow-400">SIBIMA</div> // Logo in dark yellow
           ) : (
-            <div className="text-xl font-bold mx-auto">SB</div>
+            <div className="text-xl font-bold mx-auto text-yellow-400">SB</div> // Logo in dark yellow
           )}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="ml-auto text-white hover:bg-primary/90"
+            className="ml-auto text-white hover:bg-green-700"
           >
             <Layout size={18} />
           </Button>
@@ -98,7 +100,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
 
         {/* Role Badge */}
         <div className={cn(
-          "mx-4 my-2 py-1 px-3 rounded-md bg-primary-foreground/20 text-white text-sm",
+          "mx-4 my-2 py-1 px-3 rounded-md bg-green-700 text-white text-sm", // Darker green for role badge
           !isSidebarOpen && "mx-auto px-0 bg-transparent"
         )}>
           {isSidebarOpen ? roleLabels[role] : <Award size={18} />}
@@ -113,8 +115,8 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
                   className={({ isActive }) => cn(
                     "flex items-center px-4 py-3 rounded-md transition-colors",
                     isActive
-                      ? "bg-white/10 text-white font-medium"
-                      : "text-white/80 hover:bg-white/5 hover:text-white",
+                      ? "bg-green-700 text-white font-medium" // Active state with darker green
+                      : "text-gray-200 hover:bg-green-700 hover:text-white", // Hover state
                     !isSidebarOpen && "px-2 justify-center"
                   )}
                 >
@@ -126,14 +128,14 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-primary-foreground/10">
+        <div className="p-4 border-t border-green-700">
           <NavLink
             to={`/${role}/profile`}
             className={({ isActive }) => cn(
               "flex items-center px-4 py-2 rounded-md transition-colors",
               isActive
-                ? "bg-white/10 text-white font-medium"
-                : "text-white/80 hover:bg-white/5 hover:text-white",
+                ? "bg-green-700 text-white font-medium"
+                : "text-gray-200 hover:bg-green-700 hover:text-white",
               !isSidebarOpen && "px-2 justify-center"
             )}
           >
@@ -143,7 +145,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
           
           <Button 
             variant="ghost" 
-            className="w-full mt-2 text-white/80 hover:bg-white/5 hover:text-white flex items-center px-4 py-2"
+            className="w-full mt-2 text-gray-200 hover:bg-green-700 hover:text-white flex items-center px-4 py-2"
             onClick={handleLogout}
           >
             <LogOut size={18} className="mr-2" />
