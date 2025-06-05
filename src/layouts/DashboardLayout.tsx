@@ -19,26 +19,26 @@ type NavItem = {
 
 const roleNavItems: Record<string, NavItem[]> = {
   student: [
-    { title: 'Dashboard', href: '/student', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Dashboard', href: '/student' },
     { title: 'Pengajuan Proposal', href: '/student/proposal-submission', icon: <FileText size={18} className="text-yellow-500" /> },
     { title: 'Progress KP', href: '/student/kp-progress', icon: <TrendingUp size={18} className="text-yellow-500" /> },
     { title: 'Digital Signature', href: '/student/digital-signature', icon: <FileSignature size={18} className="text-yellow-500" /> },
     { title: 'Panduan KP', href: '/student/guide', icon: <BookOpen size={18} className="text-yellow-500" /> },
   ],
   coordinator: [
-    { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Dashboard', href: '/coordinator'},
     { title: 'Daftar Proposal', href: '/coordinator/proposal-list', icon: <ClipboardList size={18} className="text-yellow-500" /> },
     { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} className="text-yellow-500" /> },
     { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} className="text-yellow-500" /> },
     { title: 'Manajemen Bimbingan', href: '/coordinator/guidance-management', icon: <TrendingUp size={18} className="text-yellow-500" /> },
   ],
   admin: [
-    { title: 'Dashboard', href: '/admin', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Dashboard', href: '/admin' },
     { title: 'User Management', href: '/admin/user-management', icon: <Users size={18} className="text-yellow-500" /> },
     { title: 'Panduan Management', href: '/admin/guide-management', icon: <BookOpen size={18} className="text-yellow-500" /> },
   ],
   supervisor: [
-    { title: 'Dashboard', href: '/supervisor', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Dashboard', href: '/supervisor' },
     { title: 'Progress KP', href: '/supervisor/kp-progress', icon: <TrendingUp size={18} className="text-yellow-500" /> },
     { title: 'Tanda Tangan Digital', href: '/supervisor/digital-signature', icon: <FileSignature size={18} className="text-yellow-500" /> },
     { title: 'Feedback', href: '/supervisor/feedback', icon: <FileText size={18} className="text-yellow-500" /> },
