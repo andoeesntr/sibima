@@ -38,7 +38,7 @@ const CoordinatorDashboard = () => {
           title,
           status,
           created_at,
-          student:profiles!student_id (full_name)
+          student:profiles!proposals_student_id_fkey (full_name)
         `);
       
       if (error) {
@@ -90,7 +90,7 @@ const CoordinatorDashboard = () => {
       
       {/* Pending Proposals and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <PendingProposals loading={loading} pendingProposals={pendingProposals} />
+        <PendingProposals />
         <RecentActivity />
       </div>
     </div>
