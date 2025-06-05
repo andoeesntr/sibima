@@ -2,14 +2,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { 
-  fetchProposalsList, 
-  fetchProposalDocuments, 
-  fetchSupervisorName, 
-  fetchTeamSupervisors, 
-  fetchMainSupervisor,
-  saveProposalFeedback
-} from '@/services/proposalService';
 
 export interface Proposal {
   id: string;
@@ -58,103 +50,99 @@ export const useProposals = () => {
   const fetchProposals = async () => {
     try {
       setLoading(true);
-      console.log('Fetching proposals list...');
-      const rawProposals = await fetchProposalsList();
-      console.log('Raw proposals fetched:', rawProposals.length);
-      
-      const transformedProposals: Proposal[] = await Promise.all(rawProposals.map(async (rawProposal: any) => {
-        // Fetch documents
-        const documents = await fetchProposalDocuments(rawProposal.id);
-        
-        // Fetch team supervisors
-        let supervisors: any[] = [];
-        if (rawProposal.team?.id) {
-          supervisors = await fetchTeamSupervisors(rawProposal.team.id);
-        } else if (rawProposal.supervisor_id) {
-          supervisors = await fetchMainSupervisor(rawProposal.supervisor_id);
-        }
-        
-        return {
-          id: rawProposal.id,
-          title: rawProposal.title,
-          description: rawProposal.description || '',
-          status: rawProposal.status,
-          submissionDate: rawProposal.created_at,
-          supervisorIds: supervisors.map(s => s.id) || [],
-          supervisors: supervisors || [],
-          studentName: rawProposal.student?.full_name,
-          student: rawProposal.student,
-          companyName: rawProposal.company_name,
-          teamId: rawProposal.team?.id,
-          teamName: rawProposal.team?.name,
-          documents: documents.map((doc: any) => ({
-            id: doc.id,
-            fileName: doc.file_name,
-            fileUrl: doc.file_url,
-            fileType: doc.file_type
-          })),
-          rejectionReason: rawProposal.rejection_reason
+      console.log('Fetching proposals...');
+
+      // Fetch proposals with related data
+      const { data: proposalsData, error: proposalsError } = await supabase
+        .from('proposals')
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          company_name,
+          rejection_reason,
+          student_id,
+          team_id,
+          student:profiles!proposals_student_id_fkey (
+            id,
+            full_name,
+            nim
+          ),
+          team:teams!proposals_team_id_fkey (
+            id,
+            name
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (proposalsError) {
+        console.error('Error fetching proposals:', proposalsError);
+        throw proposalsError;
+      }
+
+      console.log('Raw proposals data:', proposalsData);
+
+      if (!proposalsData || proposalsData.length === 0) {
+        console.log('No proposals found');
+        setProposals([]);
+        return;
+      }
+
+      // Transform the data to match our interface
+      const transformedProposals: Proposal[] = proposalsData.map(proposal => {
+        // Handle student data properly
+        const studentData = proposal.student || { 
+          id: proposal.student_id || '', 
+          full_name: 'Unknown Student',
+          nim: undefined
         };
-      }));
-      
-      console.log('Transformed proposals:', transformedProposals.length);
+
+        return {
+          id: proposal.id,
+          title: proposal.title || 'Untitled Proposal',
+          description: proposal.description || '',
+          status: proposal.status || 'submitted',
+          submissionDate: proposal.created_at,
+          studentName: studentData.full_name,
+          student: {
+            nim: studentData.nim,
+            full_name: studentData.full_name
+          },
+          companyName: proposal.company_name,
+          teamId: proposal.team_id,
+          teamName: proposal.team?.name,
+          rejectionReason: proposal.rejection_reason,
+          supervisorIds: [], // Will be populated separately if needed
+          documents: [],
+          feedback: []
+        };
+      });
+
+      console.log('Transformed proposals:', transformedProposals);
       setProposals(transformedProposals);
+
     } catch (error) {
-      console.error("Error fetching proposals:", error);
-      toast.error("Gagal memuat daftar proposal");
+      console.error('Error in fetchProposals:', error);
+      toast.error('Gagal memuat daftar proposal');
+      setProposals([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const refreshProposals = () => {
+    fetchProposals();
+  };
+
   useEffect(() => {
     fetchProposals();
-    
-    // Set up real-time subscription for proposal updates
-    const channel = supabase
-      .channel('proposals-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'proposals'
-        },
-        (payload) => {
-          console.log('Proposal change detected:', payload);
-          // Refresh proposals when changes occur
-          fetchProposals();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
-  const refreshProposals = () => {
-    console.log('Manual refresh triggered');
-    fetchProposals();
-  };
-
-  // Method to save feedback directly from this hook
-  const saveFeedback = async (proposalId: string, supervisorId: string, content: string) => {
-    try {
-      await saveProposalFeedback(proposalId, supervisorId, content);
-      // After saving feedback, refresh the proposals list
-      await fetchProposals();
-      return true;
-    } catch (error) {
-      console.error('Error saving feedback:', error);
-      throw error;
-    }
-  };
-
-  return { 
-    proposals, 
-    loading, 
-    refreshProposals,
-    saveFeedback
+  return {
+    proposals,
+    loading,
+    refreshProposals
   };
 };

@@ -5,23 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatDate } from '@/services/mockData';
+import { useProposals } from '@/hooks/useProposals';
 
-interface Proposal {
-  id: string;
-  title: string;
-  status: string;
-  submissionDate: string;
-  studentName?: string;
-}
-
-interface PendingProposalsProps {
-  loading: boolean;
-  pendingProposals: Proposal[];
-}
-
-const PendingProposals = ({ loading, pendingProposals }: PendingProposalsProps) => {
+const PendingProposals = () => {
   const navigate = useNavigate();
+  const { proposals, loading } = useProposals();
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('id-ID', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    }).format(date);
+  };
+
+  // Filter for pending proposals only
+  const pendingProposals = proposals.filter(proposal => proposal.status === 'submitted');
 
   return (
     <Card className="col-span-1 lg:col-span-2">

@@ -129,7 +129,10 @@ export const fetchProposalById = async (proposalId: string) => {
     }
 
     // Ensure student property has proper structure
-    const studentData = proposal.student || { id: proposal.student_id || '', full_name: 'Unknown Student' };
+    const studentData = proposal.student || { 
+      id: proposal.student_id || '', 
+      full_name: 'Unknown Student' 
+    };
 
     const result = {
       ...proposal,
@@ -145,6 +148,47 @@ export const fetchProposalById = async (proposalId: string) => {
 
   } catch (error) {
     console.error('Error in fetchProposalById:', error);
+    throw error;
+  }
+};
+
+export const fetchAllProposals = async () => {
+  try {
+    console.log('Fetching all proposals...');
+    
+    const { data: proposals, error } = await supabase
+      .from('proposals')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        created_at,
+        company_name,
+        rejection_reason,
+        student_id,
+        team_id,
+        student:profiles!proposals_student_id_fkey (
+          id,
+          full_name,
+          nim
+        ),
+        team:teams!proposals_team_id_fkey (
+          id,
+          name
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching proposals:', error);
+      throw error;
+    }
+
+    console.log('Fetched proposals:', proposals);
+    return proposals || [];
+  } catch (error) {
+    console.error('Error in fetchAllProposals:', error);
     throw error;
   }
 };
