@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
@@ -83,12 +84,9 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
       >
         <div className="flex items-center px-4 py-5">
           {isSidebarOpen ? (
-            <div className="flex items-center gap-2">
-              <Home size={24} className="text-yellow-500" />
-              <div className="text-xl font-bold text-white">SIBIMA</div>
-            </div>
+            <div className="text-xl font-bold text-white">SIBIMA</div>
           ) : (
-            <Home size={24} className="text-yellow-500" />
+            <div className="text-xl font-bold text-white">S</div>
           )}
           <Button 
             variant="ghost" 
@@ -121,6 +119,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
                       : "text-gray-200 hover:bg-green-700 hover:text-white",
                     !isSidebarOpen && "px-2 justify-center"
                   )}
+                  style={({ isActive }) => isActive ? { pointerEvents: 'none' } : {}}
                 >
                   <span className="mr-3">{item.icon}</span>
                   {isSidebarOpen && <span>{item.title}</span>}
