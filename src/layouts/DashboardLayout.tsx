@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
@@ -88,7 +87,9 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
               <Home size={24} className="text-yellow-500" />
               <div className="text-xl font-bold text-white">SIBIMA</div>
             </div>
-          ) }
+          ) : (
+            <Home size={24} className="text-yellow-500" />
+          )}
           <Button 
             variant="ghost" 
             size="icon" 
