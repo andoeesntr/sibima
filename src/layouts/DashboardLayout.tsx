@@ -19,29 +19,29 @@ type NavItem = {
 
 const roleNavItems: Record<string, NavItem[]> = {
   student: [
-    { title: 'Dashboard', href: '/student', icon: <Home size={18} /> },
-    { title: 'Pengajuan Proposal', href: '/student/proposal-submission', icon: <FileText size={18} /> },
-    { title: 'Progress KP', href: '/student/kp-progress', icon: <TrendingUp size={18} /> },
-    { title: 'Digital Signature', href: '/student/digital-signature', icon: <FileSignature size={18} /> },
-    { title: 'Panduan KP', href: '/student/guide', icon: <BookOpen size={18} /> },
+    { title: 'Dashboard', href: '/student', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Pengajuan Proposal', href: '/student/proposal-submission', icon: <FileText size={18} className="text-yellow-500" /> },
+    { title: 'Progress KP', href: '/student/kp-progress', icon: <TrendingUp size={18} className="text-yellow-500" /> },
+    { title: 'Digital Signature', href: '/student/digital-signature', icon: <FileSignature size={18} className="text-yellow-500" /> },
+    { title: 'Panduan KP', href: '/student/guide', icon: <BookOpen size={18} className="text-yellow-500" /> },
   ],
   coordinator: [
-    { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} /> },
-    { title: 'Daftar Proposal', href: '/coordinator/proposal-list', icon: <ClipboardList size={18} /> },
-    { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} /> },
-    { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} /> },
-    { title: 'Manajemen Bimbingan', href: '/coordinator/guidance-management', icon: <TrendingUp size={18} /> },
+    { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Daftar Proposal', href: '/coordinator/proposal-list', icon: <ClipboardList size={18} className="text-yellow-500" /> },
+    { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} className="text-yellow-500" /> },
+    { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} className="text-yellow-500" /> },
+    { title: 'Manajemen Bimbingan', href: '/coordinator/guidance-management', icon: <TrendingUp size={18} className="text-yellow-500" /> },
   ],
   admin: [
-    { title: 'Dashboard', href: '/admin', icon: <Home size={18} /> },
-    { title: 'User Management', href: '/admin/user-management', icon: <Users size={18} /> },
-    { title: 'Panduan Management', href: '/admin/guide-management', icon: <BookOpen size={18} /> },
+    { title: 'Dashboard', href: '/admin', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'User Management', href: '/admin/user-management', icon: <Users size={18} className="text-yellow-500" /> },
+    { title: 'Panduan Management', href: '/admin/guide-management', icon: <BookOpen size={18} className="text-yellow-500" /> },
   ],
   supervisor: [
-    { title: 'Dashboard', href: '/supervisor', icon: <Home size={18} /> },
-    { title: 'Progress KP', href: '/supervisor/kp-progress', icon: <TrendingUp size={18} /> },
-    { title: 'Tanda Tangan Digital', href: '/supervisor/digital-signature', icon: <FileSignature size={18} /> },
-    { title: 'Feedback', href: '/supervisor/feedback', icon: <FileText size={18} /> },
+    { title: 'Dashboard', href: '/supervisor', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Progress KP', href: '/supervisor/kp-progress', icon: <TrendingUp size={18} className="text-yellow-500" /> },
+    { title: 'Tanda Tangan Digital', href: '/supervisor/digital-signature', icon: <FileSignature size={18} className="text-yellow-500" /> },
+    { title: 'Feedback', href: '/supervisor/feedback', icon: <FileText size={18} className="text-yellow-500" /> },
   ],
 };
 
@@ -84,29 +84,26 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
       >
         <div className="flex items-center px-4 py-5">
           {isSidebarOpen ? (
-            <div className="flex items-center">
-              <Home className="text-yellow-600 mr-2" size={24} />
-              <div className="text-xl font-bold text-white">SIBIMA</div>
-            </div>
+            <div className="text-xl font-bold text-white">SIBIMA</div>
           ) : (
-            <Home className="text-yellow-600 mx-auto" size={24} />
+            <div className="text-xl font-bold text-white">S</div>
           )}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="ml-auto text-white hover:bg-yellow-600 hover:text-green-800"
+            className="ml-auto text-white hover:bg-green-700"
           >
-            <Layout size={18} />
+            <Layout size={18} className="text-yellow-500" />
           </Button>
         </div>
 
         {/* Role Badge */}
         <div className={cn(
-          "mx-4 my-2 py-1 px-3 rounded-md bg-yellow-600 text-green-800 text-sm font-medium",
+          "mx-4 my-2 py-1 px-3 rounded-md bg-green-700 text-white text-sm",
           !isSidebarOpen && "mx-auto px-0 bg-transparent"
         )}>
-          {isSidebarOpen ? roleLabels[role] : <Award size={18} className="text-yellow-600" />}
+          {isSidebarOpen ? roleLabels[role] : <Award size={18} className="text-yellow-500" />}
         </div>
 
         <nav className="flex-1 px-2 py-4 overflow-y-auto">
@@ -118,10 +115,11 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
                   className={({ isActive }) => cn(
                     "flex items-center px-4 py-3 rounded-md transition-colors",
                     isActive
-                      ? "bg-yellow-600 text-green-800 font-medium"
-                      : "text-gray-200 hover:bg-yellow-600 hover:text-green-800",
+                      ? "bg-green-700 text-white font-medium"
+                      : "text-gray-200 hover:bg-green-700 hover:text-white",
                     !isSidebarOpen && "px-2 justify-center"
                   )}
+                  style={({ isActive }) => isActive ? { pointerEvents: 'none' } : {}}
                 >
                   <span className="mr-3">{item.icon}</span>
                   {isSidebarOpen && <span>{item.title}</span>}
@@ -137,21 +135,21 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
             className={({ isActive }) => cn(
               "flex items-center px-4 py-2 rounded-md transition-colors",
               isActive
-                ? "bg-yellow-600 text-green-800 font-medium"
-                : "text-gray-200 hover:bg-yellow-600 hover:text-green-800",
+                ? "bg-green-700 text-white font-medium"
+                : "text-gray-200 hover:bg-green-700 hover:text-white",
               !isSidebarOpen && "px-2 justify-center"
             )}
           >
-            <User size={18} className="mr-2" />
+            <User size={18} className="mr-2 text-yellow-500" />
             {isSidebarOpen && <span>Profile</span>}
           </NavLink>
           
           <Button 
             variant="ghost" 
-            className="w-full mt-2 text-gray-200 hover:bg-yellow-600 hover:text-green-800 flex items-center px-4 py-2"
+            className="w-full mt-2 text-gray-200 hover:bg-green-700 hover:text-white flex items-center px-4 py-2"
             onClick={handleLogout}
           >
-            <LogOut size={18} className="mr-2" />
+            <LogOut size={18} className="mr-2 text-yellow-500" />
             {isSidebarOpen && <span>Logout</span>}
           </Button>
         </div>
@@ -171,7 +169,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
             <div className="flex items-center space-x-4">
               <Avatar className="cursor-pointer" onClick={() => navigate(`/${role}/profile`)}>
                 <AvatarImage src={profile?.profile_image || '/placeholder.svg'} />
-                <AvatarFallback className="bg-yellow-600/10 text-yellow-600">
+                <AvatarFallback className="bg-primary/10 text-primary">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
