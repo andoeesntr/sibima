@@ -78,24 +78,21 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
       <aside 
         className={cn(
           "fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out flex flex-col",
-          "bg-green-800 text-white",
+          "bg-green-800 text-white", // Changed to dark green background with white text
           isSidebarOpen ? "w-64" : "w-20"
         )}
       >
         <div className="flex items-center px-4 py-5">
           {isSidebarOpen ? (
-            <div className="flex items-center">
-              <Home className="text-yellow-600 mr-2" size={24} />
-              <div className="text-xl font-bold text-white">SIBIMA</div>
-            </div>
+            <div className="text-xl font-bold text-yellow-400">SIBIMA</div> // Logo in dark yellow
           ) : (
-            <Home className="text-yellow-600 mx-auto" size={24} />
+            <div className="text-xl font-bold mx-auto text-yellow-400">SB</div> // Logo in dark yellow
           )}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className="ml-auto text-white hover:bg-yellow-600 hover:text-green-800"
+            className="ml-auto text-white hover:bg-green-700"
           >
             <Layout size={18} />
           </Button>
@@ -103,10 +100,10 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
 
         {/* Role Badge */}
         <div className={cn(
-          "mx-4 my-2 py-1 px-3 rounded-md bg-yellow-600 text-green-800 text-sm font-medium",
+          "mx-4 my-2 py-1 px-3 rounded-md bg-green-700 text-white text-sm", // Darker green for role badge
           !isSidebarOpen && "mx-auto px-0 bg-transparent"
         )}>
-          {isSidebarOpen ? roleLabels[role] : <Award size={18} className="text-yellow-600" />}
+          {isSidebarOpen ? roleLabels[role] : <Award size={18} />}
         </div>
 
         <nav className="flex-1 px-2 py-4 overflow-y-auto">
@@ -118,8 +115,8 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
                   className={({ isActive }) => cn(
                     "flex items-center px-4 py-3 rounded-md transition-colors",
                     isActive
-                      ? "bg-yellow-600 text-green-800 font-medium"
-                      : "text-gray-200 hover:bg-yellow-600 hover:text-green-800",
+                      ? "bg-green-700 text-white font-medium" // Active state with darker green
+                      : "text-gray-200 hover:bg-green-700 hover:text-white", // Hover state
                     !isSidebarOpen && "px-2 justify-center"
                   )}
                 >
@@ -137,8 +134,8 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
             className={({ isActive }) => cn(
               "flex items-center px-4 py-2 rounded-md transition-colors",
               isActive
-                ? "bg-yellow-600 text-green-800 font-medium"
-                : "text-gray-200 hover:bg-yellow-600 hover:text-green-800",
+                ? "bg-green-700 text-white font-medium"
+                : "text-gray-200 hover:bg-green-700 hover:text-white",
               !isSidebarOpen && "px-2 justify-center"
             )}
           >
@@ -148,7 +145,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
           
           <Button 
             variant="ghost" 
-            className="w-full mt-2 text-gray-200 hover:bg-yellow-600 hover:text-green-800 flex items-center px-4 py-2"
+            className="w-full mt-2 text-gray-200 hover:bg-green-700 hover:text-white flex items-center px-4 py-2"
             onClick={handleLogout}
           >
             <LogOut size={18} className="mr-2" />
@@ -171,7 +168,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
             <div className="flex items-center space-x-4">
               <Avatar className="cursor-pointer" onClick={() => navigate(`/${role}/profile`)}>
                 <AvatarImage src={profile?.profile_image || '/placeholder.svg'} />
-                <AvatarFallback className="bg-yellow-600/10 text-yellow-600">
+                <AvatarFallback className="bg-primary/10 text-primary">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
