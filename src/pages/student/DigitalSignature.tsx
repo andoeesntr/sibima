@@ -6,6 +6,7 @@ import { Download, QrCode, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -17,6 +18,7 @@ const DigitalSignature = () => {
   const [supervisorName, setSupervisorName] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [showQRDialog, setShowQRDialog] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -72,6 +74,7 @@ const DigitalSignature = () => {
             if (!signatureError && signatureData) {
               setSignatureUrl(signatureData.signature_url);
               setQrCodeUrl(signatureData.qr_code_url);
+              console.log('QR Code URL found:', signatureData.qr_code_url);
             } else {
               console.log('No approved signature found for supervisor');
             }
@@ -87,19 +90,29 @@ const DigitalSignature = () => {
     fetchSignatureData();
   }, [user]);
 
-  const handleDownload = (type: 'qrcode' | 'signature') => {
+  const handleDownload = async (type: 'qrcode' | 'signature') => {
     const url = type === 'qrcode' ? qrCodeUrl : signatureUrl;
     
-    if (url) {
+    if (!url) {
+      toast.error(`${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'} belum tersedia`);
+      return;
+    }
+
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
-      link.download = type === 'qrcode' ? 'qr_code.png' : 'signature.png';
+      link.href = downloadUrl;
+      link.download = type === 'qrcode' ? 'qr_code_validasi.png' : 'tanda_tangan_digital.png';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
       toast.success(`Berhasil mengunduh ${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'}`);
-    } else {
-      toast.error(`${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'} belum tersedia`);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(`Gagal mengunduh ${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'}`);
     }
   };
 
@@ -114,14 +127,21 @@ const DigitalSignature = () => {
 
   if (!hasApprovedProposal) {
     return (
-      <Alert className="max-w-lg mx-auto">
-        <AlertTriangle className="h-5 w-5 text-amber-500" />
-        <AlertTitle className="text-amber-500 font-medium">Akses Tidak Tersedia</AlertTitle>
-        <AlertDescription className="text-gray-600">
-          Anda belum dapat mengakses tanda tangan digital dan QR Code karena proposal KP Anda belum disetujui.
-          Silakan ajukan proposal KP terlebih dahulu atau hubungi koordinator KP jika Anda yakin ini adalah kesalahan.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Digital Signature</h1>
+        <p className="text-gray-600">
+          Download tanda tangan digital dan QR code untuk dokumen KP Anda
+        </p>
+        
+        <Alert className="max-w-lg mx-auto">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          <AlertTitle className="text-amber-500 font-medium">Akses Tidak Tersedia</AlertTitle>
+          <AlertDescription className="text-gray-600">
+            Anda belum dapat mengakses tanda tangan digital dan QR Code karena proposal KP Anda belum disetujui.
+            Silakan ajukan proposal KP terlebih dahulu atau hubungi koordinator KP jika Anda yakin ini adalah kesalahan.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -162,19 +182,35 @@ const DigitalSignature = () => {
         <TabsContent value="qrcode">
           <Card>
             <CardHeader>
-              <CardTitle>QR Code Validasi</CardTitle>
+              <CardTitle>QR Code Validasi dengan Logo SI</CardTitle>
               <CardDescription>
-                QR Code ini dapat digunakan untuk memvalidasi dokumen KP Anda
+                QR Code dengan logo SI di tengah untuk memvalidasi dokumen KP Anda
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center p-6">
-              <div className="border p-4 rounded-lg">
+              <div className="border p-4 rounded-lg bg-gray-50">
                 {qrCodeUrl ? (
-                  <img 
-                    src={qrCodeUrl} 
-                    alt="QR Code Validasi" 
-                    className="w-64 h-64 object-contain"
-                  />
+                  <div className="relative">
+                    <img 
+                      src={qrCodeUrl} 
+                      alt="QR Code Validasi dengan Logo SI" 
+                      className="w-64 h-64 object-contain"
+                      onError={(e) => {
+                        console.error('Error loading QR code:', e);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    {/* Logo overlay untuk referensi visual */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md border-2">
+                        <img 
+                          src="/LogoSI-removebg-preview.png" 
+                          alt="Logo SI" 
+                          className="w-12 h-12 object-contain"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="w-64 h-64 flex flex-col items-center justify-center bg-gray-100 rounded">
                     <QrCode className="text-gray-400 h-16 w-16 mb-4" />
@@ -185,10 +221,17 @@ const DigitalSignature = () => {
                 )}
               </div>
             </CardContent>
-            <CardFooter className="flex justify-center">
+            <CardFooter className="flex justify-center gap-2">
+              <Button 
+                onClick={() => setShowQRDialog(true)}
+                className="bg-primary hover:bg-primary/90"
+                disabled={!qrCodeUrl}
+              >
+                <QrCode size={16} className="mr-2" /> Lihat QR Code
+              </Button>
               <Button 
                 onClick={() => handleDownload('qrcode')}
-                className="bg-primary hover:bg-primary/90"
+                variant="outline"
                 disabled={!qrCodeUrl}
               >
                 <Download size={16} className="mr-2" /> Download QR Code
@@ -243,6 +286,64 @@ const DigitalSignature = () => {
         </TabsContent>
       </Tabs>
 
+      {/* QR Code Dialog */}
+      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Code Validasi dengan Logo SI</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            {qrCodeUrl && (
+              <div className="relative">
+                <img 
+                  src={qrCodeUrl} 
+                  alt="QR Code Validasi dengan Logo SI" 
+                  className="w-80 h-80 object-contain border p-2 rounded"
+                  onError={(e) => {
+                    console.error('Error loading QR code in dialog:', e);
+                  }}
+                />
+                {/* Logo overlay untuk dialog */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-md border-2">
+                    <img 
+                      src="/LogoSI-removebg-preview.png" 
+                      alt="Logo SI" 
+                      className="w-16 h-16 object-contain"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-4">
+              Scan QR code ini untuk memvalidasi dokumen dengan logo SI
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  if (qrCodeUrl) {
+                    window.open(qrCodeUrl, '_blank');
+                  }
+                }}
+              >
+                Buka di Tab Baru
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => handleDownload('qrcode')}
+                className="text-blue-600 border-blue-600"
+              >
+                <Download size={16} className="mr-1" />
+                Download
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="max-w-2xl mx-auto bg-blue-50 border border-blue-100 rounded-lg p-4">
         <div className="flex items-start">
           <QrCode size={24} className="text-blue-500 mr-3 mt-1" />
@@ -251,7 +352,7 @@ const DigitalSignature = () => {
             <p className="text-sm text-blue-600 mt-1">
               Tempelkan QR Code dan tanda tangan digital pada dokumen KP Anda di tempat yang sesuai. 
               QR Code ini akan digunakan untuk memvalidasi keaslian dokumen dan tanda tangan digital 
-              dosen pembimbing Anda.
+              dosen pembimbing Anda. QR Code dilengkapi dengan logo SI di tengah untuk verifikasi resmi.
             </p>
           </div>
         </div>
