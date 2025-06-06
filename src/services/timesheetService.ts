@@ -32,7 +32,7 @@ export const timesheetService = {
       .order('date', { ascending: true });
 
     if (error) throw error;
-    return (data || []) as TimesheetEntry[];
+    return (data || []) as unknown as TimesheetEntry[];
   },
 
   async getAllTimesheets(startDate: string, endDate: string): Promise<TimesheetEntry[]> {
@@ -47,7 +47,7 @@ export const timesheetService = {
       .order('date', { ascending: true });
 
     if (error) throw error;
-    return (data || []) as TimesheetEntry[];
+    return (data || []) as unknown as TimesheetEntry[];
   },
 
   async createTimesheet(timesheet: Omit<TimesheetEntry, 'id' | 'created_at' | 'updated_at' | 'duration_minutes' | 'student'>): Promise<TimesheetEntry> {
@@ -58,7 +58,7 @@ export const timesheetService = {
       .single();
 
     if (error) throw error;
-    return data as TimesheetEntry;
+    return data as unknown as TimesheetEntry;
   },
 
   async updateTimesheet(id: string, timesheet: Partial<TimesheetEntry>): Promise<TimesheetEntry> {
@@ -70,7 +70,7 @@ export const timesheetService = {
       .single();
 
     if (error) throw error;
-    return data as TimesheetEntry;
+    return data as unknown as TimesheetEntry;
   },
 
   async getTimesheetByDate(studentId: string, date: string): Promise<TimesheetEntry | null> {
@@ -82,6 +82,6 @@ export const timesheetService = {
       .maybeSingle();
 
     if (error) throw error;
-    return data as TimesheetEntry | null;
+    return data as unknown as TimesheetEntry | null;
   }
 };
