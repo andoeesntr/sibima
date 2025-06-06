@@ -100,10 +100,10 @@ export const approveSignature = async (signatureId: string, signatureSupervisorI
       throw updateError;
     }
     
-    console.log('Signature status updated to approved, now generating QR code...');
+    console.log('Signature status updated to approved, now generating QR code with logo...');
     
-    // Generate QR code using edge function
-    const { data: qrData, error: qrError } = await supabase.functions.invoke('generate-qrcode', {
+    // Generate QR code with logo using the new edge function
+    const { data: qrData, error: qrError } = await supabase.functions.invoke('generate-qr-with-logo', {
       body: {
         signatureId,
         supervisorId: signatureSupervisorId,
@@ -113,18 +113,46 @@ export const approveSignature = async (signatureId: string, signatureSupervisorI
     });
     
     if (qrError) {
-      console.error('Error generating QR code:', qrError);
-      toast.error('Tanda tangan disetujui, namun QR code gagal dibuat');
-      return {};
+      console.error('Error generating QR code with logo:', qrError);
+      
+      // Fallback to original function
+      console.log('Falling back to original QR generation...');
+      const { data: fallbackQrData, error: fallbackQrError } = await supabase.functions.invoke('generate-qrcode', {
+        body: {
+          signatureId,
+          supervisorId: signatureSupervisorId,
+          supervisorName: signatureSupervisorName,
+          baseUrl: window.location.origin
+        }
+      });
+      
+      if (fallbackQrError) {
+        console.error('Error with fallback QR generation:', fallbackQrError);
+        toast.error('Tanda tangan disetujui, namun QR code gagal dibuat');
+        return {};
+      }
+      
+      console.log('Fallback QR code generated successfully:', fallbackQrData);
+      
+      // Create activity log
+      await supabase.from('activity_logs').insert({
+        user_id: '0',
+        user_name: 'Admin',
+        action: 'menyetujui tanda tangan digital',
+        target_type: 'signature',
+        target_id: signatureId
+      });
+
+      return fallbackQrData || {};
     }
     
-    console.log('QR code generated successfully:', qrData);
+    console.log('QR code with logo generated successfully:', qrData);
     
     // Create activity log
     await supabase.from('activity_logs').insert({
-      user_id: '0', // System user or should be replaced with actual admin ID
+      user_id: '0',
       user_name: 'Admin',
-      action: 'menyetujui tanda tangan digital',
+      action: 'menyetujui tanda tangan digital dengan QR code berlogo',
       target_type: 'signature',
       target_id: signatureId
     });
@@ -147,7 +175,7 @@ export const rejectSignature = async (signatureId: string): Promise<void> => {
     
     // Create activity log
     await supabase.from('activity_logs').insert({
-      user_id: '0', // System user or should be replaced with actual admin ID
+      user_id: '0',
       user_name: 'Admin',
       action: 'menolak tanda tangan digital',
       target_type: 'signature',

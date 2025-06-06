@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as qrcode from "https://esm.sh/qrcode@1.5.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -85,24 +84,27 @@ serve(async (req) => {
         console.log("Signatures bucket created successfully");
       }
       
-      // Generate QR code as data URL
-      const qrCodeDataURL = await qrcode.toDataURL(verificationUrl, {
-        margin: 2,
-        width: 512,
-        errorCorrectionLevel: 'M',
-      });
+      // Use QR Server API to generate QR code with logo
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&format=png&ecc=M&margin=10&qzone=2&data=${encodeURIComponent(verificationUrl)}`;
+      
+      console.log("Generating QR code using QR Server API");
+      
+      // Fetch the QR code from the API
+      const qrResponse = await fetch(qrApiUrl);
+      if (!qrResponse.ok) {
+        throw new Error(`QR Server API error: ${qrResponse.statusText}`);
+      }
+      
+      const qrImageBuffer = await qrResponse.arrayBuffer();
+      const qrImageData = new Uint8Array(qrImageBuffer);
       
       console.log("QR code generated successfully");
-
-      // Convert data URL to binary data
-      const base64Data = qrCodeDataURL.split(",")[1];
-      const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
 
       // Upload to storage
       const filePath = `qrcodes/${supervisorId}-${Date.now()}.png`;
       const { error: uploadError } = await supabaseAdmin.storage
         .from("signatures")
-        .upload(filePath, binaryData, {
+        .upload(filePath, qrImageData, {
           contentType: "image/png",
           upsert: true,
         });

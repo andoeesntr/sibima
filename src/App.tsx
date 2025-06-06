@@ -10,6 +10,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 // Page imports
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import VerifySignature from "./pages/VerifySignature";
 
 // Student pages
 import StudentDashboard from "./pages/student/Dashboard";
@@ -59,6 +60,7 @@ function App() {
               {/* Redirect root to login */}
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/verify" element={<VerifySignature />} />
 
               {/* Student routes */}
               <Route path="/student" element={
