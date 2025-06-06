@@ -24,7 +24,7 @@ export const timesheetService = {
       .from('kp_timesheet')
       .select(`
         *,
-        student:profiles!student_id(full_name, nim)
+        student:profiles!kp_timesheet_student_id_fkey(full_name, nim)
       `)
       .eq('student_id', studentId)
       .gte('date', startDate)
@@ -32,7 +32,7 @@ export const timesheetService = {
       .order('date', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as TimesheetEntry[];
   },
 
   async getAllTimesheets(startDate: string, endDate: string): Promise<TimesheetEntry[]> {
@@ -40,14 +40,14 @@ export const timesheetService = {
       .from('kp_timesheet')
       .select(`
         *,
-        student:profiles!student_id(full_name, nim)
+        student:profiles!kp_timesheet_student_id_fkey(full_name, nim)
       `)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data || []) as TimesheetEntry[];
   },
 
   async createTimesheet(timesheet: Omit<TimesheetEntry, 'id' | 'created_at' | 'updated_at' | 'duration_minutes' | 'student'>): Promise<TimesheetEntry> {
@@ -58,7 +58,7 @@ export const timesheetService = {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as TimesheetEntry;
   },
 
   async updateTimesheet(id: string, timesheet: Partial<TimesheetEntry>): Promise<TimesheetEntry> {
@@ -70,7 +70,7 @@ export const timesheetService = {
       .single();
 
     if (error) throw error;
-    return data;
+    return data as TimesheetEntry;
   },
 
   async getTimesheetByDate(studentId: string, date: string): Promise<TimesheetEntry | null> {
@@ -82,6 +82,6 @@ export const timesheetService = {
       .maybeSingle();
 
     if (error) throw error;
-    return data;
+    return data as TimesheetEntry | null;
   }
 };
