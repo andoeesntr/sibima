@@ -19,6 +19,7 @@ import ProposalDetail from "./pages/student/ProposalDetail";
 import DigitalSignature from "./pages/student/DigitalSignature";
 import Guide from "./pages/student/Guide";
 import KpProgress from "./pages/student/KpProgress";
+import StudentTimesheet from "./pages/student/Timesheet";
 
 // Coordinator pages
 import CoordinatorDashboard from "./pages/coordinator/Dashboard";
@@ -28,6 +29,7 @@ import ProposalReview from "./pages/coordinator/ProposalReview";
 import CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
 import StudentEvaluation from "./pages/coordinator/StudentEvaluation";
 import GuidanceManagement from "./pages/coordinator/GuidanceManagement";
+import CoordinatorTimesheetOverview from "./pages/coordinator/TimesheetOverview";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -42,6 +44,7 @@ import SupervisorProfile from "./pages/supervisor/Profile";
 import DigitalSignatureUpload from "./pages/supervisor/DigitalSignatureUpload";
 import Feedback from "./pages/supervisor/Feedback";
 import KpProgressSupervision from "./pages/supervisor/KpProgressSupervision";
+import SupervisorTimesheetOverview from "./pages/supervisor/TimesheetOverview";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +73,7 @@ function App() {
                 <Route path="digital-signature" element={<DigitalSignature />} />
                 <Route path="guide" element={<Guide />} />
                 <Route path="kp-progress" element={<KpProgress />} />
+                <Route path="timesheet" element={<StudentTimesheet />} />
               </Route>
 
               {/* Coordinator routes */}
@@ -85,6 +89,7 @@ function App() {
                 <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
                 <Route path="student-evaluation" element={<StudentEvaluation />} />
                 <Route path="guidance-management" element={<GuidanceManagement />} />
+                <Route path="timesheet-overview" element={<CoordinatorTimesheetOverview />} />
               </Route>
 
               {/* Admin routes */}
@@ -112,6 +117,7 @@ function App() {
                 <Route path="digital-signature" element={<DigitalSignatureUpload />} />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="kp-progress" element={<KpProgressSupervision />} />
+                <Route path="timesheet-overview" element={<SupervisorTimesheetOverview />} />
               </Route>
 
               {/* 404 page */}
