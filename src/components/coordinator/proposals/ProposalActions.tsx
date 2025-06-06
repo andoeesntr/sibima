@@ -20,21 +20,20 @@ const ProposalActions = ({ status, onApprove, onReject, onRevision, onShare }: P
   return (
     <CardFooter className="flex justify-end space-x-4">
       <Button 
-        variant="outline"
+        variant="reject"
         onClick={onReject}
       >
         <X size={16} className="mr-1" /> Tolak
       </Button>
       <Button 
-        variant="outline"
-        className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:text-amber-800"
+        variant="revision"
         onClick={onRevision}
       >
         <FileEdit size={16} className="mr-1" /> Revisi
       </Button>
       <Button 
         variant="outline"
-        className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
+        className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-green-700 hover:text-blue-300 hover:border-green-700"
         onClick={onShare}
       >
         <Share2 size={16} className="mr-1" /> Bagikan ke Dosen

@@ -88,17 +88,15 @@ const ProposalCard = ({ proposal, onView, onApprove, onReject, onRevision }: Pro
           {showActions && (
             <>
               <Button 
-                variant="outline"
+                variant="reject"
                 size="sm"
-                className="text-red-600 border-red-200 hover:bg-red-50"
                 onClick={() => onReject(proposal.id)}
               >
                 <X size={16} className="mr-1" /> Tolak
               </Button>
               <Button 
-                variant="outline"
+                variant="revision"
                 size="sm"
-                className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:text-amber-800"
                 onClick={() => onRevision(proposal.id)}
               >
                 <FileEdit size={16} className="mr-1" /> Revisi

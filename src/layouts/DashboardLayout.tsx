@@ -119,7 +119,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
                       : "text-gray-200 hover:bg-green-700 hover:text-white",
                     !isSidebarOpen && "px-2 justify-center"
                   )}
-                  style={({ isActive }) => isActive ? { pointerEvents: 'none' } : {}}
+                  end={item.href === `/${role}`}
                 >
                   <span className="mr-3">{item.icon}</span>
                   {isSidebarOpen && <span>{item.title}</span>}
@@ -163,7 +163,7 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
         <header className="bg-white shadow-sm">
           <div className="flex items-center justify-between px-6 py-4">
             <h1 className="text-xl font-semibold text-gray-800">
-              {roleNavItems[role].find(item => window.location.pathname.includes(item.href))?.title || 'Dashboard'}
+              {roleNavItems[role].find(item => window.location.pathname === item.href)?.title || 'Dashboard'}
             </h1>
             
             <div className="flex items-center space-x-4">
