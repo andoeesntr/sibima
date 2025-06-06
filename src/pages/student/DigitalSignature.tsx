@@ -27,6 +27,8 @@ const DigitalSignature = () => {
 
       setIsLoading(true);
       try {
+        console.log('Fetching signature data for student:', user.id);
+        
         // Check if user has an approved proposal
         const { data: proposalData, error: proposalError } = await supabase
           .from('proposals')
@@ -46,12 +48,16 @@ const DigitalSignature = () => {
           return;
         }
 
+        console.log('Proposal data:', proposalData);
+
         // If the proposal exists and is approved
         if (proposalData && proposalData.status === 'approved') {
           setHasApprovedProposal(true);
           
           // If we have a supervisor, fetch their name and signature data
           if (proposalData.supervisor_id) {
+            console.log('Fetching supervisor data for:', proposalData.supervisor_id);
+            
             // Fetch supervisor name
             const { data: supervisorData, error: supervisorError } = await supabase
               .from('profiles')
@@ -61,27 +67,38 @@ const DigitalSignature = () => {
               
             if (!supervisorError && supervisorData) {
               setSupervisorName(supervisorData.full_name);
+              console.log('Supervisor name:', supervisorData.full_name);
             }
             
-            // Fetch digital signature and QR code
+            // Fetch digital signature and QR code - IMPORTANT: Must be approved status
             const { data: signatureData, error: signatureError } = await supabase
               .from('digital_signatures')
               .select('signature_url, qr_code_url, status')
               .eq('supervisor_id', proposalData.supervisor_id)
-              .eq('status', 'approved')
+              .eq('status', 'approved') // This is crucial - only approved signatures
+              .order('updated_at', { ascending: false })
+              .limit(1)
               .maybeSingle();
+              
+            console.log('Signature query result:', { signatureData, signatureError });
               
             if (!signatureError && signatureData) {
               setSignatureUrl(signatureData.signature_url);
               setQrCodeUrl(signatureData.qr_code_url);
               console.log('QR Code URL found:', signatureData.qr_code_url);
+              console.log('Signature URL found:', signatureData.signature_url);
             } else {
-              console.log('No approved signature found for supervisor');
+              console.log('No approved signature found for supervisor:', proposalData.supervisor_id);
             }
+          } else {
+            console.log('No supervisor assigned to proposal');
           }
+        } else {
+          console.log('No approved proposal found for student');
         }
       } catch (error) {
         console.error('Error:', error);
+        toast.error('Terjadi kesalahan saat memuat data');
       } finally {
         setIsLoading(false);
       }
@@ -90,37 +107,100 @@ const DigitalSignature = () => {
     fetchSignatureData();
   }, [user]);
 
-  const handleDownload = async (type: 'qrcode' | 'signature') => {
-    const url = type === 'qrcode' ? qrCodeUrl : signatureUrl;
-    
+  const downloadWithLogo = async (url: string, filename: string, type: 'qrcode' | 'signature') => {
     if (!url) {
       toast.error(`${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'} belum tersedia`);
       return;
     }
 
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = type === 'qrcode' ? 'qr_code_validasi.png' : 'tanda_tangan_digital.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-      toast.success(`Berhasil mengunduh ${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'}`);
+      if (type === 'qrcode') {
+        // Create QR code with embedded logo for download
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 400;
+        canvas.height = 400;
+        
+        const qrImg = new Image();
+        qrImg.crossOrigin = 'anonymous';
+        
+        qrImg.onload = () => {
+          // Draw QR code
+          ctx!.drawImage(qrImg, 0, 0, 400, 400);
+          
+          // Load and draw logo
+          const logoImg = new Image();
+          logoImg.onload = () => {
+            // Calculate logo position and size
+            const logoSize = 80;
+            const x = (400 - logoSize) / 2;
+            const y = (400 - logoSize) / 2;
+            
+            // Draw white background circle for logo
+            ctx!.fillStyle = '#FFFFFF';
+            ctx!.beginPath();
+            ctx!.arc(200, 200, logoSize / 2 + 8, 0, 2 * Math.PI);
+            ctx!.fill();
+            
+            // Add border
+            ctx!.strokeStyle = '#E0E0E0';
+            ctx!.lineWidth = 2;
+            ctx!.stroke();
+            
+            // Draw logo
+            ctx!.drawImage(logoImg, x, y, logoSize, logoSize);
+            
+            // Convert to blob and download
+            canvas.toBlob((blob) => {
+              if (blob) {
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(downloadUrl);
+                toast.success(`Berhasil mengunduh ${type === 'qrcode' ? 'QR Code dengan Logo SI' : 'Tanda Tangan Digital'}`);
+              }
+            });
+          };
+          logoImg.src = '/LogoSI-removebg-preview.png';
+        };
+        
+        qrImg.src = url;
+      } else {
+        // Regular download for signature
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        toast.success(`Berhasil mengunduh Tanda Tangan Digital`);
+      }
     } catch (error) {
       console.error('Download error:', error);
       toast.error(`Gagal mengunduh ${type === 'qrcode' ? 'QR Code' : 'Tanda Tangan Digital'}`);
     }
   };
 
+  const handleDownload = async (type: 'qrcode' | 'signature') => {
+    const url = type === 'qrcode' ? qrCodeUrl : signatureUrl;
+    const filename = type === 'qrcode' ? 'qr_code_validasi_dengan_logo_si.png' : 'tanda_tangan_digital.png';
+    
+    await downloadWithLogo(url!, filename, type);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-gray-500">Memeriksa status proposal...</p>
+        <p className="mt-4 text-gray-500">Memeriksa status proposal dan tanda tangan...</p>
       </div>
     );
   }
@@ -158,8 +238,8 @@ const DigitalSignature = () => {
           <AlertTriangle className="h-5 w-5 text-amber-500" />
           <AlertTitle className="text-amber-500 font-medium">Tanda Tangan Belum Tersedia</AlertTitle>
           <AlertDescription className="text-gray-600">
-            Dosen pembimbing Anda belum mengupload tanda tangan digital atau tanda tangan belum disetujui.
-            Silakan hubungi dosen pembimbing Anda untuk mengupload tanda tangan digital.
+            Dosen pembimbing Anda belum mengupload tanda tangan digital atau tanda tangan belum disetujui oleh admin.
+            Silakan hubungi dosen pembimbing Anda untuk mengupload tanda tangan digital, atau hubungi admin untuk approval.
           </AlertDescription>
         </Alert>
       </div>
@@ -190,7 +270,7 @@ const DigitalSignature = () => {
             <CardContent className="flex justify-center p-6">
               <div className="border p-4 rounded-lg bg-gray-50">
                 {qrCodeUrl ? (
-                  <div className="relative">
+                  <div className="relative bg-white p-2 rounded">
                     <img 
                       src={qrCodeUrl} 
                       alt="QR Code Validasi dengan Logo SI" 
@@ -200,7 +280,7 @@ const DigitalSignature = () => {
                         e.currentTarget.style.display = 'none';
                       }}
                     />
-                    {/* Logo overlay untuk referensi visual */}
+                    {/* Logo overlay untuk referensi visual - always visible */}
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md border-2">
                         <img 
@@ -286,7 +366,7 @@ const DigitalSignature = () => {
         </TabsContent>
       </Tabs>
 
-      {/* QR Code Dialog */}
+      {/* Enhanced QR Code Dialog */}
       <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -294,7 +374,7 @@ const DigitalSignature = () => {
           </DialogHeader>
           <div className="flex justify-center py-4">
             {qrCodeUrl && (
-              <div className="relative">
+              <div className="relative bg-white p-4 rounded-lg border">
                 <img 
                   src={qrCodeUrl} 
                   alt="QR Code Validasi dengan Logo SI" 
@@ -303,9 +383,9 @@ const DigitalSignature = () => {
                     console.error('Error loading QR code in dialog:', e);
                   }}
                 />
-                {/* Logo overlay untuk dialog */}
+                {/* Enhanced logo overlay untuk dialog */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-md border-2">
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-gray-200">
                     <img 
                       src="/LogoSI-removebg-preview.png" 
                       alt="Logo SI" 
@@ -318,14 +398,32 @@ const DigitalSignature = () => {
           </div>
           <div className="text-center">
             <p className="text-sm text-gray-500 mb-4">
-              Scan QR code ini untuk memvalidasi dokumen dengan logo SI
+              Scan QR code ini untuk memvalidasi dokumen dengan logo SI. Logo akan selalu tampil untuk verifikasi resmi.
             </p>
             <div className="flex gap-2 justify-center">
               <Button 
                 variant="outline" 
                 onClick={() => {
                   if (qrCodeUrl) {
-                    window.open(qrCodeUrl, '_blank');
+                    // Open with logo overlay intact
+                    const newWindow = window.open('', '_blank');
+                    if (newWindow) {
+                      newWindow.document.write(`
+                        <html>
+                          <head><title>QR Code dengan Logo SI</title></head>
+                          <body style="margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; font-family:Arial,sans-serif; background:#f5f5f5;">
+                            <h2 style="color:#333; margin-bottom:20px;">QR Code Validasi dengan Logo SI</h2>
+                            <div style="position:relative; background:white; padding:20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); border:1px solid #e0e0e0;">
+                              <img src="${qrCodeUrl}" alt="QR Code" style="width:350px; height:350px; object-fit:contain; display:block;">
+                              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:70px; height:70px; background:white; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.15); border:2px solid #e5e5e5;">
+                                <img src="${window.location.origin}/LogoSI-removebg-preview.png" alt="Logo SI" style="width:54px; height:54px; object-fit:contain;">
+                              </div>
+                            </div>
+                            <p style="margin-top:20px; color:#666; text-align:center; max-width:400px; line-height:1.5;">QR Code dengan Logo SI untuk verifikasi dokumen resmi Fakultas Sains dan Informatika UNJANI</p>
+                          </body>
+                        </html>
+                      `);
+                    }
                   }
                 }}
               >
@@ -352,7 +450,8 @@ const DigitalSignature = () => {
             <p className="text-sm text-blue-600 mt-1">
               Tempelkan QR Code dan tanda tangan digital pada dokumen KP Anda di tempat yang sesuai. 
               QR Code ini akan digunakan untuk memvalidasi keaslian dokumen dan tanda tangan digital 
-              dosen pembimbing Anda. QR Code dilengkapi dengan logo SI di tengah untuk verifikasi resmi.
+              dosen pembimbing Anda. QR Code dilengkapi dengan logo SI di tengah untuk verifikasi resmi 
+              Fakultas Sains dan Informatika UNJANI.
             </p>
           </div>
         </div>
