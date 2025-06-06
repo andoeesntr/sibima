@@ -8,10 +8,15 @@ import { Calendar, Download, FileSpreadsheet, FileText, Users, Search } from 'lu
 import { toast } from 'sonner';
 import { timesheetService, TimesheetEntry } from '@/services/timesheetService';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-// Import jsPDF without type declaration issues
-const jsPDF = require('jspdf');
-require('jspdf-autotable');
+// Extend jsPDF type to include autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 interface WeeklyData {
   studentId: string;
@@ -201,7 +206,7 @@ const TimesheetOverview = () => {
       return row;
     });
 
-    (pdf as any).autoTable({
+    pdf.autoTable({
       head: [['Nama', 'NIM', ...weekDays, 'Total']],
       body: tableData,
       startY: 40,
