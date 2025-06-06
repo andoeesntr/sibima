@@ -81,17 +81,10 @@ const DigitalSignature = () => {
         } else if (proposalData.team_id) {
           console.log('=== Debug: No direct supervisor, checking team supervisors ===');
           
-          // Fetch team supervisors
+          // Fetch team supervisors - Fixed query structure
           const { data: teamSupervisors, error: teamSupervisorsError } = await supabase
             .from('team_supervisors')
-            .select(`
-              supervisor_id,
-              profiles:supervisor_id (
-                id, 
-                full_name, 
-                email
-              )
-            `)
+            .select('supervisor_id')
             .eq('team_id', proposalData.team_id);
           
           console.log('=== Debug: Team Supervisors Query ===');
@@ -100,13 +93,24 @@ const DigitalSignature = () => {
           
           if (!teamSupervisorsError && teamSupervisors && teamSupervisors.length > 0) {
             supervisorIds = teamSupervisors.map(ts => ts.supervisor_id);
-            // Get first supervisor name for display
-            const firstSupervisor = teamSupervisors[0]?.profiles;
-            if (firstSupervisor) {
-              foundSupervisorName = firstSupervisor.full_name || firstSupervisor.email;
-            }
             console.log('=== Debug: Found team supervisor IDs ===', supervisorIds);
-            console.log('=== Debug: First supervisor name ===', foundSupervisorName);
+            
+            // Get first supervisor profile for display name
+            if (supervisorIds.length > 0) {
+              const { data: firstSupervisorProfile, error: profileError } = await supabase
+                .from('profiles')
+                .select('id, full_name, email')
+                .eq('id', supervisorIds[0])
+                .single();
+                
+              console.log('=== Debug: First supervisor profile ===');
+              console.log('Profile data:', firstSupervisorProfile);
+              console.log('Profile error:', profileError);
+              
+              if (!profileError && firstSupervisorProfile) {
+                foundSupervisorName = firstSupervisorProfile.full_name || firstSupervisorProfile.email;
+              }
+            }
           }
         }
 
