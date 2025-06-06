@@ -38,6 +38,7 @@ const DigitalSignature = () => {
             supervisor_id,
             student_id,
             title,
+            team_id,
             created_at
           `)
           .eq('student_id', user.id)
@@ -68,39 +69,90 @@ const DigitalSignature = () => {
         console.log('=== Debug: Approved proposal found ===');
         console.log('Proposal ID:', proposalData.id);
         console.log('Supervisor ID:', proposalData.supervisor_id);
+        console.log('Team ID:', proposalData.team_id);
 
-        // Step 2: If we have a supervisor, fetch their profile and signature data
+        let supervisorIds: string[] = [];
+        let foundSupervisorName = '';
+
+        // Step 2: Get supervisor IDs - check both direct supervisor and team supervisors
         if (proposalData.supervisor_id) {
-          console.log('=== Debug: Fetching supervisor data ===');
+          console.log('=== Debug: Using direct supervisor ID ===');
+          supervisorIds.push(proposalData.supervisor_id);
+        } else if (proposalData.team_id) {
+          console.log('=== Debug: No direct supervisor, checking team supervisors ===');
           
-          // Fetch supervisor profile
-          const { data: supervisorProfile, error: supervisorError } = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .eq('id', proposalData.supervisor_id)
-            .single();
-              
-          console.log('Supervisor profile data:', supervisorProfile);
-          console.log('Supervisor profile error:', supervisorError);
+          // Fetch team supervisors
+          const { data: teamSupervisors, error: teamSupervisorsError } = await supabase
+            .from('team_supervisors')
+            .select(`
+              supervisor_id,
+              profiles:supervisor_id (
+                id, 
+                full_name, 
+                email
+              )
+            `)
+            .eq('team_id', proposalData.team_id);
+          
+          console.log('=== Debug: Team Supervisors Query ===');
+          console.log('Team supervisors data:', teamSupervisors);
+          console.log('Team supervisors error:', teamSupervisorsError);
+          
+          if (!teamSupervisorsError && teamSupervisors && teamSupervisors.length > 0) {
+            supervisorIds = teamSupervisors.map(ts => ts.supervisor_id);
+            // Get first supervisor name for display
+            const firstSupervisor = teamSupervisors[0]?.profiles;
+            if (firstSupervisor) {
+              foundSupervisorName = firstSupervisor.full_name || firstSupervisor.email;
+            }
+            console.log('=== Debug: Found team supervisor IDs ===', supervisorIds);
+            console.log('=== Debug: First supervisor name ===', foundSupervisorName);
+          }
+        }
 
-          if (!supervisorError && supervisorProfile) {
-            setSupervisorName(supervisorProfile.full_name || supervisorProfile.email);
-            console.log('Supervisor name set to:', supervisorProfile.full_name || supervisorProfile.email);
+        if (supervisorIds.length === 0) {
+          console.log('❌ No supervisors found for this proposal');
+          setIsLoading(false);
+          return;
+        }
+
+        // Step 3: For each supervisor, check if they have an approved digital signature
+        let foundSignature = null;
+        let foundSupervisorProfile = null;
+
+        for (const supervisorId of supervisorIds) {
+          console.log(`=== Debug: Checking supervisor ${supervisorId} ===`);
+          
+          // Get supervisor profile if we don't have name yet
+          if (!foundSupervisorName) {
+            const { data: supervisorProfile, error: supervisorError } = await supabase
+              .from('profiles')
+              .select('id, full_name, email')
+              .eq('id', supervisorId)
+              .single();
+              
+            console.log('Supervisor profile data:', supervisorProfile);
+            console.log('Supervisor profile error:', supervisorError);
+
+            if (!supervisorError && supervisorProfile) {
+              foundSupervisorProfile = supervisorProfile;
+              foundSupervisorName = supervisorProfile.full_name || supervisorProfile.email;
+            }
           }
           
-          // Step 3: Fetch digital signature - CRITICAL: Must be approved status
+          // Check for approved digital signature
           console.log('=== Debug: Fetching digital signature ===');
           
           const { data: signatureData, error: signatureError } = await supabase
             .from('digital_signatures')
             .select('id, signature_url, qr_code_url, status, created_at, updated_at')
-            .eq('supervisor_id', proposalData.supervisor_id)
+            .eq('supervisor_id', supervisorId)
             .eq('status', 'approved')
             .order('updated_at', { ascending: false })
             .limit(1)
             .maybeSingle();
               
-          console.log('=== Debug: Digital Signature Query Result ===');
+          console.log(`=== Debug: Digital Signature Query Result for ${supervisorId} ===`);
           console.log('Signature data:', signatureData);
           console.log('Signature error:', signatureError);
               
@@ -109,41 +161,50 @@ const DigitalSignature = () => {
             console.log('Signature URL:', signatureData.signature_url);
             console.log('QR Code URL:', signatureData.qr_code_url);
             
-            setSignatureUrl(signatureData.signature_url);
-            setQrCodeUrl(signatureData.qr_code_url);
-            
-            // Additional debug logging
-            if (signatureData.qr_code_url) {
-              console.log('✅ QR Code is available for student');
-            } else {
-              console.log('⚠️ QR Code URL is null or empty');
-            }
-            
-            if (signatureData.signature_url) {
-              console.log('✅ Signature is available for student');
-            } else {
-              console.log('⚠️ Signature URL is null or empty');
-            }
+            foundSignature = signatureData;
+            break; // Use first approved signature found
+          }
+        }
+
+        // Set supervisor name
+        setSupervisorName(foundSupervisorName || "Dosen Pembimbing");
+
+        if (foundSignature) {
+          setSignatureUrl(foundSignature.signature_url);
+          setQrCodeUrl(foundSignature.qr_code_url);
+          
+          // Additional debug logging
+          if (foundSignature.qr_code_url) {
+            console.log('✅ QR Code is available for student');
           } else {
-            console.log('❌ No approved digital signature found');
-            console.log('This could mean:');
-            console.log('1. Supervisor has not uploaded signature yet');
-            console.log('2. Signature exists but not approved by admin yet');
-            console.log('3. Database connection issue');
-            
-            // Let's check if there are any signatures at all for this supervisor
+            console.log('⚠️ QR Code URL is null or empty');
+          }
+          
+          if (foundSignature.signature_url) {
+            console.log('✅ Signature is available for student');
+          } else {
+            console.log('⚠️ Signature URL is null or empty');
+          }
+        } else {
+          console.log('❌ No approved digital signature found from any supervisor');
+          console.log('This could mean:');
+          console.log('1. Supervisor(s) have not uploaded signature yet');
+          console.log('2. Signature exists but not approved by admin yet');
+          console.log('3. Database connection issue');
+          
+          // Let's check if there are any signatures at all for these supervisors
+          for (const supervisorId of supervisorIds) {
             const { data: allSignatures, error: allSigError } = await supabase
               .from('digital_signatures')
               .select('id, status, created_at')
-              .eq('supervisor_id', proposalData.supervisor_id);
+              .eq('supervisor_id', supervisorId);
               
-            console.log('=== All signatures for supervisor ===');
+            console.log(`=== All signatures for supervisor ${supervisorId} ===`);
             console.log('All signatures:', allSignatures);
             console.log('Error:', allSigError);
           }
-        } else {
-          console.log('❌ No supervisor assigned to approved proposal');
         }
+
       } catch (error) {
         console.error('=== Unexpected error in fetchSignatureData ===', error);
         toast.error('Terjadi kesalahan saat memuat data');
