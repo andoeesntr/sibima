@@ -599,6 +599,45 @@ export type Database = {
         }
         Relationships: []
       }
+      kp_timesheet: {
+        Row: {
+          created_at: string
+          date: string
+          duration_minutes: number | null
+          end_time: string | null
+          id: string
+          notes: string | null
+          start_time: string | null
+          status: string | null
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string | null
+          status?: string | null
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          duration_minutes?: number | null
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string | null
+          status?: string | null
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
