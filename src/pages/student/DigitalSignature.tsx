@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,20 +26,29 @@ const DigitalSignature = () => {
 
       setIsLoading(true);
       try {
-        console.log('Fetching signature data for student:', user.id);
+        console.log('=== Debug: Fetching signature data for student ===');
+        console.log('Student ID:', user.id);
         
-        // Check if user has an approved proposal
+        // Step 1: Check if user has an approved proposal
         const { data: proposalData, error: proposalError } = await supabase
           .from('proposals')
           .select(`
             id, 
             status,
-            supervisor_id
+            supervisor_id,
+            student_id,
+            title,
+            created_at
           `)
           .eq('student_id', user.id)
           .eq('status', 'approved')
+          .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
+
+        console.log('=== Debug: Proposal Query Result ===');
+        console.log('Proposal data:', proposalData);
+        console.log('Proposal error:', proposalError);
 
         if (proposalError && proposalError.code !== 'PGRST116') {
           console.error('Error checking proposal status:', proposalError);
@@ -48,56 +56,96 @@ const DigitalSignature = () => {
           return;
         }
 
-        console.log('Proposal data:', proposalData);
+        // If no approved proposal found
+        if (!proposalData || proposalData.status !== 'approved') {
+          console.log('No approved proposal found for student');
+          setHasApprovedProposal(false);
+          setIsLoading(false);
+          return;
+        }
 
-        // If the proposal exists and is approved
-        if (proposalData && proposalData.status === 'approved') {
-          setHasApprovedProposal(true);
+        setHasApprovedProposal(true);
+        console.log('=== Debug: Approved proposal found ===');
+        console.log('Proposal ID:', proposalData.id);
+        console.log('Supervisor ID:', proposalData.supervisor_id);
+
+        // Step 2: If we have a supervisor, fetch their profile and signature data
+        if (proposalData.supervisor_id) {
+          console.log('=== Debug: Fetching supervisor data ===');
           
-          // If we have a supervisor, fetch their name and signature data
-          if (proposalData.supervisor_id) {
-            console.log('Fetching supervisor data for:', proposalData.supervisor_id);
-            
-            // Fetch supervisor name
-            const { data: supervisorData, error: supervisorError } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', proposalData.supervisor_id)
-              .single();
+          // Fetch supervisor profile
+          const { data: supervisorProfile, error: supervisorError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .eq('id', proposalData.supervisor_id)
+            .single();
               
-            if (!supervisorError && supervisorData) {
-              setSupervisorName(supervisorData.full_name);
-              console.log('Supervisor name:', supervisorData.full_name);
+          console.log('Supervisor profile data:', supervisorProfile);
+          console.log('Supervisor profile error:', supervisorError);
+
+          if (!supervisorError && supervisorProfile) {
+            setSupervisorName(supervisorProfile.full_name || supervisorProfile.email);
+            console.log('Supervisor name set to:', supervisorProfile.full_name || supervisorProfile.email);
+          }
+          
+          // Step 3: Fetch digital signature - CRITICAL: Must be approved status
+          console.log('=== Debug: Fetching digital signature ===');
+          
+          const { data: signatureData, error: signatureError } = await supabase
+            .from('digital_signatures')
+            .select('id, signature_url, qr_code_url, status, created_at, updated_at')
+            .eq('supervisor_id', proposalData.supervisor_id)
+            .eq('status', 'approved')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+              
+          console.log('=== Debug: Digital Signature Query Result ===');
+          console.log('Signature data:', signatureData);
+          console.log('Signature error:', signatureError);
+              
+          if (!signatureError && signatureData) {
+            console.log('=== Digital signature found and approved ===');
+            console.log('Signature URL:', signatureData.signature_url);
+            console.log('QR Code URL:', signatureData.qr_code_url);
+            
+            setSignatureUrl(signatureData.signature_url);
+            setQrCodeUrl(signatureData.qr_code_url);
+            
+            // Additional debug logging
+            if (signatureData.qr_code_url) {
+              console.log('✅ QR Code is available for student');
+            } else {
+              console.log('⚠️ QR Code URL is null or empty');
             }
             
-            // Fetch digital signature and QR code - IMPORTANT: Must be approved status
-            const { data: signatureData, error: signatureError } = await supabase
-              .from('digital_signatures')
-              .select('signature_url, qr_code_url, status')
-              .eq('supervisor_id', proposalData.supervisor_id)
-              .eq('status', 'approved') // This is crucial - only approved signatures
-              .order('updated_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-              
-            console.log('Signature query result:', { signatureData, signatureError });
-              
-            if (!signatureError && signatureData) {
-              setSignatureUrl(signatureData.signature_url);
-              setQrCodeUrl(signatureData.qr_code_url);
-              console.log('QR Code URL found:', signatureData.qr_code_url);
-              console.log('Signature URL found:', signatureData.signature_url);
+            if (signatureData.signature_url) {
+              console.log('✅ Signature is available for student');
             } else {
-              console.log('No approved signature found for supervisor:', proposalData.supervisor_id);
+              console.log('⚠️ Signature URL is null or empty');
             }
           } else {
-            console.log('No supervisor assigned to proposal');
+            console.log('❌ No approved digital signature found');
+            console.log('This could mean:');
+            console.log('1. Supervisor has not uploaded signature yet');
+            console.log('2. Signature exists but not approved by admin yet');
+            console.log('3. Database connection issue');
+            
+            // Let's check if there are any signatures at all for this supervisor
+            const { data: allSignatures, error: allSigError } = await supabase
+              .from('digital_signatures')
+              .select('id, status, created_at')
+              .eq('supervisor_id', proposalData.supervisor_id);
+              
+            console.log('=== All signatures for supervisor ===');
+            console.log('All signatures:', allSignatures);
+            console.log('Error:', allSigError);
           }
         } else {
-          console.log('No approved proposal found for student');
+          console.log('❌ No supervisor assigned to approved proposal');
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('=== Unexpected error in fetchSignatureData ===', error);
         toast.error('Terjadi kesalahan saat memuat data');
       } finally {
         setIsLoading(false);
@@ -238,7 +286,7 @@ const DigitalSignature = () => {
           <AlertTriangle className="h-5 w-5 text-amber-500" />
           <AlertTitle className="text-amber-500 font-medium">Tanda Tangan Belum Tersedia</AlertTitle>
           <AlertDescription className="text-gray-600">
-            Dosen pembimbing Anda belum mengupload tanda tangan digital atau tanda tangan belum disetujui oleh admin.
+            Dosen pembimbing Anda ({supervisorName || 'belum diketahui'}) belum mengupload tanda tangan digital atau tanda tangan belum disetujui oleh admin.
             Silakan hubungi dosen pembimbing Anda untuk mengupload tanda tangan digital, atau hubungi admin untuk approval.
           </AlertDescription>
         </Alert>
@@ -295,7 +343,7 @@ const DigitalSignature = () => {
                   <div className="w-64 h-64 flex flex-col items-center justify-center bg-gray-100 rounded">
                     <QrCode className="text-gray-400 h-16 w-16 mb-4" />
                     <p className="text-gray-500 text-center px-4">
-                      QR Code belum tersedia. Silakan hubungi dosen pembimbing.
+                      QR Code belum tersedia. Silakan hubungi dosen pembimbing ({supervisorName || 'belum diketahui'}).
                     </p>
                   </div>
                 )}
