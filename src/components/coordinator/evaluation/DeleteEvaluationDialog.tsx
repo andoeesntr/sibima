@@ -64,11 +64,11 @@ const DeleteEvaluationDialog = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting} className="hover:bg-green-700 hover:text-white">Batal</AlertDialogCancel>
           <AlertDialogAction 
             onClick={handleDelete}
             disabled={isDeleting}
-            className="bg-destructive hover:bg-destructive/90"
+            className="bg-destructive hover:bg-green-700"
           >
             {isDeleting ? 'Menghapus...' : 'Hapus'}
           </AlertDialogAction>

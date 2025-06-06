@@ -105,7 +105,7 @@ const Login = () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-green-700"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
@@ -121,7 +121,7 @@ const Login = () => {
           <CardFooter>
             <Button 
               type="submit" 
-              className="w-full bg-primary hover:bg-primary/90"
+              className="w-full"
               disabled={isLoading}
             >
               {isLoading ? 'Memproses...' : 'Login'}
