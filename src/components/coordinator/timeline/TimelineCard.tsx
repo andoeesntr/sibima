@@ -11,6 +11,30 @@ interface TimelineCardProps {
   readOnly?: boolean;
 }
 
+const formatDescriptionWithLinks = (description: string) => {
+  // Regular expression to match URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  
+  const parts = description.split(urlRegex);
+  
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 underline"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 const TimelineCard = ({ step, index, onEditStep, variant, readOnly = false }: TimelineCardProps) => {
   if (variant === 'mobile') {
     return (
@@ -34,7 +58,9 @@ const TimelineCard = ({ step, index, onEditStep, variant, readOnly = false }: Ti
         </div>
         
         {step.description && (
-          <p className="text-gray-600 text-sm">{step.description}</p>
+          <p className="text-gray-600 text-sm">
+            {formatDescriptionWithLinks(step.description)}
+          </p>
         )}
       </div>
     );
@@ -56,7 +82,9 @@ const TimelineCard = ({ step, index, onEditStep, variant, readOnly = false }: Ti
       <h3 className="font-bold text-gray-900 mb-2">{step.title}</h3>
       
       {step.description && (
-        <p className="text-gray-600 text-sm">{step.description}</p>
+        <p className="text-gray-600 text-sm">
+          {formatDescriptionWithLinks(step.description)}
+        </p>
       )}
     </div>
   );
