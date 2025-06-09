@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +46,11 @@ const TimesheetOverview = () => {
   });
 
   const weekDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+  const dayDates = Array.from({length: 5}, (_, i) => {
+    const date = new Date(selectedWeek);
+    date.setDate(date.getDate() + i);
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' });
+  });
 
   useEffect(() => {
     fetchTimesheets();
@@ -147,47 +151,36 @@ const TimesheetOverview = () => {
   };
 
   const exportToExcel = () => {
-    const exportData = weeklyData.map(student => {
-      const row: any = {
-        'Nama': student.studentName,
-        'NIM': student.nim
-      };
-
-      // Add each weekday
-      for (let i = 0; i < 5; i++) {
-        const currentDate = new Date(selectedWeek);
-        currentDate.setDate(new Date(selectedWeek).getDate() + i);
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const dayData = student.days[dateStr];
-        
-        if (dayData.status === 'HADIR') {
-          row[weekDays[i]] = `${dayData.startTime} - ${dayData.endTime} (${formatDuration(dayData.duration)})`;
-        } else {
-          row[weekDays[i]] = dayData.status;
-        }
-      }
-
-      row['Total Jam'] = formatDuration(student.totalMinutes);
-      return row;
-    });
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
+    // Create workbook
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Timesheet');
-    XLSX.writeFile(wb, `Timesheet_${selectedWeek}.xlsx`);
-    toast.success('Data berhasil diekspor ke Excel');
-  };
-
-  const exportToPDF = () => {
-    const pdf = new jsPDF('l', 'mm', 'a4');
     
-    pdf.setFontSize(16);
-    pdf.text('Rekap Timesheet Kerja Praktik', 20, 20);
-    pdf.setFontSize(12);
-    pdf.text(`Minggu: ${selectedWeek}`, 20, 30);
-
-    const tableData = weeklyData.map(student => {
-      const row = [student.studentName, student.nim];
+    // Create worksheet data
+    const wsData = [];
+    
+    // Header section
+    wsData.push(['PRESENSI HARIAN KERJA PRAKTIK']);
+    wsData.push([]);
+    wsData.push(['Keterangan']);
+    wsData.push(['SAKIT']);
+    wsData.push(['IZIN']);
+    wsData.push(['LIBUR']);
+    wsData.push([]);
+    wsData.push(['MODE KERJA : ONSITE']);
+    wsData.push([]);
+    
+    // Table headers
+    const headerRow = ['No', 'Nama', 'NIM'];
+    weekDays.forEach((day, index) => {
+      headerRow.push(`${day}\n${dayDates[index]}`);
+      headerRow.push('Jam Mulai');
+      headerRow.push('Jam Akhir');
+    });
+    headerRow.push('TOTAL\nWAKTU');
+    wsData.push(headerRow);
+    
+    // Student data
+    filteredData.forEach((student, index) => {
+      const row = [index + 1, student.studentName, student.nim];
       
       for (let i = 0; i < 5; i++) {
         const currentDate = new Date(selectedWeek);
@@ -196,7 +189,112 @@ const TimesheetOverview = () => {
         const dayData = student.days[dateStr];
         
         if (dayData.status === 'HADIR') {
-          row.push(`${dayData.startTime}-${dayData.endTime}\n(${formatDuration(dayData.duration)})`);
+          row.push('');
+          row.push(dayData.startTime || '');
+          row.push(dayData.endTime || '');
+        } else {
+          row.push(dayData.status);
+          row.push('');
+          row.push('');
+        }
+      }
+      
+      row.push(formatDuration(student.totalMinutes));
+      wsData.push(row);
+    });
+    
+    // Add signature section
+    wsData.push([]);
+    wsData.push([]);
+    wsData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Mengetahui']);
+    wsData.push([]);
+    wsData.push([]);
+    wsData.push([]);
+    wsData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Nama Dosen Pembimbing']);
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Set column widths
+    const colWidths = [
+      { wch: 5 },   // No
+      { wch: 20 },  // Nama
+      { wch: 12 },  // NIM
+    ];
+    
+    // Add widths for each day (3 columns per day)
+    for (let i = 0; i < 5; i++) {
+      colWidths.push({ wch: 8 });  // Day/Status
+      colWidths.push({ wch: 10 }); // Jam Mulai
+      colWidths.push({ wch: 10 }); // Jam Akhir
+    }
+    colWidths.push({ wch: 12 }); // Total
+    
+    ws['!cols'] = colWidths;
+    
+    // Merge cells for header
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 17 } }, // Title
+    ];
+    
+    // Apply styles to legend
+    const legendStyle = {
+      fill: { fgColor: { rgb: "FFFF00" } } // Yellow background
+    };
+    
+    // Color coding for legend
+    if (ws['A4']) ws['A4'].s = { fill: { fgColor: { rgb: "800080" } } }; // Purple for SAKIT
+    if (ws['A5']) ws['A5'].s = { fill: { fgColor: { rgb: "0000FF" } } }; // Blue for IZIN
+    if (ws['A6']) ws['A6'].s = { fill: { fgColor: { rgb: "FF0000" } } }; // Red for LIBUR
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Timesheet KP');
+    
+    // Generate filename with date
+    const filename = `Timesheet_KP_${selectedWeek}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    toast.success('Data berhasil diekspor ke Excel');
+  };
+
+  const exportToPDF = () => {
+    const pdf = new jsPDF('l', 'mm', 'a4');
+    
+    // Title
+    pdf.setFontSize(16);
+    pdf.text('PRESENSI HARIAN KERJA PRAKTIK', 20, 20);
+    
+    // Legend
+    pdf.setFontSize(10);
+    pdf.text('Keterangan:', 20, 35);
+    
+    // Color legend
+    pdf.setFillColor(128, 0, 128); // Purple
+    pdf.rect(20, 40, 5, 3, 'F');
+    pdf.text('SAKIT', 28, 42);
+    
+    pdf.setFillColor(0, 0, 255); // Blue
+    pdf.rect(50, 40, 5, 3, 'F');
+    pdf.text('IZIN', 58, 42);
+    
+    pdf.setFillColor(255, 0, 0); // Red
+    pdf.rect(75, 40, 5, 3, 'F');
+    pdf.text('LIBUR', 83, 42);
+    
+    pdf.setFontSize(12);
+    pdf.text(`Minggu: ${selectedWeek}`, 20, 52);
+
+    // Prepare table data
+    const tableData = filteredData.map((student, index) => {
+      const row = [index + 1, student.studentName, student.nim];
+      
+      for (let i = 0; i < 5; i++) {
+        const currentDate = new Date(selectedWeek);
+        currentDate.setDate(new Date(selectedWeek).getDate() + i);
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const dayData = student.days[dateStr];
+        
+        if (dayData.status === 'HADIR') {
+          row.push(`${dayData.startTime || ''}-${dayData.endTime || ''}`);
         } else {
           row.push(dayData.status);
         }
@@ -206,16 +304,33 @@ const TimesheetOverview = () => {
       return row;
     });
 
+    // Table headers
+    const headers = ['No', 'Nama', 'NIM'];
+    weekDays.forEach((day, index) => {
+      headers.push(`${day}\n${dayDates[index]}`);
+    });
+    headers.push('Total\nWaktu');
+
     pdf.autoTable({
-      head: [['Nama', 'NIM', ...weekDays, 'Total']],
+      head: [headers],
       body: tableData,
-      startY: 40,
+      startY: 60,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [17, 97, 61], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 245, 245] }
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 25 },
+      }
     });
 
-    pdf.save(`Timesheet_${selectedWeek}.pdf`);
+    // Add signature section
+    const finalY = (pdf as any).lastAutoTable.finalY + 20;
+    pdf.text('Mengetahui', 200, finalY);
+    pdf.text('Nama Dosen Pembimbing', 200, finalY + 30);
+
+    pdf.save(`Timesheet_KP_${selectedWeek}.pdf`);
     toast.success('Data berhasil diekspor ke PDF');
   };
 
@@ -236,6 +351,33 @@ const TimesheetOverview = () => {
           </div>
         </div>
       </div>
+
+      {/* Legend */}
+      <Card className="shadow-lg border-green-200">
+        <CardHeader className="bg-yellow-50 border-b border-yellow-200">
+          <CardTitle className="text-green-800">Keterangan Status</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-500 rounded"></div>
+              <span className="text-sm">Hadir</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-purple-500 rounded"></div>
+              <span className="text-sm">Sakit</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-blue-500 rounded"></div>
+              <span className="text-sm">Izin</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-500 rounded"></div>
+              <span className="text-sm">Libur</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card className="shadow-lg border-green-200">
@@ -310,8 +452,7 @@ const TimesheetOverview = () => {
                       {day}
                       <br />
                       <span className="text-xs text-yellow-200">
-                        {new Date(new Date(selectedWeek).getTime() + index * 24 * 60 * 60 * 1000)
-                          .toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })}
+                        {dayDates[index]}
                       </span>
                     </th>
                   ))}
