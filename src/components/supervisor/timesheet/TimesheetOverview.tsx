@@ -3,25 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Download, FileSpreadsheet, FileText, Users, Search } from 'lucide-react';
+import { Calendar, Download, FileSpreadsheet, Users, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { timesheetService, TimesheetEntry } from '@/services/timesheetService';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
-
-interface WeeklyData {
+interface AllTimeData {
   studentId: string;
   studentName: string;
   nim: string;
-  days: {
+  entries: {
     [key: string]: {
       startTime: string | null;
       endTime: string | null;
@@ -36,7 +27,7 @@ interface WeeklyData {
 const TimesheetOverview = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [timesheets, setTimesheets] = useState<TimesheetEntry[]>([]);
-  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+  const [allTimeData, setAllTimeData] = useState<AllTimeData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(() => {
     const today = new Date();
@@ -54,6 +45,7 @@ const TimesheetOverview = () => {
 
   useEffect(() => {
     fetchTimesheets();
+    fetchAllTimesheets();
   }, [selectedWeek]);
 
   const fetchTimesheets = async () => {
@@ -76,6 +68,60 @@ const TimesheetOverview = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchAllTimesheets = async () => {
+    try {
+      // Fetch all timesheets without date filter
+      const startDate = '2020-01-01'; // Very early date to get all records
+      const endDate = '2030-12-31';   // Very late date to get all records
+
+      const data = await timesheetService.getAllTimesheets(startDate, endDate);
+      processAllTimeData(data);
+    } catch (error) {
+      console.error('Error fetching all timesheets:', error);
+      toast.error('Gagal mengambil semua data timesheet');
+    }
+  };
+
+  const processAllTimeData = (data: TimesheetEntry[]) => {
+    const studentGroups: { [key: string]: TimesheetEntry[] } = {};
+    
+    // Group by student
+    data.forEach(entry => {
+      if (!studentGroups[entry.student_id]) {
+        studentGroups[entry.student_id] = [];
+      }
+      studentGroups[entry.student_id].push(entry);
+    });
+
+    const processed: AllTimeData[] = Object.entries(studentGroups).map(([studentId, entries]) => {
+      const student = entries[0]?.student;
+      const entriesData: AllTimeData['entries'] = {};
+      let totalMinutes = 0;
+
+      // Process all entries for this student
+      entries.forEach(entry => {
+        entriesData[entry.date] = {
+          startTime: entry.start_time,
+          endTime: entry.end_time,
+          duration: entry.duration_minutes || 0,
+          status: entry.status,
+          notes: entry.notes
+        };
+        totalMinutes += entry.duration_minutes || 0;
+      });
+
+      return {
+        studentId,
+        studentName: student?.full_name || 'Unknown',
+        nim: student?.nim || 'Unknown',
+        entries: entriesData,
+        totalMinutes
+      };
+    });
+
+    setAllTimeData(processed);
   };
 
   const processWeeklyData = (data: TimesheetEntry[], startDate: Date) => {
@@ -150,7 +196,12 @@ const TimesheetOverview = () => {
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
-  const exportToExcel = () => {
+  const exportAllToExcel = () => {
+    if (allTimeData.length === 0) {
+      toast.error('Tidak ada data untuk diekspor');
+      return;
+    }
+
     // Create workbook
     const wb = XLSX.utils.book_new();
     
@@ -158,20 +209,31 @@ const TimesheetOverview = () => {
     const wsData = [];
     
     // Header section
-    wsData.push(['PRESENSI HARIAN KERJA PRAKTIK']);
+    wsData.push(['REKAP LENGKAP PRESENSI KERJA PRAKTIK']);
     wsData.push([]);
-    wsData.push(['Keterangan']);
-    wsData.push(['SAKIT']);
-    wsData.push(['IZIN']);
-    wsData.push(['LIBUR']);
+    wsData.push(['Keterangan Status:']);
+    wsData.push(['SAKIT - Tidak masuk karena sakit']);
+    wsData.push(['IZIN - Tidak masuk dengan izin']);
+    wsData.push(['LIBUR - Hari libur']);
+    wsData.push(['HADIR - Masuk kerja']);
     wsData.push([]);
     wsData.push(['MODE KERJA : ONSITE']);
     wsData.push([]);
     
+    // Get all unique dates from all students and sort them
+    const allDates = new Set<string>();
+    allTimeData.forEach(student => {
+      Object.keys(student.entries).forEach(date => allDates.add(date));
+    });
+    const sortedDates = Array.from(allDates).sort();
+    
     // Table headers
     const headerRow = ['No', 'Nama', 'NIM'];
-    weekDays.forEach((day, index) => {
-      headerRow.push(`${day}\n${dayDates[index]}`);
+    sortedDates.forEach(date => {
+      const dateObj = new Date(date);
+      const dayName = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
+      const dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      headerRow.push(`${dayName}\n${dateStr}`);
       headerRow.push('Jam Mulai');
       headerRow.push('Jam Akhir');
     });
@@ -179,25 +241,28 @@ const TimesheetOverview = () => {
     wsData.push(headerRow);
     
     // Student data
-    filteredData.forEach((student, index) => {
+    filteredAllData.forEach((student, index) => {
       const row = [index + 1, student.studentName, student.nim];
       
-      for (let i = 0; i < 5; i++) {
-        const currentDate = new Date(selectedWeek);
-        currentDate.setDate(new Date(selectedWeek).getDate() + i);
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const dayData = student.days[dateStr];
+      sortedDates.forEach(date => {
+        const dayData = student.entries[date];
         
-        if (dayData.status === 'HADIR') {
-          row.push('');
-          row.push(dayData.startTime || '');
-          row.push(dayData.endTime || '');
+        if (dayData) {
+          if (dayData.status === 'HADIR') {
+            row.push('');
+            row.push(dayData.startTime || '');
+            row.push(dayData.endTime || '');
+          } else {
+            row.push(dayData.status);
+            row.push('');
+            row.push('');
+          }
         } else {
-          row.push(dayData.status);
+          row.push('-');
           row.push('');
           row.push('');
         }
-      }
+      });
       
       row.push(formatDuration(student.totalMinutes));
       wsData.push(row);
@@ -222,9 +287,9 @@ const TimesheetOverview = () => {
       { wch: 12 },  // NIM
     ];
     
-    // Add widths for each day (3 columns per day)
-    for (let i = 0; i < 5; i++) {
-      colWidths.push({ wch: 8 });  // Day/Status
+    // Add widths for each date (3 columns per date)
+    for (let i = 0; i < sortedDates.length; i++) {
+      colWidths.push({ wch: 8 });  // Date/Status
       colWidths.push({ wch: 10 }); // Jam Mulai
       colWidths.push({ wch: 10 }); // Jam Akhir
     }
@@ -233,108 +298,48 @@ const TimesheetOverview = () => {
     ws['!cols'] = colWidths;
     
     // Merge cells for header
+    const totalCols = 3 + (sortedDates.length * 3) + 1;
     ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 17 } }, // Title
+      { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Title
     ];
-    
-    // Apply styles to legend
-    const legendStyle = {
-      fill: { fgColor: { rgb: "FFFF00" } } // Yellow background
-    };
-    
-    // Color coding for legend
-    if (ws['A4']) ws['A4'].s = { fill: { fgColor: { rgb: "800080" } } }; // Purple for SAKIT
-    if (ws['A5']) ws['A5'].s = { fill: { fgColor: { rgb: "0000FF" } } }; // Blue for IZIN
-    if (ws['A6']) ws['A6'].s = { fill: { fgColor: { rgb: "FF0000" } } }; // Red for LIBUR
 
     // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Timesheet KP');
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Lengkap Timesheet');
     
-    // Generate filename with date
-    const filename = `Timesheet_KP_${selectedWeek}.xlsx`;
+    // Generate filename with current date
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filename = `Rekap_Lengkap_Timesheet_KP_${currentDate}.xlsx`;
     XLSX.writeFile(wb, filename);
-    toast.success('Data berhasil diekspor ke Excel');
+    toast.success('Rekap lengkap berhasil diekspor ke Excel');
   };
 
-  const exportToPDF = () => {
-    const pdf = new jsPDF('l', 'mm', 'a4');
+  const filteredData = timesheets.filter(entry => {
+    const student = entry.student;
+    if (!student) return false;
     
-    // Title
-    pdf.setFontSize(16);
-    pdf.text('PRESENSI HARIAN KERJA PRAKTIK', 20, 20);
-    
-    // Legend
-    pdf.setFontSize(10);
-    pdf.text('Keterangan:', 20, 35);
-    
-    // Color legend
-    pdf.setFillColor(128, 0, 128); // Purple
-    pdf.rect(20, 40, 5, 3, 'F');
-    pdf.text('SAKIT', 28, 42);
-    
-    pdf.setFillColor(0, 0, 255); // Blue
-    pdf.rect(50, 40, 5, 3, 'F');
-    pdf.text('IZIN', 58, 42);
-    
-    pdf.setFillColor(255, 0, 0); // Red
-    pdf.rect(75, 40, 5, 3, 'F');
-    pdf.text('LIBUR', 83, 42);
-    
-    pdf.setFontSize(12);
-    pdf.text(`Minggu: ${selectedWeek}`, 20, 52);
+    return student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           student.nim?.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
-    // Prepare table data
-    const tableData = filteredData.map((student, index) => {
-      const row = [index + 1, student.studentName, student.nim];
-      
-      for (let i = 0; i < 5; i++) {
-        const currentDate = new Date(selectedWeek);
-        currentDate.setDate(new Date(selectedWeek).getDate() + i);
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const dayData = student.days[dateStr];
-        
-        if (dayData.status === 'HADIR') {
-          row.push(`${dayData.startTime || ''}-${dayData.endTime || ''}`);
-        } else {
-          row.push(dayData.status);
-        }
-      }
-      
-      row.push(formatDuration(student.totalMinutes));
-      return row;
-    });
+  interface WeeklyData {
+    studentId: string;
+    studentName: string;
+    nim: string;
+    days: {
+      [key: string]: {
+        startTime: string | null;
+        endTime: string | null;
+        duration: number;
+        status: string;
+        notes: string | null;
+      };
+    };
+    totalMinutes: number;
+  }
 
-    // Table headers
-    const headers = ['No', 'Nama', 'NIM'];
-    weekDays.forEach((day, index) => {
-      headers.push(`${day}\n${dayDates[index]}`);
-    });
-    headers.push('Total\nWaktu');
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
 
-    pdf.autoTable({
-      head: [headers],
-      body: tableData,
-      startY: 60,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [17, 97, 61], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 10 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 25 },
-      }
-    });
-
-    // Add signature section
-    const finalY = (pdf as any).lastAutoTable.finalY + 20;
-    pdf.text('Mengetahui', 200, finalY);
-    pdf.text('Nama Dosen Pembimbing', 200, finalY + 30);
-
-    pdf.save(`Timesheet_KP_${selectedWeek}.pdf`);
-    toast.success('Data berhasil diekspor ke PDF');
-  };
-
-  const filteredData = weeklyData.filter(student =>
+  const filteredAllData = allTimeData.filter(student =>
     student.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.nim.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -413,27 +418,19 @@ const TimesheetOverview = () => {
 
             <div className="flex gap-2">
               <Button
-                onClick={exportToExcel}
+                onClick={exportAllToExcel}
                 variant="outline"
                 className="flex-1"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Excel
-              </Button>
-              <Button
-                onClick={exportToPDF}
-                variant="outline"
-                className="flex-1"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                PDF
+                Download Rekap Lengkap
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Timesheet Table */}
+      {/* Timesheet Table - keeping the weekly view for display */}
       <Card className="shadow-lg border-green-200">
         <CardHeader className="bg-yellow-50 border-b border-yellow-200">
           <CardTitle className="text-green-800">
@@ -474,31 +471,37 @@ const TimesheetOverview = () => {
                   </tr>
                 ) : (
                   filteredData.map((student, index) => (
-                    <tr key={student.studentId} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-4 py-3 font-medium text-green-800">{student.studentName}</td>
-                      <td className="px-4 py-3 text-gray-600">{student.nim}</td>
-                      {Object.entries(student.days).map(([date, data]) => (
-                        <td key={date} className="px-4 py-3 text-center">
-                          {data.status === 'HADIR' ? (
-                            <div className="text-sm">
-                              <div className="font-medium text-green-700">
-                                {data.startTime} - {data.endTime}
+                    <tr key={student.student_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-4 py-3 font-medium text-green-800">{student.student?.full_name}</td>
+                      <td className="px-4 py-3 text-gray-600">{student.student?.nim}</td>
+                      {Array.from({ length: 5 }, (_, i) => {
+                        const date = new Date(selectedWeek);
+                        date.setDate(date.getDate() + i);
+                        const dateStr = date.toISOString().split('T')[0];
+                        const data = weeklyData.find(wd => wd.studentId === student.student_id)?.days[dateStr];
+                        return (
+                          <td key={dateStr} className="px-4 py-3 text-center">
+                            {data?.status === 'HADIR' ? (
+                              <div className="text-sm">
+                                <div className="font-medium text-green-700">
+                                  {data.startTime} - {data.endTime}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  ({formatDuration(data.duration)})
+                                </div>
                               </div>
-                              <div className="text-xs text-gray-500">
-                                ({formatDuration(data.duration)})
-                              </div>
-                            </div>
-                          ) : data.status === 'TIDAK_HADIR' ? (
-                            <span className="text-xs text-gray-400">-</span>
-                          ) : (
-                            <span className={`px-2 py-1 rounded-full text-xs border ${getStatusColor(data.status)}`}>
-                              {data.status}
-                            </span>
-                          )}
-                        </td>
-                      ))}
+                            ) : data?.status === 'TIDAK_HADIR' ? (
+                              <span className="text-xs text-gray-400">-</span>
+                            ) : (
+                              <span className={`px-2 py-1 rounded-full text-xs border ${getStatusColor(data?.status || 'TIDAK_HADIR')}`}>
+                                {data?.status}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="px-4 py-3 text-center font-bold text-green-800">
-                        {formatDuration(student.totalMinutes)}
+                        {weeklyData.find(wd => wd.studentId === student.student_id) ? formatDuration(weeklyData.find(wd => wd.studentId === student.student_id)!.totalMinutes) : '0:00'}
                       </td>
                     </tr>
                   ))
