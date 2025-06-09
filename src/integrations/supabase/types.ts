@@ -856,6 +856,48 @@ export type Database = {
           },
         ]
       }
+      system_activity_logs: {
+        Row: {
+          action_description: string
+          action_type: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          target_id: string | null
+          target_type: string | null
+          timestamp: string
+          user_id: string | null
+          user_name: string
+          user_role: string
+        }
+        Insert: {
+          action_description: string
+          action_type: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          timestamp?: string
+          user_id?: string | null
+          user_name: string
+          user_role: string
+        }
+        Update: {
+          action_description?: string
+          action_type?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          timestamp?: string
+          user_id?: string | null
+          user_name?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string | null

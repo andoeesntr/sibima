@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar, Download, FileSpreadsheet, Users, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { timesheetService, TimesheetEntry } from '@/services/timesheetService';
+import { logDownloadActivity } from '@/services/activityLogService';
 import * as XLSX from 'xlsx';
 
 interface AllTimeData {
@@ -196,121 +197,130 @@ const TimesheetOverview = () => {
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
-  const exportAllToExcel = () => {
+  const exportAllToExcel = async () => {
     if (allTimeData.length === 0) {
       toast.error('Tidak ada data untuk diekspor');
       return;
     }
 
-    // Create workbook
-    const wb = XLSX.utils.book_new();
-    
-    // Create worksheet data
-    const wsData = [];
-    
-    // Header section
-    wsData.push(['REKAP LENGKAP PRESENSI KERJA PRAKTIK']);
-    wsData.push([]);
-    wsData.push(['Keterangan Status:']);
-    wsData.push(['SAKIT - Tidak masuk karena sakit']);
-    wsData.push(['IZIN - Tidak masuk dengan izin']);
-    wsData.push(['LIBUR - Hari libur']);
-    wsData.push(['HADIR - Masuk kerja']);
-    wsData.push([]);
-    wsData.push(['MODE KERJA : ONSITE']);
-    wsData.push([]);
-    
-    // Get all unique dates from all students and sort them
-    const allDates = new Set<string>();
-    allTimeData.forEach(student => {
-      Object.keys(student.entries).forEach(date => allDates.add(date));
-    });
-    const sortedDates = Array.from(allDates).sort();
-    
-    // Table headers
-    const headerRow = ['No', 'Nama', 'NIM'];
-    sortedDates.forEach(date => {
-      const dateObj = new Date(date);
-      const dayName = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
-      const dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      headerRow.push(`${dayName}\n${dateStr}`);
-      headerRow.push('Jam Mulai');
-      headerRow.push('Jam Akhir');
-    });
-    headerRow.push('TOTAL\nWAKTU');
-    wsData.push(headerRow);
-    
-    // Student data
-    filteredAllData.forEach((student, index) => {
-      const row = [index + 1, student.studentName, student.nim];
+    try {
+      // Create workbook
+      const wb = XLSX.utils.book_new();
       
+      // Create worksheet data
+      const wsData = [];
+      
+      // Header section
+      wsData.push(['REKAP LENGKAP PRESENSI KERJA PRAKTIK']);
+      wsData.push([]);
+      wsData.push(['Keterangan Status:']);
+      wsData.push(['SAKIT - Tidak masuk karena sakit']);
+      wsData.push(['IZIN - Tidak masuk dengan izin']);
+      wsData.push(['LIBUR - Hari libur']);
+      wsData.push(['HADIR - Masuk kerja']);
+      wsData.push([]);
+      wsData.push(['MODE KERJA : ONSITE']);
+      wsData.push([]);
+      
+      // Get all unique dates from all students and sort them
+      const allDates = new Set<string>();
+      allTimeData.forEach(student => {
+        Object.keys(student.entries).forEach(date => allDates.add(date));
+      });
+      const sortedDates = Array.from(allDates).sort();
+      
+      // Table headers
+      const headerRow = ['No', 'Nama', 'NIM'];
       sortedDates.forEach(date => {
-        const dayData = student.entries[date];
+        const dateObj = new Date(date);
+        const dayName = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
+        const dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        headerRow.push(`${dayName}\n${dateStr}`);
+        headerRow.push('Jam Mulai');
+        headerRow.push('Jam Akhir');
+      });
+      headerRow.push('TOTAL\nWAKTU');
+      wsData.push(headerRow);
+      
+      // Student data
+      filteredAllData.forEach((student, index) => {
+        const row = [index + 1, student.studentName, student.nim];
         
-        if (dayData) {
-          if (dayData.status === 'HADIR') {
-            row.push('');
-            row.push(dayData.startTime || '');
-            row.push(dayData.endTime || '');
+        sortedDates.forEach(date => {
+          const dayData = student.entries[date];
+          
+          if (dayData) {
+            if (dayData.status === 'HADIR') {
+              row.push('');
+              row.push(dayData.startTime || '');
+              row.push(dayData.endTime || '');
+            } else {
+              row.push(dayData.status);
+              row.push('');
+              row.push('');
+            }
           } else {
-            row.push(dayData.status);
+            row.push('-');
             row.push('');
             row.push('');
           }
-        } else {
-          row.push('-');
-          row.push('');
-          row.push('');
-        }
+        });
+        
+        row.push(formatDuration(student.totalMinutes));
+        wsData.push(row);
       });
       
-      row.push(formatDuration(student.totalMinutes));
-      wsData.push(row);
-    });
-    
-    // Add signature section
-    wsData.push([]);
-    wsData.push([]);
-    wsData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Mengetahui']);
-    wsData.push([]);
-    wsData.push([]);
-    wsData.push([]);
-    wsData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Nama Dosen Pembimbing']);
-
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    
-    // Set column widths
-    const colWidths = [
-      { wch: 5 },   // No
-      { wch: 20 },  // Nama
-      { wch: 12 },  // NIM
-    ];
-    
-    // Add widths for each date (3 columns per date)
-    for (let i = 0; i < sortedDates.length; i++) {
-      colWidths.push({ wch: 8 });  // Date/Status
-      colWidths.push({ wch: 10 }); // Jam Mulai
-      colWidths.push({ wch: 10 }); // Jam Akhir
+      // Add signature section
+      wsData.push([]);
+      wsData.push([]);
+      wsData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Mengetahui']);
+      wsData.push([]);
+      wsData.push([]);
+      wsData.push([]);
+      wsData.push(['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'Nama Dosen Pembimbing']);
+      
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Set column widths
+      const colWidths = [
+        { wch: 5 },   // No
+        { wch: 20 },  // Nama
+        { wch: 12 },  // NIM
+      ];
+      
+      // Add widths for each date (3 columns per date)
+      for (let i = 0; i < sortedDates.length; i++) {
+        colWidths.push({ wch: 8 });  // Date/Status
+        colWidths.push({ wch: 10 }); // Jam Mulai
+        colWidths.push({ wch: 10 }); // Jam Akhir
+      }
+      colWidths.push({ wch: 12 }); // Total
+      
+      ws['!cols'] = colWidths;
+      
+      // Merge cells for header
+      const totalCols = 3 + (sortedDates.length * 3) + 1;
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Title
+      ];
+      
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Lengkap Timesheet');
+      
+      // Generate filename with current date
+      const currentDate = new Date().toISOString().split('T')[0];
+      const filename = `Rekap_Lengkap_Timesheet_KP_${currentDate}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      
+      // Log the download activity
+      await logDownloadActivity(filename, 'Rekap Lengkap Timesheet');
+      
+      toast.success('Rekap lengkap berhasil diekspor ke Excel');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Gagal mengekspor data');
     }
-    colWidths.push({ wch: 12 }); // Total
-    
-    ws['!cols'] = colWidths;
-    
-    // Merge cells for header
-    const totalCols = 3 + (sortedDates.length * 3) + 1;
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }, // Title
-    ];
-
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Lengkap Timesheet');
-    
-    // Generate filename with current date
-    const currentDate = new Date().toISOString().split('T')[0];
-    const filename = `Rekap_Lengkap_Timesheet_KP_${currentDate}.xlsx`;
-    XLSX.writeFile(wb, filename);
-    toast.success('Rekap lengkap berhasil diekspor ke Excel');
   };
 
   const filteredData = timesheets.filter(entry => {

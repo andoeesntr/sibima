@@ -5,96 +5,34 @@ import { XCircle, CheckCircle, FileText, Download, Upload, Edit, UserPlus, Clock
 import { supabase } from '@/integrations/supabase/client';
 import { formatDate } from '@/services/mockData';
 
-interface ActivityLog {
+interface SystemActivityLog {
   id: string;
   user_name: string;
-  action: string;
+  user_role: string;
+  action_type: string;
+  action_description: string;
+  target_type: string | null;
+  target_id: string | null;
+  metadata: any;
   timestamp: string;
-}
-
-interface MockActivity {
-  id: string;
-  user_name: string;
-  action: string;
-  timestamp: string;
-  type: 'proposal' | 'evaluation' | 'download' | 'system' | 'timesheet';
 }
 
 const RecentActivity = () => {
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [activityLogs, setActivityLogs] = useState<SystemActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock activities untuk demonstrasi
-  const mockActivities: MockActivity[] = [
-    {
-      id: '1',
-      user_name: 'Dr. Ahmad Santoso',
-      action: 'Menyetujui proposal "Sistem Informasi Manajemen"',
-      timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-      type: 'proposal'
-    },
-    {
-      id: '2',
-      user_name: 'Andi Kurniawan',
-      action: 'Mengajukan proposal KP baru',
-      timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-      type: 'proposal'
-    },
-    {
-      id: '3',
-      user_name: 'Prof. Siti Rahayu',
-      action: 'Menginput nilai KP untuk mahasiswa',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      type: 'evaluation'
-    },
-    {
-      id: '4',
-      user_name: 'Dr. Budi Hartono',
-      action: 'Mendownload rekap timesheet mahasiswa',
-      timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-      type: 'download'
-    },
-    {
-      id: '5',
-      user_name: 'Sari Indah',
-      action: 'Mengisi timesheet harian',
-      timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      type: 'timesheet'
-    },
-    {
-      id: '6',
-      user_name: 'Dr. Maya Sari',
-      action: 'Meminta revisi proposal "Aplikasi Mobile"',
-      timestamp: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
-      type: 'proposal'
-    },
-    {
-      id: '7',
-      user_name: 'Riko Pratama',
-      action: 'Mengunggah dokumen proposal',
-      timestamp: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
-      type: 'proposal'
-    },
-    {
-      id: '8',
-      user_name: 'Dr. Indra Cahya',
-      action: 'Menolak proposal "E-commerce Platform"',
-      timestamp: new Date(Date.now() - 150 * 60 * 1000).toISOString(),
-      type: 'proposal'
-    }
-  ];
-
   useEffect(() => {
-    const fetchActivityLogs = async () => {
+    const fetchSystemActivityLogs = async () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('activity_logs')
+          .from('system_activity_logs')
           .select('*')
           .order('timestamp', { ascending: false })
-          .limit(5);
+          .limit(10);
 
         if (error) {
+          console.error('Error fetching system activity logs:', error);
           throw error;
         }
 
@@ -102,22 +40,21 @@ const RecentActivity = () => {
           setActivityLogs(data);
         }
       } catch (error) {
-        console.error('Error fetching activity logs:', error);
-        // Jika gagal mengambil dari database, gunakan mock data
+        console.error('Error fetching system activity logs:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchActivityLogs();
+    fetchSystemActivityLogs();
 
-    // Set up real-time subscription
+    // Set up real-time subscription for system activity logs
     const channel = supabase
-      .channel('activity_logs_changes')
+      .channel('system_activity_logs_changes')
       .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'activity_logs' },
+          { event: '*', schema: 'public', table: 'system_activity_logs' },
           () => {
-            fetchActivityLogs();
+            fetchSystemActivityLogs();
           })
       .subscribe();
 
@@ -126,29 +63,37 @@ const RecentActivity = () => {
     };
   }, []);
 
-  const getActivityIcon = (action: string, type?: string) => {
-    if (action.includes('Menyetujui') || action.includes('Disetujui')) {
+  const getActivityIcon = (actionType: string, actionDescription: string) => {
+    if (actionDescription.includes('Menyetujui') || actionDescription.includes('Disetujui')) {
       return <CheckCircle className="text-green-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
-    } else if (action.includes('Menolak') || action.includes('Ditolak')) {
+    } else if (actionDescription.includes('Menolak') || actionDescription.includes('Ditolak')) {
       return <XCircle className="text-red-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
-    } else if (action.includes('revisi') || action.includes('Revisi')) {
+    } else if (actionDescription.includes('revisi') || actionDescription.includes('Revisi')) {
       return <Edit className="text-yellow-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
-    } else if (action.includes('Download') || action.includes('download')) {
+    } else if (actionDescription.includes('Download') || actionDescription.includes('download')) {
       return <Download className="text-blue-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
-    } else if (action.includes('Mengunggah') || action.includes('upload')) {
+    } else if (actionDescription.includes('Mengunggah') || actionDescription.includes('upload')) {
       return <Upload className="text-purple-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
-    } else if (action.includes('Mengajukan') || action.includes('mengajukan')) {
+    } else if (actionDescription.includes('Mengajukan') || actionDescription.includes('mengajukan')) {
       return <UserPlus className="text-indigo-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
-    } else if (action.includes('timesheet') || action.includes('Timesheet')) {
+    } else if (actionType === 'timesheet' || actionDescription.includes('timesheet')) {
       return <Clock className="text-orange-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
-    } else if (action.includes('nilai') || action.includes('Nilai')) {
+    } else if (actionType === 'evaluation' || actionDescription.includes('nilai')) {
       return <FileText className="text-teal-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
     } else {
       return <FileText className="text-blue-500 h-5 w-5 flex-shrink-0 mt-0.5" />;
     }
   };
 
-  const displayActivities = activityLogs.length > 0 ? activityLogs : mockActivities.slice(0, 5);
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'coordinator': return 'Koordinator';
+      case 'supervisor': return 'Dosen Pembimbing';
+      case 'student': return 'Mahasiswa';
+      case 'admin': return 'Admin';
+      default: return role;
+    }
+  };
 
   return (
     <Card>
@@ -157,9 +102,9 @@ const RecentActivity = () => {
         <CardDescription>Aktivitas terkini pada sistem</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {loading && activityLogs.length === 0 ? (
+        {loading ? (
           <div className="space-y-2">
-            {[...Array(3)].map((_, i) => (
+            {[...Array(5)].map((_, i) => (
               <div key={i} className="flex gap-3 animate-pulse">
                 <div className="h-5 w-5 rounded-full bg-gray-200 flex-shrink-0 mt-0.5"></div>
                 <div className="space-y-1 flex-1">
@@ -169,15 +114,19 @@ const RecentActivity = () => {
               </div>
             ))}
           </div>
-        ) : displayActivities.length > 0 ? (
-          displayActivities.map(log => (
+        ) : activityLogs.length > 0 ? (
+          activityLogs.map(log => (
             <div key={log.id} className="flex gap-3">
-              {getActivityIcon(log.action, (log as MockActivity).type)}
+              {getActivityIcon(log.action_type, log.action_description)}
               
               <div className="space-y-1">
                 <p className="text-sm leading-none">
-                  <span className="font-medium">{log.user_name}</span>{' '}
-                  {log.action}
+                  <span className="font-medium">{log.user_name}</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    ({getRoleLabel(log.user_role)})
+                  </span>
+                  {' '}
+                  {log.action_description}
                 </p>
                 <p className="text-xs text-gray-500">
                   {formatDate(log.timestamp)}
@@ -187,7 +136,8 @@ const RecentActivity = () => {
           ))
         ) : (
           <div className="text-center py-6 text-gray-500">
-            <p>Belum ada aktivitas</p>
+            <p>Belum ada aktivitas sistem</p>
+            <p className="text-xs mt-1">Aktivitas akan muncul ketika ada aksi pada sistem</p>
           </div>
         )}
       </CardContent>
