@@ -122,7 +122,7 @@ const KpProgressSupervision = () => {
         </TabsList>
 
         <TabsContent value="overview">
-          <SupervisorProgressOverview students={studentsProgress} />
+          <SupervisorProgressOverview />
         </TabsContent>
 
         <TabsContent value="journal">
