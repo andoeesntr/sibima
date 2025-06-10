@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -188,30 +187,6 @@ const KpGuidanceSchedule = () => {
 
       if (updateError) throw updateError;
 
-      // Update kp_progress to increment guidance sessions completed
-      const { data: currentProgress, error: fetchError } = await supabase
-        .from('kp_progress')
-        .select('guidance_sessions_completed')
-        .eq('student_id', user?.id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching current progress:', fetchError);
-      } else {
-        const newCount = (currentProgress?.guidance_sessions_completed || 0) + 1;
-        const { error: progressError } = await supabase
-          .from('kp_progress')
-          .update({ 
-            guidance_sessions_completed: newCount,
-            updated_at: new Date().toISOString()
-          })
-          .eq('student_id', user?.id);
-
-        if (progressError) {
-          console.error('Error updating progress:', progressError);
-        }
-      }
-
       toast.success('Bukti bimbingan berhasil diunggah! Sesi bimbingan Anda akan bertambah.');
       
       // Clear the file input
@@ -221,7 +196,15 @@ const KpGuidanceSchedule = () => {
         return newFiles;
       });
       
+      // Refresh the guidance sessions list
       fetchGuidanceSessions();
+
+      // Trigger a refresh of the progress data by reloading the page or calling refetch
+      // This ensures the progress counter is updated immediately
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+      
     } catch (error) {
       console.error('Error uploading evidence:', error);
       toast.error('Gagal mengunggah bukti bimbingan');
