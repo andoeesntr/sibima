@@ -38,36 +38,50 @@ export const useSupervisorKpProgress = () => {
 
       if (teamsError) throw teamsError;
 
-      if (!supervisorTeams || supervisorTeams.length === 0) {
-        setStudentsProgress([]);
-        setTotalStudents(0);
-        return;
+      // Also get students through guidance schedule (direct supervision)
+      const { data: guidanceStudents, error: guidanceError } = await supabase
+        .from('kp_guidance_schedule')
+        .select('student_id')
+        .eq('supervisor_id', user.id);
+
+      if (guidanceError) throw guidanceError;
+
+      // Combine student IDs from both sources
+      const teamIds = supervisorTeams?.map(t => t.team_id) || [];
+      let studentIds: string[] = [];
+
+      // Get students from teams
+      if (teamIds.length > 0) {
+        const { data: teamMembers, error: membersError } = await supabase
+          .from('team_members')
+          .select('user_id')
+          .in('team_id', teamIds);
+
+        if (!membersError && teamMembers) {
+          studentIds = teamMembers.map(tm => tm.user_id);
+        }
       }
 
-      const teamIds = supervisorTeams.map(t => t.team_id);
+      // Add students from guidance schedule
+      if (guidanceStudents) {
+        const guidanceStudentIds = guidanceStudents.map(gs => gs.student_id);
+        studentIds = [...new Set([...studentIds, ...guidanceStudentIds])];
+      }
 
-      // Get students in those teams
-      const { data: teamMembers, error: membersError } = await supabase
-        .from('team_members')
-        .select(`
-          user_id,
-          profiles!team_members_user_id_fkey (
-            id,
-            full_name,
-            nim
-          )
-        `)
-        .in('team_id', teamIds);
-
-      if (membersError) throw membersError;
-
-      const studentIds = teamMembers?.map(tm => tm.user_id) || [];
       setTotalStudents(studentIds.length);
 
       if (studentIds.length === 0) {
         setStudentsProgress([]);
         return;
       }
+
+      // Get student profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', studentIds);
+
+      if (profilesError) throw profilesError;
 
       // Get progress data for students
       const { data: progressData, error: progressError } = await supabase
@@ -77,20 +91,11 @@ export const useSupervisorKpProgress = () => {
 
       if (progressError) throw progressError;
 
-      // Get pending reviews count from kp_documents
-      const { data: pendingDocs, error: docsError } = await supabase
-        .from('kp_documents')
-        .select('student_id')
-        .in('student_id', studentIds)
-        .eq('status', 'pending');
-
-      if (docsError) throw docsError;
-
       // Get today's guidance sessions
       const today = new Date().toISOString().split('T')[0];
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
-      const { data: todayGuidance, error: guidanceError } = await supabase
+      const { data: todayGuidance, error: guidanceSessionError } = await supabase
         .from('kp_guidance_schedule')
         .select('student_id')
         .in('student_id', studentIds)
@@ -98,18 +103,16 @@ export const useSupervisorKpProgress = () => {
         .lt('requested_date', tomorrow)
         .eq('status', 'approved');
 
-      if (guidanceError) throw guidanceError;
+      if (guidanceSessionError) throw guidanceSessionError;
 
       // Combine data
-      const studentsWithProgress = teamMembers?.map(tm => {
-        const profile = tm.profiles;
-        const progress = progressData?.find(p => p.student_id === tm.user_id);
-        const pendingReviews = pendingDocs?.filter(d => d.student_id === tm.user_id).length || 0;
-        const hasTodayGuidance = todayGuidance?.some(g => g.student_id === tm.user_id) || false;
+      const studentsWithProgress = profiles?.map(profile => {
+        const progress = progressData?.find(p => p.student_id === profile.id);
+        const hasTodayGuidance = todayGuidance?.some(g => g.student_id === profile.id) || false;
 
         return {
-          student_id: tm.user_id,
-          student_name: profile?.full_name || 'Unknown',
+          student_id: profile.id,
+          student_name: profile.full_name || 'Unknown',
           current_stage: progress?.current_stage || 'proposal',
           overall_progress: progress?.overall_progress || 0,
           proposal_status: progress?.proposal_status || 'pending',
@@ -117,7 +120,7 @@ export const useSupervisorKpProgress = () => {
           report_status: progress?.report_status || 'not_started',
           presentation_status: progress?.presentation_status || 'not_scheduled',
           last_activity: progress?.last_activity || progress?.created_at || '',
-          pendingReviews,
+          pendingReviews: 0, // Can be enhanced later
           todayGuidance: hasTodayGuidance
         };
       }) || [];

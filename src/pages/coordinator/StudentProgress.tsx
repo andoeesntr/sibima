@@ -28,6 +28,13 @@ const StudentProgress = () => {
 
   useEffect(() => {
     fetchStudentProgress();
+    
+    // Set up real-time updates
+    const interval = setInterval(() => {
+      fetchStudentProgress();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -42,21 +49,61 @@ const StudentProgress = () => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase
+      // First get all students with role 'student'
+      const { data: allStudents, error: studentsError } = await supabase
+        .from('profiles')
+        .select('id, full_name, nim')
+        .eq('role', 'student')
+        .not('full_name', 'is', null)
+        .not('nim', 'is', null);
+
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+        throw studentsError;
+      }
+
+      if (!allStudents || allStudents.length === 0) {
+        setStudents([]);
+        setFilteredStudents([]);
+        return;
+      }
+
+      const studentIds = allStudents.map(s => s.id);
+
+      // Get progress data for all students
+      const { data: progressData, error: progressError } = await supabase
         .from('kp_progress')
-        .select(`
-          *,
-          student:profiles!kp_progress_student_id_fkey (
-            full_name,
-            nim
-          )
-        `)
-        .order('overall_progress', { ascending: false });
+        .select('*')
+        .in('student_id', studentIds);
 
-      if (error) throw error;
+      if (progressError) {
+        console.error('Error fetching progress:', progressError);
+        throw progressError;
+      }
 
-      setStudents(data || []);
-      setFilteredStudents(data || []);
+      // Combine student info with progress data
+      const combinedData: StudentProgressData[] = allStudents.map(student => {
+        const progress = progressData?.find(p => p.student_id === student.id);
+        
+        return {
+          id: progress?.id || `temp-${student.id}`,
+          student_id: student.id,
+          current_stage: progress?.current_stage || 'proposal',
+          overall_progress: progress?.overall_progress || 0,
+          guidance_sessions_completed: progress?.guidance_sessions_completed || 0,
+          proposal_status: progress?.proposal_status || 'pending',
+          student: {
+            full_name: student.full_name,
+            nim: student.nim
+          }
+        };
+      });
+
+      // Sort by progress descending
+      combinedData.sort((a, b) => b.overall_progress - a.overall_progress);
+
+      setStudents(combinedData);
+      setFilteredStudents(combinedData);
     } catch (error) {
       console.error('Error fetching student progress:', error);
     } finally {
@@ -124,7 +171,7 @@ const StudentProgress = () => {
       {/* Progress Cards */}
       <div className="grid gap-4">
         {filteredStudents.map((student) => (
-          <Card key={student.id} className="hover:shadow-md transition-shadow">
+          <Card key={student.student_id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div>
@@ -196,10 +243,10 @@ const StudentProgress = () => {
         <div className="text-center py-12">
           <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {searchTerm ? 'Mahasiswa tidak ditemukan' : 'Belum ada data progress mahasiswa'}
+            {searchTerm ? 'Mahasiswa tidak ditemukan' : 'Belum ada data mahasiswa'}
           </h3>
           <p className="text-gray-600">
-            {searchTerm ? 'Coba kata kunci pencarian yang berbeda.' : 'Data progress akan muncul setelah mahasiswa mengajukan proposal.'}
+            {searchTerm ? 'Coba kata kunci pencarian yang berbeda.' : 'Data mahasiswa akan muncul otomatis.'}
           </p>
         </div>
       )}
