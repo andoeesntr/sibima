@@ -4,15 +4,25 @@ import { Button } from "@/components/ui/button";
 import { FileText, FileSignature, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ProposalType } from "@/types/student";
+import { toast } from 'sonner';
 
 export interface ActionCardsProps {
   hasActiveProposal: boolean;
   onSubmitProposal: () => void;
   selectedProposal?: ProposalType | null;
+  hasApprovedProposal?: boolean;
 }
 
-export const ActionCards = ({ hasActiveProposal, onSubmitProposal, selectedProposal }: ActionCardsProps) => {
+export const ActionCards = ({ hasActiveProposal, onSubmitProposal, selectedProposal, hasApprovedProposal }: ActionCardsProps) => {
   const navigate = useNavigate();
+  
+  const handleProposalSubmission = () => {
+    if (hasApprovedProposal) {
+      toast.error('Anda sudah memiliki proposal yang disetujui. Tidak dapat mengajukan proposal baru.');
+      return;
+    }
+    navigate('/student/proposal-submission');
+  };
   
   return (
     <div className="grid grid-cols-3 gap-4">
@@ -22,11 +32,17 @@ export const ActionCards = ({ hasActiveProposal, onSubmitProposal, selectedPropo
           <span className="text-sm font-medium mb-2">Pengajuan Proposal</span>
           <Button 
             className="w-full bg-primary hover:bg-primary/90"
-            onClick={() => navigate('/student/proposal-submission')}
+            onClick={handleProposalSubmission}
+            disabled={hasApprovedProposal}
             size="sm"
           >
-            Akses
+            {hasApprovedProposal ? 'Proposal Disetujui' : 'Akses'}
           </Button>
+          {hasApprovedProposal && (
+            <p className="text-xs text-gray-500 mt-1 text-center">
+              Proposal sudah disetujui
+            </p>
+          )}
         </CardContent>
       </Card>
 

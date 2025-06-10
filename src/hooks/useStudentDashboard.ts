@@ -73,6 +73,9 @@ export const useStudentDashboard = () => {
     ['submitted', 'revision'].includes(p.status)
   );
   
+  // Check if user has an approved proposal
+  const hasApprovedProposal = proposals.some(p => p.status === 'approved');
+  
   const isInTeam = !!team;
   const lastTeam = team;
 
@@ -83,6 +86,7 @@ export const useStudentDashboard = () => {
     loading,
     handleSelectProposal,
     hasActiveProposal,
+    hasApprovedProposal,
     isInTeam,
     lastTeam,
     evaluations

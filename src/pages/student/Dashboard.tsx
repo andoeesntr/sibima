@@ -1,146 +1,125 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { StatusCard } from '@/components/student/dashboard/StatusCard';
-import { ActionCards } from '@/components/student/dashboard/ActionCards';
-import { TeamCard } from '@/components/student/dashboard/TeamCard';
-import KpTimeline from '@/components/coordinator/KpTimeline';
-import { useStudentDashboard } from '@/hooks/useStudentDashboard';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusCard } from "@/components/student/dashboard/StatusCard";
+import { TeamCard } from "@/components/student/dashboard/TeamCard";
+import { ActionCards } from "@/components/student/dashboard/ActionCards";
+import { useStudentDashboard } from "@/hooks/useStudentDashboard";
+import { useNavigate } from "react-router-dom";
 
-const StudentDashboard = () => {
+const Dashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>('all');
-
   const {
-    loading,
     proposals,
     selectedProposal,
+    team,
+    loading,
     handleSelectProposal,
     hasActiveProposal,
+    hasApprovedProposal,
     isInTeam,
     lastTeam,
     evaluations
   } = useStudentDashboard();
 
-  const handleStatusFilter = (status: string) => {
-    setActiveTab(status);
-  };
-
-  const navigateToProposalSubmission = () => {
+  const handleSubmitProposal = () => {
+    if (hasApprovedProposal) {
+      return; // Tidak melakukan apa-apa jika sudah ada proposal yang disetujui
+    }
     navigate('/student/proposal-submission');
   };
 
-  // Calculate final score - average of all evaluations
-  const finalScore = evaluations && evaluations.length > 0
-    ? evaluations.reduce((sum, evaluation) => sum + evaluation.score, 0) / evaluations.length
-    : null;
-
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-        </div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-
-      {/* Timeline at the top */}
-      <div className="bg-white p-4 rounded-lg border shadow-sm mb-6">
+      <h1 className="text-2xl font-bold">Dashboard Mahasiswa</h1>
+      
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="proposals">Proposal</TabsTrigger>
+          {isInTeam && <TabsTrigger value="team">Tim</TabsTrigger>}
+        </TabsList>
         
-        <KpTimeline readOnly={true} />
-      </div>
-      
-      {/* Status and Team Cards in a grid with adjusted proportions */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Status Card - wider (70%) */}
-        <div className="col-span-8">
-          <StatusCard
-            proposals={proposals}
-            activeTab={activeTab}
-            onTabChange={handleStatusFilter}
+        <TabsContent value="overview" className="space-y-6">
+          <ActionCards 
+            hasActiveProposal={hasActiveProposal}
+            hasApprovedProposal={hasApprovedProposal}
+            onSubmitProposal={handleSubmitProposal}
             selectedProposal={selectedProposal}
-            onSelectProposal={handleSelectProposal}
           />
-        </div>
-
-        {/* Team Card - narrower (30%) */}
-        <div className="col-span-4">
-          {isInTeam && lastTeam ? (
-            <TeamCard team={lastTeam} />
-          ) : (
-            <Card className="shadow-sm hover:shadow-md transition-shadow h-full">
-              <CardHeader>
-                <CardTitle>Tim KP</CardTitle>
-                <CardDescription>Informasi tim KP Anda</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-6">
-                  <p className="text-gray-600">Anda belum memiliki tim KP</p>
-                  {!hasActiveProposal && (
-                    <Button 
-                      className="mt-4 bg-primary hover:bg-primary/90"
-                      onClick={navigateToProposalSubmission}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <StatusCard 
+              proposals={proposals}
+              selectedProposal={selectedProposal}
+              onSelectProposal={handleSelectProposal}
+              evaluations={evaluations}
+            />
+            {lastTeam && <TeamCard team={lastTeam} />}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="proposals">
+          <Card>
+            <CardHeader>
+              <CardTitle>Riwayat Proposal</CardTitle>
+              <CardDescription>
+                Daftar semua proposal yang pernah Anda ajukan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {proposals.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  Belum ada proposal yang diajukan
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {proposals.map((proposal, index) => (
+                    <div 
+                      key={proposal.id || index}
+                      className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleSelectProposal(proposal)}
                     >
-                      Buat Tim KP
-                    </Button>
-                  )}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-semibold">{proposal.title}</h3>
+                          <p className="text-sm text-gray-600">{proposal.companyName}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          proposal.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          proposal.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          proposal.status === 'revision' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {proposal.status === 'approved' ? 'Disetujui' :
+                           proposal.status === 'rejected' ? 'Ditolak' :
+                           proposal.status === 'revision' ? 'Revisi' : 'Menunggu'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      {/* Final Score Card */}
-      <Card className="shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader>
-          <CardTitle>Nilai Akhir KP</CardTitle>
-          <CardDescription>Nilai hasil evaluasi pembimbing</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {finalScore !== null ? (
-            <div className="flex justify-center">
-              <div className="w-32 h-32 rounded-full bg-primary text-white flex items-center justify-center">
-                <span className="text-3xl font-bold">{finalScore.toFixed(1)}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <p className="text-gray-600">Belum ada penilaian</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Quick Access Cards */}
-      <h2 className="text-lg font-medium">Akses Cepat</h2>
-      <ActionCards
-        hasActiveProposal={hasActiveProposal}
-        onSubmitProposal={navigateToProposalSubmission}
-        selectedProposal={selectedProposal}
-      />
-      
-      {/* Submit Proposal Button (only show if no active proposal) */}
-      {!hasActiveProposal && proposals.length === 0 && (
-        <div className="flex justify-center mt-6">
-          <Button
-            onClick={navigateToProposalSubmission}
-            className="bg-primary hover:bg-primary/90 px-8"
-          >
-            Ajukan Proposal KP
-          </Button>
-        </div>
-      )}
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {isInTeam && (
+          <TabsContent value="team">
+            {lastTeam && <TeamCard team={lastTeam} />}
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 };
 
-export default StudentDashboard;
+export default Dashboard;

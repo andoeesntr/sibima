@@ -2,6 +2,9 @@
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchStudentProposals } from '@/services/studentProposalService';
 import ProposalForm from '@/components/student/proposal-submission/ProposalForm';
 import TeamForm from '@/components/student/proposal-submission/TeamForm';
 import DocumentUploadForm from '@/components/student/proposal-submission/DocumentUploadForm';
@@ -9,6 +12,7 @@ import useProposalSubmission from '@/components/student/proposal-submission/hook
 
 const ProposalSubmission = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // Get query params to check if we're editing an existing proposal
   const location = window.location;
@@ -43,6 +47,28 @@ const ProposalSubmission = () => {
     // Actions
     handleSubmit
   } = useProposalSubmission(editProposalId);
+
+  // Check if user already has an approved proposal
+  useEffect(() => {
+    const checkApprovedProposal = async () => {
+      if (!user || isEditMode) return;
+      
+      try {
+        const proposals = await fetchStudentProposals(user.id);
+        const hasApprovedProposal = proposals.some(p => p.status === 'approved');
+        
+        if (hasApprovedProposal) {
+          toast.error('Anda sudah memiliki proposal yang disetujui. Tidak dapat mengajukan proposal baru.');
+          navigate('/student');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking proposals:', error);
+      }
+    };
+
+    checkApprovedProposal();
+  }, [user, isEditMode, navigate]);
 
   if (isLoading) {
     return (
