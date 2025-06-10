@@ -38,6 +38,7 @@ import AdminProfile from "./pages/admin/Profile";
 import UserManagement from "./pages/admin/UserManagement";
 import GuideManagement from "./pages/admin/GuideManagement";
 import DigitalSignatureManagement from "./pages/admin/DigitalSignatureManagement";
+import KpTimelineManagement from "./pages/admin/KpTimelineManagement";
 
 // Supervisor pages
 import SupervisorDashboard from "./pages/supervisor/Dashboard";
