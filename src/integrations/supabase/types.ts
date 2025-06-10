@@ -368,6 +368,7 @@ export type Database = {
         Row: {
           created_at: string | null
           duration_minutes: number | null
+          evidence_url: string | null
           id: string
           location: string | null
           meeting_link: string | null
@@ -382,6 +383,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           duration_minutes?: number | null
+          evidence_url?: string | null
           id?: string
           location?: string | null
           meeting_link?: string | null
@@ -396,6 +398,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           duration_minutes?: number | null
+          evidence_url?: string | null
           id?: string
           location?: string | null
           meeting_link?: string | null

@@ -65,7 +65,6 @@ const KpGuidanceSchedule = () => {
         .from('kp_guidance_schedule')
         .select(`
           *,
-          evidence_url,
           supervisor:profiles!kp_guidance_schedule_supervisor_id_fkey (full_name)
         `)
         .eq('student_id', user?.id)
