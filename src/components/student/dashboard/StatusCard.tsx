@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar, FileWarning } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProposalType } from "@/types/student";
+import { Evaluation } from "@/services/evaluationService";
 import { formatDate as formatProposalDate } from "@/utils/dateUtils";
 
 // Define status colors and labels
@@ -25,18 +26,16 @@ const statusLabels: Record<string, string> = {
 
 export interface StatusCardProps {
   proposals: ProposalType[];
-  activeTab: string;
-  onTabChange: (status: string) => void;
   selectedProposal?: ProposalType | null;
   onSelectProposal?: (proposal: ProposalType) => void;
+  evaluations: Evaluation[];
 }
 
 export const StatusCard = ({
   proposals,
-  activeTab,
-  onTabChange,
   selectedProposal,
-  onSelectProposal
+  onSelectProposal,
+  evaluations
 }: StatusCardProps) => {
   const navigate = useNavigate();
   const currentProposal = selectedProposal || (proposals.length > 0 ? proposals[0] : null);
