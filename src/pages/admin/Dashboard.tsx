@@ -8,6 +8,7 @@ import { ArrowRight, FileText, UserPlus, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDate } from '@/services/mockData';
 import { supabase } from '@/integrations/supabase/client';
+import KpTimeline from '@/components/coordinator/KpTimeline';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -159,6 +160,9 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Timeline KP Section */}
+      <KpTimeline />
       
       {/* Charts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
