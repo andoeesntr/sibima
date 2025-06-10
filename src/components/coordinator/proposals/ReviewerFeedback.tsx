@@ -28,32 +28,47 @@ const ReviewerFeedback = ({ proposalId }: ReviewerFeedbackProps) => {
 
   const fetchReviewerFeedback = async () => {
     try {
-      const { data, error } = await supabase
+      // First get the feedback
+      const { data: feedbackData, error: feedbackError } = await supabase
         .from('proposal_feedback')
-        .select(`
-          id,
-          content,
-          created_at,
-          supervisor:profiles!supervisor_id (
-            full_name,
-            email
-          )
-        `)
+        .select('id, content, created_at, supervisor_id')
         .eq('proposal_id', proposalId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching reviewer feedback:', error);
+      if (feedbackError) {
+        console.error('Error fetching feedback:', feedbackError);
         return;
       }
 
-      const formattedFeedback: FeedbackItem[] = data?.map(item => ({
-        id: item.id,
-        content: item.content,
-        created_at: item.created_at,
-        supervisor_name: item.supervisor?.full_name || 'Unknown Reviewer',
-        supervisor_email: item.supervisor?.email || ''
-      })) || [];
+      if (!feedbackData || feedbackData.length === 0) {
+        setFeedback([]);
+        return;
+      }
+
+      // Get unique supervisor IDs
+      const supervisorIds = [...new Set(feedbackData.map(item => item.supervisor_id))];
+
+      // Fetch supervisor profiles separately
+      const { data: supervisorData, error: supervisorError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', supervisorIds);
+
+      if (supervisorError) {
+        console.error('Error fetching supervisors:', supervisorError);
+      }
+
+      // Combine feedback with supervisor information
+      const formattedFeedback: FeedbackItem[] = feedbackData.map(item => {
+        const supervisor = supervisorData?.find(s => s.id === item.supervisor_id);
+        return {
+          id: item.id,
+          content: item.content,
+          created_at: item.created_at,
+          supervisor_name: supervisor?.full_name || 'Unknown Reviewer',
+          supervisor_email: supervisor?.email || ''
+        };
+      });
 
       setFeedback(formattedFeedback);
     } catch (error) {
