@@ -24,11 +24,35 @@ const ReviewerFeedback = ({ proposalId }: ReviewerFeedbackProps) => {
 
   useEffect(() => {
     fetchReviewerFeedback();
+    
+    // Set up real-time subscription for new feedback
+    const channel = supabase
+      .channel(`proposal-feedback-${proposalId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'proposal_feedback',
+          filter: `proposal_id=eq.${proposalId}`
+        },
+        () => {
+          console.log('Feedback updated, reloading...');
+          fetchReviewerFeedback();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [proposalId]);
 
   const fetchReviewerFeedback = async () => {
     try {
-      // First get the feedback
+      setLoading(true);
+      
+      // Get feedback for this proposal
       const { data: feedbackData, error: feedbackError } = await supabase
         .from('proposal_feedback')
         .select('id, content, created_at, supervisor_id')
@@ -37,6 +61,7 @@ const ReviewerFeedback = ({ proposalId }: ReviewerFeedbackProps) => {
 
       if (feedbackError) {
         console.error('Error fetching feedback:', feedbackError);
+        setFeedback([]);
         return;
       }
 
@@ -48,7 +73,7 @@ const ReviewerFeedback = ({ proposalId }: ReviewerFeedbackProps) => {
       // Get unique supervisor IDs
       const supervisorIds = [...new Set(feedbackData.map(item => item.supervisor_id))];
 
-      // Fetch supervisor profiles separately
+      // Fetch supervisor profiles
       const { data: supervisorData, error: supervisorError } = await supabase
         .from('profiles')
         .select('id, full_name, email')
@@ -70,9 +95,11 @@ const ReviewerFeedback = ({ proposalId }: ReviewerFeedbackProps) => {
         };
       });
 
+      console.log('Formatted feedback:', formattedFeedback);
       setFeedback(formattedFeedback);
     } catch (error) {
       console.error('Error fetching reviewer feedback:', error);
+      setFeedback([]);
     } finally {
       setLoading(false);
     }
@@ -112,6 +139,9 @@ const ReviewerFeedback = ({ proposalId }: ReviewerFeedbackProps) => {
           <div className="text-center py-6">
             <MessageSquare className="mx-auto h-10 w-10 text-gray-400 mb-2" />
             <p className="text-gray-500">Belum ada feedback dari dosen reviewer</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Feedback akan muncul otomatis setelah dosen memberikan ulasan
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -134,7 +164,7 @@ const ReviewerFeedback = ({ proposalId }: ReviewerFeedbackProps) => {
                     {formatDate(item.created_at)}
                   </span>
                 </div>
-                <p className="text-gray-700 leading-relaxed">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {item.content}
                 </p>
                 {item.supervisor_email && (

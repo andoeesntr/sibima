@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Users, TrendingUp, Clock } from 'lucide-react';
+import { Search, Users, TrendingUp, Clock, RefreshCw } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 interface StudentProgressData {
   id: string;
@@ -25,16 +26,49 @@ const StudentProgress = () => {
   const [filteredStudents, setFilteredStudents] = useState<StudentProgressData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchStudentProgress();
     
-    // Set up real-time updates
+    // Set up real-time updates - refresh every 15 seconds for better sync
     const interval = setInterval(() => {
-      fetchStudentProgress();
-    }, 30000); // Refresh every 30 seconds
+      fetchStudentProgress(true); // Silent refresh
+    }, 15000);
 
-    return () => clearInterval(interval);
+    // Set up real-time subscription for progress updates
+    const progressChannel = supabase
+      .channel('coordinator-progress-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'kp_progress'
+        },
+        () => {
+          console.log('Progress updated, refreshing data...');
+          fetchStudentProgress(true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'kp_guidance_schedule'
+        },
+        () => {
+          console.log('Guidance schedule updated, refreshing data...');
+          fetchStudentProgress(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(progressChannel);
+    };
   }, []);
 
   useEffect(() => {
@@ -45,17 +79,24 @@ const StudentProgress = () => {
     setFilteredStudents(filtered);
   }, [searchTerm, students]);
 
-  const fetchStudentProgress = async () => {
+  const fetchStudentProgress = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       
-      // First get all students with role 'student'
+      console.log('Fetching student progress data...');
+      
+      // Get all students with role 'student'
       const { data: allStudents, error: studentsError } = await supabase
         .from('profiles')
         .select('id, full_name, nim')
         .eq('role', 'student')
         .not('full_name', 'is', null)
-        .not('nim', 'is', null);
+        .not('nim', 'is', null)
+        .order('full_name');
 
       if (studentsError) {
         console.error('Error fetching students:', studentsError);
@@ -63,11 +104,13 @@ const StudentProgress = () => {
       }
 
       if (!allStudents || allStudents.length === 0) {
+        console.log('No students found');
         setStudents([]);
         setFilteredStudents([]);
         return;
       }
 
+      console.log('Found students:', allStudents.length);
       const studentIds = allStudents.map(s => s.id);
 
       // Get progress data for all students
@@ -80,6 +123,8 @@ const StudentProgress = () => {
         console.error('Error fetching progress:', progressError);
         throw progressError;
       }
+
+      console.log('Found progress data:', progressData?.length || 0);
 
       // Combine student info with progress data
       const combinedData: StudentProgressData[] = allStudents.map(student => {
@@ -99,16 +144,30 @@ const StudentProgress = () => {
         };
       });
 
-      // Sort by progress descending
-      combinedData.sort((a, b) => b.overall_progress - a.overall_progress);
+      // Sort by progress descending, then by name
+      combinedData.sort((a, b) => {
+        if (b.overall_progress !== a.overall_progress) {
+          return b.overall_progress - a.overall_progress;
+        }
+        return a.student.full_name.localeCompare(b.student.full_name);
+      });
 
+      console.log('Final combined data:', combinedData.length);
       setStudents(combinedData);
       setFilteredStudents(combinedData);
     } catch (error) {
       console.error('Error fetching student progress:', error);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      } else {
+        setRefreshing(false);
+      }
     }
+  };
+
+  const handleRefresh = () => {
+    fetchStudentProgress();
   };
 
   const getStageLabel = (stage: string) => {
@@ -151,9 +210,21 @@ const StudentProgress = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Progress Mahasiswa</h1>
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-gray-500" />
-          <span className="text-sm text-gray-600">{students.length} mahasiswa</span>
+        <div className="flex items-center gap-4">
+          <Button 
+            onClick={handleRefresh}
+            variant="outline"
+            size="sm"
+            disabled={refreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-gray-500" />
+            <span className="text-sm text-gray-600">{students.length} mahasiswa</span>
+          </div>
         </div>
       </div>
 
