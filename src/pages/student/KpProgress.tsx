@@ -4,11 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, FileText, MessageSquare, BookOpen, Clock, Upload } from 'lucide-react';
-import KpJournal from '@/components/student/kp-progress/KpJournal';
+import { Calendar, Clock } from 'lucide-react';
 import KpProgressTracker from '@/components/student/kp-progress/KpProgressTracker';
-import KpDiscussions from '@/components/student/kp-progress/KpDiscussions';
-import KpDocuments from '@/components/student/kp-progress/KpDocuments';
 import KpGuidanceSchedule from '@/components/student/kp-progress/KpGuidanceSchedule';
 import { useKpProgress } from '@/hooks/useKpProgress';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
@@ -94,8 +91,11 @@ const KpProgress = () => {
             <div className="flex items-center space-x-2">
               <Clock className="h-4 w-4 text-blue-500" />
               <span className="text-lg font-semibold">{progressData?.guidance_sessions_completed || 0}</span>
-              <span className="text-sm text-gray-600">sesi selesai</span>
+              <span className="text-sm text-gray-600">/ 8 sesi</span>
             </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Upload bukti bimbingan untuk menambah sesi
+            </p>
           </CardContent>
         </Card>
 
@@ -121,45 +121,21 @@ const KpProgress = () => {
         </Card>
       </div>
 
-      {/* Main Tabs */}
+      {/* Main Tabs - Only Progress and Schedule */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-2 w-full">
           <TabsTrigger value="progress" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Progress</span>
-          </TabsTrigger>
-          <TabsTrigger value="journal" className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Logbook</span>
-          </TabsTrigger>
-          <TabsTrigger value="discussions" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline">Diskusi</span>
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Dokumen</span>
+            <span>Progress</span>
           </TabsTrigger>
           <TabsTrigger value="schedule" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Jadwal</span>
+            <span>Jadwal Bimbingan</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="progress">
           <KpProgressTracker />
-        </TabsContent>
-
-        <TabsContent value="journal">
-          <KpJournal />
-        </TabsContent>
-
-        <TabsContent value="discussions">
-          <KpDiscussions />
-        </TabsContent>
-
-        <TabsContent value="documents">
-          <KpDocuments />
         </TabsContent>
 
         <TabsContent value="schedule">

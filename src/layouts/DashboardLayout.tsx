@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
   User, LogOut, FileText, Home, Users, Settings, 
   FileSignature, BookOpen, Layout, Award, FileCheck, GraduationCap,
-  ClipboardList, TrendingUp, Clock
+  ClipboardList, TrendingUp, Clock, BarChart3
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -30,6 +29,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { title: 'Dashboard', href: '/coordinator', icon: <Home size={18} className="text-yellow-500" /> },
     { title: 'Daftar Proposal', href: '/coordinator/proposal-list', icon: <ClipboardList size={18} className="text-yellow-500" /> },
     { title: 'Review Proposal', href: '/coordinator/proposal-review', icon: <FileCheck size={18} className="text-yellow-500" /> },
+    { title: 'Progress Mahasiswa', href: '/coordinator/student-progress', icon: <BarChart3 size={18} className="text-yellow-500" /> },
     { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} className="text-yellow-500" /> },
     { title: 'Rekap Timesheet', href: '/coordinator/timesheet-overview', icon: <Clock size={18} className="text-yellow-500" /> },
     { title: 'Manajemen Bimbingan', href: '/coordinator/guidance-management', icon: <TrendingUp size={18} className="text-yellow-500" /> },
@@ -42,6 +42,7 @@ const roleNavItems: Record<string, NavItem[]> = {
   ],
   supervisor: [
     { title: 'Dashboard', href: '/supervisor', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Progress Mahasiswa', href: '/supervisor/student-progress', icon: <BarChart3 size={18} className="text-yellow-500" /> },
     { title: 'Progress KP', href: '/supervisor/kp-progress', icon: <TrendingUp size={18} className="text-yellow-500" /> },
     { title: 'Rekap Timesheet', href: '/supervisor/timesheet-overview', icon: <Clock size={18} className="text-yellow-500" /> },
     { title: 'Tanda Tangan Digital', href: '/supervisor/digital-signature', icon: <FileSignature size={18} className="text-yellow-500" /> },

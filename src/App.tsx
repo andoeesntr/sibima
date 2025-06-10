@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -31,6 +30,7 @@ import CoordinatorProposalDetail from "./pages/coordinator/ProposalDetail";
 import StudentEvaluation from "./pages/coordinator/StudentEvaluation";
 import GuidanceManagement from "./pages/coordinator/GuidanceManagement";
 import CoordinatorTimesheetOverview from "./pages/coordinator/TimesheetOverview";
+import CoordinatorStudentProgress from "./pages/coordinator/StudentProgress";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -47,6 +47,7 @@ import DigitalSignatureUpload from "./pages/supervisor/DigitalSignatureUpload";
 import Feedback from "./pages/supervisor/Feedback";
 import KpProgressSupervision from "./pages/supervisor/KpProgressSupervision";
 import SupervisorTimesheetOverview from "./pages/supervisor/TimesheetOverview";
+import SupervisorStudentProgress from "./pages/supervisor/StudentProgress";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ function App() {
                 <Route path="proposal-list" element={<ProposalList />} />
                 <Route path="proposal-review" element={<ProposalReview />} />
                 <Route path="proposal-detail/:id" element={<CoordinatorProposalDetail />} />
+                <Route path="student-progress" element={<CoordinatorStudentProgress />} />
                 <Route path="student-evaluation" element={<StudentEvaluation />} />
                 <Route path="guidance-management" element={<GuidanceManagement />} />
                 <Route path="timesheet-overview" element={<CoordinatorTimesheetOverview />} />
@@ -118,6 +120,7 @@ function App() {
               }>
                 <Route index element={<SupervisorDashboard />} />
                 <Route path="profile" element={<SupervisorProfile />} />
+                <Route path="student-progress" element={<SupervisorStudentProgress />} />
                 <Route path="digital-signature" element={<DigitalSignatureUpload />} />
                 <Route path="feedback" element={<Feedback />} />
                 <Route path="kp-progress" element={<KpProgressSupervision />} />
