@@ -3,6 +3,7 @@ import { MessageSquare } from "lucide-react";
 import { FeedbackEntry } from "@/types/supervisorProposals";
 import { useEffect, useState } from "react";
 import { fetchProposalFeedback } from "@/services/supervisor/feedbackService";
+import { supabase } from '@/integrations/supabase/client';
 
 interface FeedbackListProps {
   feedback: FeedbackEntry[];
@@ -32,6 +33,30 @@ const FeedbackList = ({ feedback, formatDate, proposalId }: FeedbackListProps) =
     };
 
     loadFeedback();
+
+    // Set up real-time subscription for new feedback
+    if (proposalId) {
+      const channel = supabase
+        .channel(`proposal-feedback-${proposalId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'proposal_feedback',
+            filter: `proposal_id=eq.${proposalId}`
+          },
+          () => {
+            console.log('New feedback received, reloading...');
+            loadFeedback();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [proposalId]);
 
   // Update currentFeedback when feedback prop changes

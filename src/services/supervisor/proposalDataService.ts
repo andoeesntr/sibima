@@ -21,10 +21,22 @@ export const fetchSupervisorProposals = async (userId: string): Promise<Proposal
     
     const teamIds = supervisorTeams?.map(team => team.team_id) || [];
     
-    // Fetch proposals where:
-    // 1. The supervisor is directly assigned as supervisor_id OR
-    // 2. The proposal belongs to a team where the supervisor is assigned
-    const { data: proposalsData, error: proposalsError } = await supabase
+    // Get notifications for proposals shared with this supervisor
+    const { data: sharedNotifications, error: notificationsError } = await supabase
+      .from('kp_notifications')
+      .select('related_id')
+      .eq('user_id', userId)
+      .eq('type', 'proposal_shared')
+      .not('related_id', 'is', null);
+    
+    if (notificationsError) {
+      console.error("Error fetching shared proposal notifications:", notificationsError);
+    }
+    
+    const sharedProposalIds = sharedNotifications?.map(n => n.related_id).filter(Boolean) || [];
+    
+    // Build query conditions
+    let proposalQuery = supabase
       .from('proposals')
       .select(`
         id, title, description, status, 
@@ -33,8 +45,32 @@ export const fetchSupervisorProposals = async (userId: string): Promise<Proposal
         student:profiles!student_id (full_name),
         team:teams (id, name)
       `)
-      .or(`supervisor_id.eq.${userId},team_id.in.(${teamIds.length > 0 ? teamIds.join(',') : 'null'})`)
       .order('created_at', { ascending: false });
+    
+    // Filter proposals where:
+    // 1. The supervisor is directly assigned as supervisor_id OR
+    // 2. The proposal belongs to a team where the supervisor is assigned OR
+    // 3. The proposal was shared with this supervisor via notifications
+    const conditions = [];
+    
+    if (teamIds.length > 0) {
+      conditions.push(`team_id.in.(${teamIds.join(',')})`);
+    }
+    
+    if (sharedProposalIds.length > 0) {
+      conditions.push(`id.in.(${sharedProposalIds.join(',')})`);
+    }
+    
+    conditions.push(`supervisor_id.eq.${userId}`);
+    
+    if (conditions.length > 0) {
+      proposalQuery = proposalQuery.or(conditions.join(','));
+    } else {
+      // If no conditions, just get proposals where supervisor_id matches
+      proposalQuery = proposalQuery.eq('supervisor_id', userId);
+    }
+    
+    const { data: proposalsData, error: proposalsError } = await proposalQuery;
       
     if (proposalsError) {
       console.error("Error fetching proposals:", proposalsError);

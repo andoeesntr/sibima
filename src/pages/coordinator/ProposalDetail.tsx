@@ -11,6 +11,7 @@ import ActionDialogs from '@/components/coordinator/proposals/ActionDialogs';
 import DocumentPreview from '@/components/coordinator/proposals/DocumentPreview';
 import ProposalActions from '@/components/coordinator/proposals/ProposalActions';
 import ShareToSupervisorDialog from '@/components/coordinator/proposals/ShareToSupervisorDialog';
+import ReviewerFeedback from '@/components/coordinator/proposals/ReviewerFeedback';
 import { useCoordinatorProposalDetail } from '@/hooks/useCoordinatorProposalDetail';
 import { statusColors, statusLabels } from '@/constants/proposalStatus';
 
@@ -70,7 +71,7 @@ const ProposalDetail = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Proposal Details */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 space-y-6">
           <ProposalDetails
             title={proposal.title}
             createdAt={proposal.created_at}
@@ -82,6 +83,9 @@ const ProposalDetail = () => {
             onPreviewDocument={handlePreviewDocument}
             onDownloadFile={handleDownloadFile}
           />
+          
+          {/* Reviewer Feedback Section */}
+          <ReviewerFeedback proposalId={proposal.id} />
           
           <ProposalActions 
             status={proposal.status}
