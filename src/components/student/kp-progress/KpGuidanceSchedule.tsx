@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,8 @@ interface GuidanceSession {
   supervisor_notes: string | null;
   evidence_url: string | null;
   created_at: string;
+  updated_at: string;
+  meeting_link: string | null;
   supervisor: {
     full_name: string;
   };
@@ -159,6 +160,15 @@ const KpGuidanceSchedule = () => {
         .eq('id', sessionId);
 
       if (updateError) throw updateError;
+
+      // Update kp_progress to increment guidance sessions completed
+      const { error: progressError } = await supabase.rpc('increment_guidance_sessions', {
+        p_student_id: user?.id
+      });
+
+      if (progressError) {
+        console.error('Error updating progress:', progressError);
+      }
 
       toast.success('Bukti bimbingan berhasil diunggah! Sesi bimbingan Anda akan bertambah.');
       
