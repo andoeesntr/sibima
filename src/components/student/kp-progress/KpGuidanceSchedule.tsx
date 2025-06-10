@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, Plus, Upload, FileText, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,9 +33,16 @@ interface GuidanceSession {
   };
 }
 
+interface Supervisor {
+  id: string;
+  full_name: string;
+  nip: string;
+}
+
 const KpGuidanceSchedule = () => {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<GuidanceSession[]>([]);
+  const [supervisors, setSupervisors] = useState<Supervisor[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showRequestDialog, setShowRequestDialog] = useState(false);
@@ -54,8 +63,26 @@ const KpGuidanceSchedule = () => {
   useEffect(() => {
     if (user?.id) {
       fetchGuidanceSessions();
+      fetchSupervisors();
     }
   }, [user?.id]);
+
+  const fetchSupervisors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, nip')
+        .eq('role', 'supervisor')
+        .order('full_name');
+
+      if (error) throw error;
+
+      setSupervisors(data || []);
+    } catch (error) {
+      console.error('Error fetching supervisors:', error);
+      toast.error('Gagal memuat daftar dosen pembimbing');
+    }
+  };
 
   const fetchGuidanceSessions = async () => {
     try {
@@ -261,6 +288,25 @@ const KpGuidanceSchedule = () => {
               <DialogTitle>Ajukan Jadwal Bimbingan</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmitRequest} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="supervisor_id">Dosen Pembimbing</Label>
+                <Select 
+                  value={formData.supervisor_id} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, supervisor_id: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih dosen pembimbing" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supervisors.map((supervisor) => (
+                      <SelectItem key={supervisor.id} value={supervisor.id}>
+                        {supervisor.full_name} ({supervisor.nip})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="requested_date">Tanggal & Waktu</Label>
                 <Input
