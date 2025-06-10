@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { TimelineStep } from '@/types/timeline';
 import { toast } from 'sonner';
+import { logActivity } from '@/services/activityLogService';
 
 // Default timeline steps if none exist in database
 const defaultTimelineSteps: TimelineStep[] = [
@@ -95,6 +96,15 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
         
       if (error) throw error;
       result = data;
+      
+      // Log the activity
+      await logActivity({
+        actionType: 'system',
+        actionDescription: `Menambahkan timeline KP "${stepToUpdate.title}"`,
+        targetType: 'timeline',
+        targetId: result.id,
+        metadata: { timeline_title: stepToUpdate.title }
+      });
     } else {
       // For valid UUIDs, update the existing record
       const { data, error } = await supabase
@@ -106,6 +116,15 @@ export const updateTimelineStep = async (step: TimelineStep): Promise<TimelineSt
         
       if (error) throw error;
       result = data;
+      
+      // Log the activity
+      await logActivity({
+        actionType: 'system',
+        actionDescription: `Memperbarui timeline KP "${stepToUpdate.title}"`,
+        targetType: 'timeline',
+        targetId: result.id,
+        metadata: { timeline_title: stepToUpdate.title }
+      });
     }
 
     if (!result) {
@@ -153,5 +172,31 @@ export const initializeTimeline = async (): Promise<void> => {
     }
   } catch (error) {
     console.error('Error initializing timeline:', error);
+  }
+};
+
+export const deleteTimelineStep = async (stepId: string): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .from('kp_timeline')
+      .delete()
+      .eq('id', stepId);
+
+    if (error) throw error;
+
+    // Log the activity
+    await logActivity({
+      actionType: 'system',
+      actionDescription: `Menghapus timeline KP`,
+      targetType: 'timeline',
+      targetId: stepId,
+      metadata: { deleted_step_id: stepId }
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error deleting timeline step:', error);
+    toast.error('Failed to delete timeline step');
+    return false;
   }
 };

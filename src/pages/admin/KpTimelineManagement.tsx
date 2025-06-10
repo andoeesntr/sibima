@@ -9,6 +9,7 @@ import { Plus, Edit, Trash2, Calendar, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { logActivity } from '@/services/activityLogService';
 
 interface TimelineItem {
   id: string;
@@ -75,18 +76,38 @@ const KpTimelineManagement = () => {
           .eq('id', editingItem.id);
 
         if (error) throw error;
+        
+        await logActivity({
+          actionType: 'system',
+          actionDescription: `Memperbarui timeline KP "${formData.title}"`,
+          targetType: 'timeline',
+          targetId: editingItem.id,
+          metadata: { timeline_title: formData.title }
+        });
+        
         toast.success('Timeline berhasil diperbarui');
       } else {
         // Create new item
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('kp_timeline')
           .insert({
             title: formData.title,
             description: formData.description,
             period: formData.period
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+        
+        await logActivity({
+          actionType: 'system',
+          actionDescription: `Menambahkan timeline KP "${formData.title}"`,
+          targetType: 'timeline',
+          targetId: data.id,
+          metadata: { timeline_title: formData.title }
+        });
+        
         toast.success('Timeline berhasil ditambahkan');
       }
 
@@ -114,12 +135,22 @@ const KpTimelineManagement = () => {
     }
 
     try {
+      const timelineItem = timelineItems.find(item => item.id === id);
+      
       const { error } = await supabase
         .from('kp_timeline')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      await logActivity({
+        actionType: 'system',
+        actionDescription: `Menghapus timeline KP "${timelineItem?.title || 'Unknown'}"`,
+        targetType: 'timeline',
+        targetId: id,
+        metadata: { timeline_title: timelineItem?.title }
+      });
 
       toast.success('Timeline berhasil dihapus');
       await fetchTimelineItems();

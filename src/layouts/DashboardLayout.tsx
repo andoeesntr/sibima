@@ -37,6 +37,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { title: 'Dashboard', href: '/admin', icon: <Home size={18} className="text-yellow-500" /> },
     { title: 'User Management', href: '/admin/user-management', icon: <Users size={18} className="text-yellow-500" /> },
     { title: 'Panduan Management', href: '/admin/guide-management', icon: <BookOpen size={18} className="text-yellow-500" /> },
+    { title: 'Timeline KP Management', href: '/admin/kp-timeline-management', icon: <Layout size={18} className="text-yellow-500" /> },
   ],
   supervisor: [
     { title: 'Dashboard', href: '/supervisor', icon: <Home size={18} className="text-yellow-500" /> },
@@ -188,3 +189,5 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
 };
 
 export default DashboardLayout;
+
+</initial_code>

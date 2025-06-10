@@ -106,6 +106,7 @@ function App() {
                 <Route path="guide-management" element={<GuideManagement />} />
                 <Route path="digital-signature-management" element={<DigitalSignatureManagement />} />
                 <Route path="digital-signatures" element={<DigitalSignatureManagement />} />
+                <Route path="kp-timeline-management" element={<KpTimelineManagement />} />
               </Route>
 
               {/* Supervisor routes */}

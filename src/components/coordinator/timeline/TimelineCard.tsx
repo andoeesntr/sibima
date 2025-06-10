@@ -1,12 +1,13 @@
 
 import { Button } from '@/components/ui/button';
-import { Edit } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import { TimelineStep } from '@/types/timeline';
 
 interface TimelineCardProps {
   step: TimelineStep;
   index: number;
   onEditStep?: (step: TimelineStep) => void;
+  onDeleteStep?: (stepId: string) => void;
   variant: 'mobile' | 'desktop';
   readOnly?: boolean;
 }
@@ -35,19 +36,33 @@ const formatDescriptionWithLinks = (description: string) => {
   });
 };
 
-const TimelineCard = ({ step, index, onEditStep, variant, readOnly = false }: TimelineCardProps) => {
+const TimelineCard = ({ step, index, onEditStep, onDeleteStep, variant, readOnly = false }: TimelineCardProps) => {
   if (variant === 'mobile') {
     return (
       <div className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white relative group">
-        {!readOnly && onEditStep && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={() => onEditStep(step)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
+        {!readOnly && (onEditStep || onDeleteStep) && (
+          <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+            {onEditStep && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onEditStep(step)}
+                className="h-8 w-8"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+            {onDeleteStep && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onDeleteStep(step.id)}
+                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         )}
         
         <div className="flex items-center mb-2">
@@ -68,15 +83,29 @@ const TimelineCard = ({ step, index, onEditStep, variant, readOnly = false }: Ti
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white relative group min-h-[150px]">
-      {!readOnly && onEditStep && (
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onEditStep(step)}
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
+      {!readOnly && (onEditStep || onDeleteStep) && (
+        <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+          {onEditStep && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onEditStep(step)}
+              className="h-8 w-8"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
+          {onDeleteStep && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => onDeleteStep(step.id)}
+              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       )}
       
       <h3 className="font-bold text-gray-900 mb-2">{step.title}</h3>

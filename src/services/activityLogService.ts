@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface LogActivityParams {
   actionType: 'proposal_action' | 'evaluation' | 'download' | 'upload' | 'timesheet' | 'system';
   actionDescription: string;
-  targetType?: 'proposal' | 'evaluation' | 'timesheet' | 'document' | null;
+  targetType?: 'proposal' | 'evaluation' | 'timesheet' | 'document' | 'timeline' | null;
   targetId?: string | null;
   metadata?: any;
 }

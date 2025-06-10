@@ -12,10 +12,11 @@ import TimelineCard from './TimelineCard';
 interface MobileTimelineProps {
   steps: TimelineStep[];
   onEditStep?: (step: TimelineStep) => void;
+  onDeleteStep?: (stepId: string) => void;
   readOnly?: boolean;
 }
 
-const MobileTimeline = ({ steps, onEditStep, readOnly = false }: MobileTimelineProps) => {
+const MobileTimeline = ({ steps, onEditStep, onDeleteStep, readOnly = false }: MobileTimelineProps) => {
   return (
     <Carousel className="w-full">
       <CarouselContent>
@@ -33,6 +34,7 @@ const MobileTimeline = ({ steps, onEditStep, readOnly = false }: MobileTimelineP
                 step={step} 
                 index={index} 
                 onEditStep={onEditStep} 
+                onDeleteStep={onDeleteStep}
                 variant="mobile" 
                 readOnly={readOnly}
               />

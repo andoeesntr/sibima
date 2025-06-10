@@ -5,10 +5,11 @@ import TimelineCard from './TimelineCard';
 interface DesktopTimelineProps {
   steps: TimelineStep[];
   onEditStep?: (step: TimelineStep) => void;
+  onDeleteStep?: (stepId: string) => void;
   readOnly?: boolean;
 }
 
-const DesktopTimeline = ({ steps, onEditStep, readOnly = false }: DesktopTimelineProps) => {
+const DesktopTimeline = ({ steps, onEditStep, onDeleteStep, readOnly = false }: DesktopTimelineProps) => {
   return (
     <div className="relative py-10">
       {/* Main horizontal line */}
@@ -44,6 +45,7 @@ const DesktopTimeline = ({ steps, onEditStep, readOnly = false }: DesktopTimelin
                 step={step} 
                 index={index} 
                 onEditStep={onEditStep} 
+                onDeleteStep={onDeleteStep}
                 variant="desktop" 
                 readOnly={readOnly}
               />
