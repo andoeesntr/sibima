@@ -162,12 +162,27 @@ const KpGuidanceSchedule = () => {
       if (updateError) throw updateError;
 
       // Update kp_progress to increment guidance sessions completed
-      const { error: progressError } = await supabase.rpc('increment_guidance_sessions', {
-        p_student_id: user?.id
-      });
+      const { data: currentProgress, error: fetchError } = await supabase
+        .from('kp_progress')
+        .select('guidance_sessions_completed')
+        .eq('student_id', user?.id)
+        .single();
 
-      if (progressError) {
-        console.error('Error updating progress:', progressError);
+      if (fetchError) {
+        console.error('Error fetching current progress:', fetchError);
+      } else {
+        const newCount = (currentProgress?.guidance_sessions_completed || 0) + 1;
+        const { error: progressError } = await supabase
+          .from('kp_progress')
+          .update({ 
+            guidance_sessions_completed: newCount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('student_id', user?.id);
+
+        if (progressError) {
+          console.error('Error updating progress:', progressError);
+        }
       }
 
       toast.success('Bukti bimbingan berhasil diunggah! Sesi bimbingan Anda akan bertambah.');
