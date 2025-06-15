@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Lecturer {
   id: string;
@@ -23,6 +24,7 @@ export const KpRegistrationForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [khsFile, setKhsFile] = useState<File | null>(null);
   const [krsFile, setKrsFile] = useState<File | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchLecturers()
@@ -30,12 +32,16 @@ export const KpRegistrationForm: React.FC = () => {
       .catch(() => toast.error("Gagal memuat dosen wali"));
   }, []);
 
-  // Tampilkan hanya dosen dengan role 'supervisor' atau 'coordinator' (sesuai database)
+  // Tampilkan hanya dosen dengan role 'supervisor' atau 'coordinator'
   const guardianLecturers = lecturers.filter(
     (lec) => lec.role === "supervisor" || lec.role === "coordinator"
   );
 
   const onSubmit = async (data: any) => {
+    if (!user?.id) {
+      toast.error("User belum login. Silakan login ulang.");
+      return;
+    }
     try {
       setLoading(true);
       // Handle uploads first
@@ -44,6 +50,7 @@ export const KpRegistrationForm: React.FC = () => {
       if (krsFile) last_krs_file = await uploadKpFile(krsFile, "krs");
       const payload = {
         ...data,
+        student_id: user.id,
         semester: Number(data.semester),
         ipk: parseFloat(data.ipk),
         total_completed_credits: Number(data.total_completed_credits),
