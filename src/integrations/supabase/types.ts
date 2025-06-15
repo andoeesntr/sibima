@@ -575,6 +575,81 @@ export type Database = {
           },
         ]
       }
+      kp_registrations: {
+        Row: {
+          created_at: string
+          d_e_courses: string | null
+          guardian_lecturer_id: string | null
+          id: string
+          ipk: number
+          last_gpa_file: string | null
+          last_krs_file: string | null
+          notes: string | null
+          registration_status: string
+          semester: number
+          status: string
+          student_id: string
+          total_completed_credits: number
+          total_credits: number
+          total_current_credits: number
+          total_d_e_credits: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          d_e_courses?: string | null
+          guardian_lecturer_id?: string | null
+          id?: string
+          ipk: number
+          last_gpa_file?: string | null
+          last_krs_file?: string | null
+          notes?: string | null
+          registration_status: string
+          semester: number
+          status?: string
+          student_id: string
+          total_completed_credits: number
+          total_credits: number
+          total_current_credits: number
+          total_d_e_credits: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          d_e_courses?: string | null
+          guardian_lecturer_id?: string | null
+          id?: string
+          ipk?: number
+          last_gpa_file?: string | null
+          last_krs_file?: string | null
+          notes?: string | null
+          registration_status?: string
+          semester?: number
+          status?: string
+          student_id?: string
+          total_completed_credits?: number
+          total_credits?: number
+          total_current_credits?: number
+          total_d_e_credits?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kp_registrations_guardian_lecturer_id_fkey"
+            columns: ["guardian_lecturer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kp_registrations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kp_timeline: {
         Row: {
           created_at: string | null

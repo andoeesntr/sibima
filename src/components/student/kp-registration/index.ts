@@ -1,0 +1,2 @@
+
+export { KpRegistrationForm } from "./KpRegistrationForm";
