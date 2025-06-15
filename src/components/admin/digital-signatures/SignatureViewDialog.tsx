@@ -121,20 +121,37 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
               <h3 className="font-medium mb-2">QR Code</h3>
               <div className="border p-4 rounded-md flex justify-center">
                 <div className="relative w-40 h-40 flex items-center justify-center bg-white rounded">
+                  {/* QR Code image as base */}
                   <img 
                     src={signature.qr_code_url} 
                     alt="QR Code" 
                     className="w-40 h-40 object-contain"
+                    style={{ display: "block" }}
                   />
-                  {/* Overlay: Lingkaran putih kecil di tengah, logo SI di atasnya */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    {/* Lingkaran putih, ukuran sedikit lebih besar dari logo */}
-                    <div className="w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center">
-                      <img 
-                        src="/LogoSI-removebg-preview.png" 
-                        alt="Logo SI" 
-                        className="w-9 h-9 object-contain"
-                        style={{ background: 'transparent' }}
+                  {/* Overlay: Lingkaran putih kecil tepat di tengah, ukuran pas logo */}
+                  <div className="absolute left-1/2 top-1/2 pointer-events-none"
+                       style={{
+                         transform: 'translate(-50%, -50%)'
+                       }}>
+                    {/* Lingkaran putih kecil, ukuran hanya lebih besar sedikit dari logo */}
+                    <div
+                      className="flex items-center justify-center rounded-full bg-white"
+                      style={{
+                        width: 44,
+                        height: 44, // Lingkaran putih, sangat presisi di tengah (44x44px)
+                        boxShadow: '0 0 3px rgba(0,0,0,0.03)'
+                      }}
+                    >
+                      {/* Logo SI transparan, pas di tengah lingkaran */}
+                      <img
+                        src="/LogoSI-removebg-preview.png"
+                        alt="Logo SI"
+                        className="object-contain"
+                        style={{
+                          width: 36, // Logo diameter lebih kecil dari lingkaran
+                          height: 36,
+                          background: "transparent"
+                        }}
                       />
                     </div>
                   </div>
