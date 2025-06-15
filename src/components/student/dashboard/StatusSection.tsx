@@ -43,13 +43,13 @@ export const StatusSection = ({
         
         {/* Dokumen Proposal (jika ada) */}
         {proposalDocs.length > 0 && (
-          <div className="mt-6">
-            <div className="font-medium mb-2 mt-3">Dokumen Proposal</div>
+          <div className="mt-4">
+            <div className="font-medium mb-2">Dokumen Proposal</div>
             <div className="space-y-2">
               {proposalDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2 bg-gray-50"
+                  className="flex items-center justify-between rounded-lg border px-3 py-2 bg-white"
                 >
                   <span className="truncate">{doc.fileName}</span>
                   <Button
@@ -81,7 +81,7 @@ export const StatusSection = ({
         
         {/* Detail proposal button */}
         {latestApprovedProposal && (
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-end mt-4">
             <Button
               className="bg-primary hover:bg-primary/90"
               onClick={() => navigate(`/student/proposal-detail/${latestApprovedProposal.id}`)}
