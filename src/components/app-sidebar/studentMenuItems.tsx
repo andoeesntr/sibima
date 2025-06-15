@@ -1,5 +1,5 @@
 
-import { BookOpen } from "lucide-react";
+import { BookOpen, ClipboardList } from "lucide-react";
 
 export const studentMenuItems = [
   {
@@ -10,7 +10,7 @@ export const studentMenuItems = [
   {
     title: "Pendaftaran KP",
     url: "/student/kp-registration",
-    icon: BookOpen,
+    icon: ClipboardList,
   },
   {
     title: "Pengajuan Proposal",
