@@ -34,6 +34,7 @@ const roleNavItems: Record<string, NavItem[]> = {
     { title: 'Progress Mahasiswa', href: '/coordinator/student-progress', icon: <BarChart3 size={18} className="text-yellow-500" /> },
     { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} className="text-yellow-500" /> },
     { title: 'Rekap Timesheet', href: '/coordinator/timesheet-overview', icon: <Clock size={18} className="text-yellow-500" /> },
+    { title: 'Manajemen Pendaftaran KP', href: '/coordinator/kp-registration-management', icon: <ClipboardList size={18} className="text-yellow-500" /> },
     { title: 'Manajemen Bimbingan', href: '/coordinator/guidance-management', icon: <TrendingUp size={18} className="text-yellow-500" /> },
   ],
   admin: [
