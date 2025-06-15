@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -111,7 +110,8 @@ export default function KpRegistrationCreateDialog({
         <DialogHeader>
           <DialogTitle>Tambah Pendaftaran KP</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3 py-2">
+        {/* Scrollable */}
+        <div className="space-y-3 py-2 overflow-y-auto max-h-[70vh] pr-2">
           <div>
             <label className="block text-sm font-bold mb-1">Mahasiswa</label>
             <Select value={form.student_id} onValueChange={v => updateField("student_id", v)}>
@@ -228,5 +228,3 @@ export default function KpRegistrationCreateDialog({
     </Dialog>
   );
 }
-
-// ... end of file ...
