@@ -1,12 +1,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-// Fetch all lecturers (role 'lecturer' OR 'dosen' or 'coordinator' if not available)
+// Fetch all lecturers (role 'supervisor' or 'coordinator')
 export async function fetchLecturers() {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, full_name, role")
-    .in("role", ["lecturer", "dosen", "coordinator"]);
+    .in("role", ["supervisor", "coordinator"]);
 
   if (error) throw error;
   return data;
