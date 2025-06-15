@@ -13,24 +13,20 @@ const DesktopTimeline = ({ steps, onEditStep, onDeleteStep, readOnly = false }: 
   // Pastikan tidak error jika steps kosong
   if (!steps || steps.length === 0) return null;
 
-  // Set grid cols amount sesuai step
-  const colCount = steps.length > 6 ? 6 : steps.length;
-  const gridCols = `grid-cols-${colCount}`;
-
   return (
-    <div className="relative py-10 w-full">
+    <div className="relative py-6 w-full px-4">
       {/* Main horizontal line */}
-      <div className="absolute h-1 bg-orange-500 top-24 left-0 right-0 z-0"></div>
+      <div className="absolute h-1 bg-orange-500 top-20 left-4 right-4 z-0"></div>
       
-      <div className={`grid w-full ${gridCols} gap-4`}>
+      <div className="w-full">
         {/* Timeline circles and period labels */}
-        <div className={`col-span-${colCount} relative`}>
-          <div className="flex justify-between w-full">
+        <div className="relative mb-8">
+          <div className="flex justify-between items-center w-full">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex flex-col items-center flex-1">
+              <div key={step.id} className="flex flex-col items-center" style={{ flex: '1' }}>
                 {/* Period label directly above the circle */}
                 <div className="mb-4">
-                  <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium">
+                  <div className="bg-orange-100 text-orange-800 rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap">
                     {step.period}
                   </div>
                 </div>
@@ -44,13 +40,12 @@ const DesktopTimeline = ({ steps, onEditStep, onDeleteStep, readOnly = false }: 
         </div>
 
         {/* Cards below the timeline */}
-        <div className={`col-span-${colCount} w-full mt-8`}>
-          <div className={`flex w-full gap-6`}>
+        <div className="w-full">
+          <div className="flex w-full gap-4">
             {steps.map((step, index) => (
               <div 
                 key={`card-${step.id}`} 
                 className="flex-1 min-w-0"
-                style={{ maxWidth: `${100 / steps.length}%` }}
               >
                 <TimelineCard 
                   step={step} 
@@ -70,4 +65,3 @@ const DesktopTimeline = ({ steps, onEditStep, onDeleteStep, readOnly = false }: 
 };
 
 export default DesktopTimeline;
-

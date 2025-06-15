@@ -82,7 +82,7 @@ const TimelineCard = ({ step, index, onEditStep, onDeleteStep, variant, readOnly
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white relative group min-h-[150px]">
+    <div className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white relative group h-full">
       {!readOnly && (onEditStep || onDeleteStep) && (
         <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
           {onEditStep && (
@@ -108,10 +108,10 @@ const TimelineCard = ({ step, index, onEditStep, onDeleteStep, variant, readOnly
         </div>
       )}
       
-      <h3 className="font-bold text-gray-900 mb-2">{step.title}</h3>
+      <h3 className="font-bold text-gray-900 mb-3 text-base">{step.title}</h3>
       
       {step.description && (
-        <p className="text-gray-600 text-sm">
+        <p className="text-gray-600 text-sm leading-relaxed">
           {formatDescriptionWithLinks(step.description)}
         </p>
       )}
