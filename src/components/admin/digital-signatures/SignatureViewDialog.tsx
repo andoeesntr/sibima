@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Dialog, 
@@ -121,11 +120,23 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
             <div>
               <h3 className="font-medium mb-2">QR Code</h3>
               <div className="border p-4 rounded-md flex justify-center">
-                <img 
-                  src={signature.qr_code_url} 
-                  alt="QR Code" 
-                  className="max-h-40 object-contain"
-                />
+                <div className="relative w-40 h-40 flex items-center justify-center bg-white rounded">
+                  <img 
+                    src={signature.qr_code_url} 
+                    alt="QR Code" 
+                    className="w-40 h-40 object-contain"
+                  />
+                  {/* Logo SI overlay (same style as supervisor view) */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-gray-200">
+                      <img 
+                        src="/LogoSI-removebg-preview.png" 
+                        alt="Logo SI" 
+                        className="w-8 h-8 object-contain"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
