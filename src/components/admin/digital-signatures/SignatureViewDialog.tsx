@@ -126,15 +126,14 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
                     alt="QR Code" 
                     className="w-40 h-40 object-contain"
                   />
-                  {/* Logo SI overlay (same style as supervisor view) */}
+                  {/* Logo SI overlay, tanpa lingkaran putih besar */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-gray-200">
-                      <img 
-                        src="/LogoSI-removebg-preview.png" 
-                        alt="Logo SI" 
-                        className="w-8 h-8 object-contain"
-                      />
-                    </div>
+                    <img 
+                      src="/LogoSI-removebg-preview.png" 
+                      alt="Logo SI" 
+                      className="w-8 h-8 object-contain"
+                      style={{background: 'transparent'}}
+                    />
                   </div>
                 </div>
               </div>
