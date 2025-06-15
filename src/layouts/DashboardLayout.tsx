@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
@@ -19,6 +20,7 @@ type NavItem = {
 const roleNavItems: Record<string, NavItem[]> = {
   student: [
     { title: 'Dashboard', href: '/student', icon: <Home size={18} className="text-yellow-500" /> },
+    { title: 'Formulir Pendaftaran KP', href: '/student/kp-registration', icon: <ClipboardList size={18} className="text-yellow-500" /> },
     { title: 'Pengajuan Proposal', href: '/student/proposal-submission', icon: <FileText size={18} className="text-yellow-500" /> },
     { title: 'Progress KP', href: '/student/kp-progress', icon: <TrendingUp size={18} className="text-yellow-500" /> },
     { title: 'Timesheet KP', href: '/student/timesheet', icon: <Clock size={18} className="text-yellow-500" /> },
@@ -191,3 +193,4 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
 };
 
 export default DashboardLayout;
+
