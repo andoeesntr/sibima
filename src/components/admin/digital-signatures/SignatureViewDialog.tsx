@@ -38,6 +38,11 @@ interface SignatureViewDialogProps {
   onReject: (signatureId: string) => void;
 }
 
+import { SignatureInfoSection } from './SignatureInfoSection';
+import { SignatureStatusSection } from './SignatureStatusSection';
+import { SignatureImageSection } from './SignatureImageSection';
+import { SignatureQrSection } from './SignatureQrSection';
+
 const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
   signature,
   isOpen,
@@ -68,96 +73,11 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
-          <div>
-            <h3 className="font-medium mb-1">Informasi Dosen</h3>
-            <div className="text-sm space-y-1">
-              <p><span className="text-gray-500">Nama:</span> {signature.supervisor.name}</p>
-              <p><span className="text-gray-500">NIP:</span> {signature.supervisor.nip}</p>
-              <p><span className="text-gray-500">Department:</span> {signature.supervisor.department}</p>
-            </div>
-          </div>
-          
-          <div>
-            <h3 className="font-medium mb-1">Status</h3>
-            <div className="flex items-center">
-              {signature.status === 'approved' && (
-                <div className="flex items-center text-green-600">
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  <span>Disetujui pada {formatDate(signature.updated_at)}</span>
-                </div>
-              )}
-              
-              {signature.status === 'rejected' && (
-                <div className="flex items-center text-red-600">
-                  <XCircle className="h-4 w-4 mr-1" />
-                  <span>Ditolak pada {formatDate(signature.updated_at)}</span>
-                </div>
-              )}
-              
-              {signature.status === 'pending' && (
-                <div className="flex items-center text-yellow-600">
-                  <FileText className="h-4 w-4 mr-1" />
-                  <span>Menunggu persetujuan</span>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {signature.signature_url && (
-            <div>
-              <h3 className="font-medium mb-2">Tanda Tangan</h3>
-              <div className="border p-4 rounded-md flex justify-center">
-                <img 
-                  src={signature.signature_url} 
-                  alt="Digital Signature" 
-                  className="max-h-40 object-contain"
-                />
-              </div>
-            </div>
-          )}
-          
-          {signature.status === 'approved' && signature.qr_code_url && (
-            <div>
-              <h3 className="font-medium mb-2">QR Code</h3>
-              <div className="border p-4 rounded-md flex justify-center">
-                <div className="relative w-40 h-40 flex items-center justify-center bg-white rounded">
-                  {/* QR Code image as base */}
-                  <img 
-                    src={signature.qr_code_url} 
-                    alt="QR Code" 
-                    className="w-40 h-40 object-contain"
-                    style={{ display: "block" }}
-                  />
-                  {/* Overlay: Lingkaran putih super tipis untuk logo */}
-                  <div className="absolute left-1/2 top-1/2 pointer-events-none"
-                       style={{
-                         transform: 'translate(-50%, -50%)'
-                       }}>
-                    {/* Lingkaran putih sengaja hanya 1px lebih besar dari logo */}
-                    <div
-                      className="flex items-center justify-center rounded-full bg-white"
-                      style={{
-                        width: 37,    // hanya +1px dari logo per sisi (nyaris tidak ada gap putih)
-                        height: 37,
-                        boxShadow: '0 0 0 rgba(0,0,0,0)'
-                      }}
-                    >
-                      {/* Logo SI besar */}
-                      <img
-                        src="/LogoSI-removebg-preview.png"
-                        alt="Logo SI"
-                        className="object-contain"
-                        style={{
-                          width: 36,
-                          height: 36,
-                          background: "transparent"
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <SignatureInfoSection supervisor={signature.supervisor} />
+          <SignatureStatusSection status={signature.status} updated_at={signature.updated_at} formatDate={formatDate} />
+          <SignatureImageSection signature_url={signature.signature_url} />
+          {(signature.status === 'approved' && signature.qr_code_url) && (
+            <SignatureQrSection qr_code_url={signature.qr_code_url} />
           )}
         </div>
         
