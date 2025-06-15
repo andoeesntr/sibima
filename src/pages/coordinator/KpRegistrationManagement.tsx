@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import KpRegistrationTable from "@/components/coordinator/kp-registration/KpRegistrationTable";
 import KpRegistrationEditDialog from "@/components/coordinator/kp-registration/KpRegistrationEditDialog";
+import KpRegistrationCreateDialog from "@/components/coordinator/kp-registration/KpRegistrationCreateDialog";
 import { toast } from "sonner";
 
 type RegistrationRow = {
@@ -67,6 +68,10 @@ export default function KpRegistrationManagement() {
   const [selected, setSelected] = React.useState<RegistrationRow | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
+
+  // Add: state for create dialog
+  const [createOpen, setCreateOpen] = React.useState(false);
+
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -94,6 +99,26 @@ export default function KpRegistrationManagement() {
     onError: (e: any) => toast.error(e.message || "Gagal update"),
   });
 
+  // Add: create mutation
+  const createMutation = useMutation({
+    mutationFn: async (fields: Omit<RegistrationRow, "id" | "student"> & { student_id: string }) => {
+      const { error } = await supabase
+        .from("kp_registrations")
+        .insert({
+          ...fields,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coordinator-kp-registrations"] });
+      toast.success("Pendaftaran KP berhasil ditambahkan!");
+      setCreateOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message || "Gagal menambah pendaftaran"),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("kp_registrations").delete().eq("id", id);
@@ -114,7 +139,15 @@ export default function KpRegistrationManagement() {
 
   return (
     <div className="p-8">
-      <h2 className="text-2xl font-bold mb-6">Manajemen Pendaftaran KP</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Manajemen Pendaftaran KP</h2>
+        <button
+          className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition-colors"
+          onClick={() => setCreateOpen(true)}
+        >
+          + Tambah Pendaftaran
+        </button>
+      </div>
       <KpRegistrationTable
         registrations={data || []}
         isLoading={isLoading}
@@ -135,7 +168,14 @@ export default function KpRegistrationManagement() {
           setEditOpen(false);
         }}
         isCoordinator={true}
-        // <- tambah prop "isCoordinator" agar dialog bisa bersifat full form
+      />
+
+      {/* Tambah (Create) Dialog */}
+      <KpRegistrationCreateDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSave={(fields) => createMutation.mutate(fields)}
+        isSubmitting={createMutation.isPending}
       />
 
       {/* Dialog Konfirmasi Hapus */}
