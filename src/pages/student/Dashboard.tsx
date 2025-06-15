@@ -1,5 +1,4 @@
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StatusCard } from "@/components/student/dashboard/StatusCard";
 import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
@@ -10,6 +9,7 @@ import { KpEvaluationCard } from "@/components/student/dashboard/KpEvaluationCar
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -21,44 +21,39 @@ const Dashboard = () => {
     handleSelectProposal,
     hasActiveProposal,
     hasApprovedProposal,
-    isInTeam,
+    // isInTeam, // sudah tidak dipakai
     lastTeam,
     evaluations,
   } = useStudentDashboard();
 
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
 
-  const handleSubmitProposal = () => {
-    if (hasApprovedProposal) {
-      return;
-    }
-    navigate('/student/proposal-submission');
-  };
-
   // Ambil proposal terbaru saja untuk riwayat & status
   const latestProposal = proposals.length > 0 ? proposals[0] : null;
+  // Proposal lain untuk dialog/riwayat
   const otherProposals = proposals.length > 1 ? proposals.slice(1) : [];
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex justify-center items-center min-h-[300px]">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-2 md:px-6 space-y-8">
-      <h1 className="text-2xl font-bold mt-4 mb-2">Dashboard Mahasiswa</h1>
-
+    <div className="w-full max-w-6xl mx-auto px-0 py-0 space-y-8">
+      <h1 className="text-3xl font-bold mt-4 mb-2">Dashboard</h1>
+      
       {/* Timeline KP */}
-      <div>
+      <section className="rounded-lg border bg-white shadow-sm px-8 pt-7 pb-10 mb-8">
         <KpTimeline readOnly />
-      </div>
-
-      {/* Status KP dan Tim KP */}
-      <div className="flex flex-col md:flex-row gap-8 w-full">
-        <div className="flex-1 min-w-0">
+      </section>
+      
+      {/* Status KP, Tim KP, Nilai KP (Single full-width column style) */}
+      <section className="space-y-8">
+        {/* Status KP */}
+        <div className="rounded-lg border bg-white shadow-sm px-8 py-8">
           <StatusCard
             proposals={latestProposal ? [latestProposal] : []}
             selectedProposal={latestProposal}
@@ -66,66 +61,64 @@ const Dashboard = () => {
             evaluations={evaluations}
           />
         </div>
-        <div className="w-full md:max-w-xs">
+        {/* Tim KP */}
+        <div className="rounded-lg border bg-white shadow-sm px-8 py-8">
           <TeamCard team={lastTeam} />
         </div>
-      </div>
-
-      {/* Nilai KP */}
-      <div>
-        <KpEvaluationCard evaluations={evaluations} />
-      </div>
-
-      {/* Riwayat Proposal */}
-      <div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Riwayat Proposal</CardTitle>
+        {/* Nilai KP */}
+        <div className="rounded-lg border bg-white shadow-sm px-8 py-8">
+          <KpEvaluationCard evaluations={evaluations} />
+        </div>
+      </section>
+      
+      {/* Riwayat Proposal (hanya satu terbaru + tombol lihat lainnya) */}
+      <section className="rounded-lg border bg-white shadow-sm px-8 py-8">
+        <Card className="border-none shadow-none bg-transparent p-0">
+          <CardHeader className="p-0 mb-4">
+            <CardTitle className="text-xl mb-1">Riwayat Proposal</CardTitle>
             <CardDescription>
               Proposal terakhir yang Anda kirimkan
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {latestProposal ? (
-              <div className="border rounded-lg p-4 bg-gray-50 mb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold">{latestProposal.title}</h3>
-                    <p className="text-sm text-gray-600">{latestProposal.companyName}</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    latestProposal.status === 'approved'
-                      ? 'bg-green-100 text-green-800'
-                      : latestProposal.status === 'rejected'
-                      ? 'bg-red-100 text-red-800'
-                      : latestProposal.status === 'revision'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {latestProposal.status === 'approved'
-                      ? 'Disetujui'
-                      : latestProposal.status === 'rejected'
-                      ? 'Ditolak'
-                      : latestProposal.status === 'revision'
-                      ? 'Revisi'
-                      : 'Menunggu'}
-                  </span>
+              <div className="border rounded-lg p-5 bg-gray-50 mb-3 flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold text-base">{latestProposal.title}</h3>
+                  <p className="text-sm text-gray-600">{latestProposal.companyName}</p>
                 </div>
+                <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                  latestProposal.status === 'approved'
+                    ? 'bg-green-100 text-green-800'
+                    : latestProposal.status === 'rejected'
+                    ? 'bg-red-100 text-red-800'
+                    : latestProposal.status === 'revision'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {latestProposal.status === 'approved'
+                    ? 'Disetujui'
+                    : latestProposal.status === 'rejected'
+                    ? 'Ditolak'
+                    : latestProposal.status === 'revision'
+                    ? 'Revisi'
+                    : 'Menunggu'}
+                </span>
               </div>
             ) : (
               <p className="text-center text-gray-500 py-8">
                 Belum ada proposal yang diajukan
               </p>
             )}
-            {otherProposals.length > 0 &&
+            {otherProposals.length > 0 && (
               <Button
                 variant="secondary"
-                className="w-full"
+                className="w-full mt-2"
                 onClick={() => setProposalModalOpen(true)}
               >
                 Lihat Proposal Lain
               </Button>
-            }
+            )}
           </CardContent>
         </Card>
         <Dialog open={proposalModalOpen} onOpenChange={setProposalModalOpen}>
@@ -174,20 +167,21 @@ const Dashboard = () => {
             </Button>
           </DialogContent>
         </Dialog>
-      </div>
+      </section>
 
       {/* ActionCards fitur bawah */}
-      <div>
+      <section className="rounded-lg border bg-white shadow-sm px-8 py-8 mb-12">
         <ActionCards
           hasActiveProposal={hasActiveProposal}
           hasApprovedProposal={hasApprovedProposal}
-          onSubmitProposal={handleSubmitProposal}
+          onSubmitProposal={() => {
+            if (!hasApprovedProposal) navigate('/student/proposal-submission');
+          }}
           selectedProposal={mainProposal}
         />
-      </div>
+      </section>
     </div>
   );
 };
 
 export default Dashboard;
-
