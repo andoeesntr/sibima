@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,27 +8,40 @@ import { toast } from "sonner";
 
 type RegistrationRow = {
   id: string;
-  student: { full_name: string | null; nim: string | null };
+  student: { full_name: string; nim: string };
   semester: number;
-  ipk: number;
+  guardian_lecturer_id?: string | null;
   registration_status: string;
-  status: string;
+  ipk: number;
   total_completed_credits: number;
+  total_d_e_credits: number;
+  d_e_courses?: string | null;
+  total_current_credits: number;
   total_credits: number;
+  last_gpa_file?: string | null;
+  last_krs_file?: string | null;
+  status: string;
   notes?: string | null;
 };
 
 const fetchRegistrations = async (): Promise<RegistrationRow[]> => {
+  // NOTE: Penting! Pakai "profiles!kp_registrations_student_id" agar join tidak error
   const { data, error } = await supabase
     .from("kp_registrations")
     .select(`
       id,
       semester,
-      ipk,
+      guardian_lecturer_id,
       registration_status,
-      status,
+      ipk,
       total_completed_credits,
+      total_d_e_credits,
+      d_e_courses,
+      total_current_credits,
       total_credits,
+      last_gpa_file,
+      last_krs_file,
+      status,
       notes,
       student:profiles!kp_registrations_student_id (full_name, nim)
     `)
@@ -35,7 +49,6 @@ const fetchRegistrations = async (): Promise<RegistrationRow[]> => {
 
   if (error) throw new Error(error.message);
 
-  // Defensive parsing: if student join failed, fallback to placeholder object
   return (data || []).map((row: any) => {
     let student = row.student;
     if (
@@ -44,10 +57,6 @@ const fetchRegistrations = async (): Promise<RegistrationRow[]> => {
       typeof student.full_name !== "string" ||
       typeof student.nim !== "string"
     ) {
-      if (student && student.error === true) {
-        // Optionally debug log the error object
-        console.warn("Supabase join error for student:", student);
-      }
       student = { full_name: "-", nim: "-" };
     }
     return { ...row, student };
@@ -67,12 +76,12 @@ export default function KpRegistrationManagement() {
 
   const mutation = useMutation({
     mutationFn: async ({
-      id, notes, status, registration_status,
-    }: { id: string; notes: string; status: string; registration_status: string }) => {
+      id, ...fields
+    }: { id: string } & Partial<RegistrationRow>) => {
       const { error } = await supabase
         .from("kp_registrations")
         .update({
-          notes, status, registration_status,
+          ...fields,
           updated_at: new Date().toISOString(),
         })
         .eq("id", id);
@@ -125,6 +134,8 @@ export default function KpRegistrationManagement() {
           });
           setEditOpen(false);
         }}
+        isCoordinator={true}
+        // <- tambah prop "isCoordinator" agar dialog bisa bersifat full form
       />
 
       {/* Dialog Konfirmasi Hapus */}
