@@ -1,4 +1,3 @@
-
 import { StatusCard } from "@/components/student/dashboard/StatusCard";
 import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
@@ -92,14 +91,14 @@ const Dashboard = () => {
                         key={doc.id}
                         className="flex items-center justify-between rounded-lg border px-3 py-2 bg-gray-50"
                       >
-                        <span className="truncate">{doc.fileName || doc.file_name}</span>
+                        <span className="truncate">{doc.fileName}</span>
                         <Button
                           size="sm"
                           variant="outline"
                           className="ml-3"
                           onClick={() => {
-                            setPreviewDocUrl(doc.fileUrl || doc.file_url);
-                            setPreviewDocName(doc.fileName || doc.file_name);
+                            setPreviewDocUrl(doc.fileUrl);
+                            setPreviewDocName(doc.fileName);
                           }}
                         >
                           Lihat Dokumen
@@ -283,4 +282,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
