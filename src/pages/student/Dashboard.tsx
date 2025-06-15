@@ -27,6 +27,10 @@ const Dashboard = () => {
 
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
 
+  // For previewing a document
+  const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
+  const [previewDocName, setPreviewDocName] = useState<string | null>(null);
+
   // Only show the latest proposal in Riwayat Proposal; others available in dialog
   const latestProposal = proposals.length > 0 ? proposals[0] : null;
   const otherProposals = proposals.length > 1 ? proposals.slice(1) : [];
@@ -34,6 +38,11 @@ const Dashboard = () => {
   // Find only LATEST approved proposal for Status KP
   const approvedProposals = proposals.filter((p) => p.status === "approved");
   const latestApprovedProposal = approvedProposals.length > 0 ? approvedProposals[0] : null;
+
+  // Documents from proposal/team if available (hanya dari proposal, jika ada)
+  const proposalDocs = (latestApprovedProposal && latestApprovedProposal.documents && latestApprovedProposal.documents.length > 0)
+    ? latestApprovedProposal.documents
+    : [];
 
   if (loading) {
     return (
@@ -54,9 +63,9 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Status KP & Tim KP */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8 mt-4">
-        {/* STATUS KP DIBERI LAYER */}
+      {/* Status KP & Tim KP : satu row, lebar sama dengan timeline */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
+        {/* STATUS KP */}
         <div>
           <Card className="border rounded-2xl bg-white p-0 shadow-sm h-full flex flex-col justify-between">
             <CardHeader className="p-8 pb-3">
@@ -66,16 +75,44 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-8 pt-0 pb-6">
+              {/* Status Card */}
               <StatusCard
                 proposals={latestApprovedProposal ? [latestApprovedProposal] : []}
                 selectedProposal={latestApprovedProposal}
                 onSelectProposal={undefined}
                 evaluations={evaluations}
               />
+              {/* Dokumen Proposal (jika ada) */}
+              {proposalDocs.length > 0 && (
+                <div className="mt-6">
+                  <div className="font-medium mb-2 mt-3">Dokumen Proposal</div>
+                  <div className="space-y-2">
+                    {proposalDocs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between rounded-lg border px-3 py-2 bg-gray-50"
+                      >
+                        <span className="truncate">{doc.fileName || doc.file_name}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="ml-3"
+                          onClick={() => {
+                            setPreviewDocUrl(doc.fileUrl || doc.file_url);
+                            setPreviewDocName(doc.fileName || doc.file_name);
+                          }}
+                        >
+                          Lihat Dokumen
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
-        {/* TIM KP tetap */}
+        {/* TIM KP */}
         <div>
           <Card className="border rounded-2xl bg-white p-0 shadow-sm h-full flex flex-col justify-between">
             <CardHeader className="p-8 pb-3">
@@ -91,9 +128,9 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Nilai KP, Riwayat Proposal, Akses Cepat dalam satu row dan sejajar */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-8 mt-4">
-        {/* Nilai KP */}
+      {/* Nilai KP & Riwayat Proposal : satu row, gap lebih rapat & card sejajar */}
+      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
+        {/* Nilai KP - satu layer */}
         <div>
           <Card className="rounded-2xl bg-white border shadow-sm h-full flex flex-col">
             <CardHeader className="p-6 pb-3">
@@ -201,25 +238,46 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
-        {/* ActionCards (Akses Cepat) */}
-        <div>
-          <Card className="rounded-2xl bg-white border shadow-sm h-full flex flex-col">
-            <CardHeader className="p-6 pb-3">
-              <CardTitle className="text-xl font-semibold">Akses Cepat</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
-              <ActionCards
-                hasActiveProposal={hasActiveProposal}
-                hasApprovedProposal={hasApprovedProposal}
-                onSubmitProposal={() => {
-                  if (!hasApprovedProposal) navigate('/student/proposal-submission');
-                }}
-                selectedProposal={mainProposal}
-              />
-            </CardContent>
-          </Card>
-        </div>
       </section>
+
+      {/* Akses Cepat: satu layer full lebar di bawahnya */}
+      <section className="w-full mt-4 px-0" style={{ maxWidth: "100%" }}>
+        <Card className="rounded-2xl bg-white border shadow-sm w-full">
+          <CardHeader className="p-6 pb-3">
+            <CardTitle className="text-xl font-semibold">Akses Cepat</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <ActionCards
+              hasActiveProposal={hasActiveProposal}
+              hasApprovedProposal={hasApprovedProposal}
+              onSubmitProposal={() => {
+                if (!hasApprovedProposal) navigate('/student/proposal-submission');
+              }}
+              selectedProposal={mainProposal}
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Preview Document Modal */}
+      <Dialog open={!!previewDocUrl} onOpenChange={(v) => { if (!v) { setPreviewDocUrl(null); setPreviewDocName(null); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{previewDocName || "Pratinjau Dokumen"}</DialogTitle>
+          </DialogHeader>
+          {previewDocUrl ? (
+            <iframe
+              src={previewDocUrl}
+              title={previewDocName || "Dokumen"}
+              width="100%"
+              height="500"
+              className="border rounded-lg"
+            />
+          ) : (
+            <div className="text-gray-500 text-center py-8">Dokumen tidak tersedia.</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
