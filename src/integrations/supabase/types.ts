@@ -364,6 +364,71 @@ export type Database = {
           },
         ]
       }
+      kp_form_fields: {
+        Row: {
+          created_at: string | null
+          field_key: string
+          field_type: string
+          id: string
+          label: string
+          order_index: number
+          required: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          field_key: string
+          field_type: string
+          id?: string
+          label: string
+          order_index?: number
+          required?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          field_key?: string
+          field_type?: string
+          id?: string
+          label?: string
+          order_index?: number
+          required?: boolean
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      kp_form_options: {
+        Row: {
+          field_id: string | null
+          id: string
+          label: string
+          order_index: number
+          value: string
+        }
+        Insert: {
+          field_id?: string | null
+          id?: string
+          label: string
+          order_index?: number
+          value: string
+        }
+        Update: {
+          field_id?: string | null
+          id?: string
+          label?: string
+          order_index?: number
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kp_form_options_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "kp_form_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kp_guidance_schedule: {
         Row: {
           created_at: string | null
