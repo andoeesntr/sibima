@@ -53,10 +53,10 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-0 py-0">
-      {/* Timeline KP */}
+      {/* Timeline KP: Hapus gap atas, padding-top 0 */}
       <section className="w-full">
         <div className="w-full max-w-7xl mx-auto px-0">
-          <div className="pt-10 pb-0 px-0">
+          <div className="pt-0 pb-0 px-0">
             <KpTimeline readOnly />
           </div>
         </div>
@@ -121,7 +121,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-              {/* Move Lihat Detail Proposal button below document list */}
+              {/* Tombol Lihat Detail Proposal hanya 1, di bawah dokumen */}
               {latestApprovedProposal && (
                 <div className="flex justify-end mt-6">
                   <Button
