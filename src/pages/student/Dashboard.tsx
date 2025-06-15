@@ -62,10 +62,10 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Status KP & Tim KP */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
-        {/* STATUS KP */}
-        <div>
+      {/* Status KP & Tim KP - 60:40 grid */}
+      <section className="grid grid-cols-1 md:grid-cols-5 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
+        {/* STATUS KP, 60% */}
+        <div className="col-span-1 md:col-span-3">
           <Card className="border rounded-2xl bg-white p-0 shadow-sm h-full flex flex-col justify-between">
             <CardHeader className="p-8 pb-3">
               <CardTitle className="text-2xl font-bold mb-0">Status KP</CardTitle>
@@ -102,6 +102,7 @@ const Dashboard = () => {
                           aria-label="Preview Dokumen"
                         >
                           {/* Icon mata */}
+                          {/* Gunakan icon 'eye' dari lucide-react */}
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="20"
@@ -121,7 +122,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-              {/* Tombol Lihat Detail Proposal hanya 1, di bawah dokumen */}
+              {/* HANYA 1 tombol lihat detail proposal, di bawah dokumen */}
               {latestApprovedProposal && (
                 <div className="flex justify-end mt-6">
                   <Button
@@ -137,8 +138,8 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
-        {/* TIM KP */}
-        <div>
+        {/* TIM KP, 40% */}
+        <div className="col-span-1 md:col-span-2">
           <Card className="border rounded-2xl bg-white p-0 shadow-sm h-full flex flex-col justify-between">
             <CardHeader className="p-8 pb-3">
               <CardTitle className="text-2xl font-bold mb-0">Tim KP</CardTitle>
