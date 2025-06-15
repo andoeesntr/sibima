@@ -128,18 +128,18 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
                     className="w-40 h-40 object-contain"
                     style={{ display: "block" }}
                   />
-                  {/* Overlay: Lingkaran putih kecil tepat di tengah, ukuran pas logo */}
+                  {/* Overlay: Lingkaran putih kecil tipis di tengah, logo SI di atasnya */}
                   <div className="absolute left-1/2 top-1/2 pointer-events-none"
                        style={{
                          transform: 'translate(-50%, -50%)'
                        }}>
-                    {/* Lingkaran putih kecil, ukuran hanya lebih besar sedikit dari logo */}
+                    {/* Lingkaran putih kecil, margin tipis di sekitar logo */}
                     <div
                       className="flex items-center justify-center rounded-full bg-white"
                       style={{
-                        width: 44,
-                        height: 44, // Lingkaran putih, sangat presisi di tengah (44x44px)
-                        boxShadow: '0 0 3px rgba(0,0,0,0.03)'
+                        width: 33,  // Lingkaran putih lebih kecil/lebih tipis
+                        height: 33,
+                        boxShadow: '0 0 2px rgba(0,0,0,0.05)'
                       }}
                     >
                       {/* Logo SI transparan, pas di tengah lingkaran */}
@@ -148,8 +148,8 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
                         alt="Logo SI"
                         className="object-contain"
                         style={{
-                          width: 36, // Logo diameter lebih kecil dari lingkaran
-                          height: 36,
+                          width: 26, // Logo diameter lebih kecil dan tipis margin putihnya
+                          height: 26,
                           background: "transparent"
                         }}
                       />
