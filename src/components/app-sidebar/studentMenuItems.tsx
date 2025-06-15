@@ -2,7 +2,6 @@
 import { BookOpen } from "lucide-react";
 
 export const studentMenuItems = [
-  // Tambahkan menu selain dashboard sesuai kebutuhan...
   {
     title: "Dashboard",
     url: "/student",
