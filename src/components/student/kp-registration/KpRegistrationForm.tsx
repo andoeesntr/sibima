@@ -30,10 +30,10 @@ export const KpRegistrationForm: React.FC = () => {
       .catch(() => toast.error("Gagal memuat dosen wali"));
   }, []);
 
-  // Hanya tampilkan dosen dengan role pembimbing atau koordinator
+  // Tampilkan hanya dosen dengan role memuat kata "pembimbing" atau "koordinator"
   const guardianLecturers = lecturers.filter(
     (lec) =>
-      lec.role &&
+      typeof lec.role === "string" &&
       (lec.role.toLowerCase().includes("pembimbing") ||
         lec.role.toLowerCase().includes("koordinator"))
   );
@@ -84,21 +84,26 @@ export const KpRegistrationForm: React.FC = () => {
       </div>
       <div>
         <label className="block font-bold mb-1">Dosen Wali</label>
-        <Select {...register("guardian_lecturer_id")} onValueChange={val => setValue("guardian_lecturer_id", val)} disabled={guardianLecturers.length === 0}>
+        <Select
+          {...register("guardian_lecturer_id")}
+          onValueChange={val => setValue("guardian_lecturer_id", val)}
+          disabled={lecturers.length === 0}
+        >
           <SelectTrigger>
             <SelectValue placeholder={guardianLecturers.length === 0 ? "Tidak ada dosen pembimbing/koordinator" : "Pilih Dosen Wali"} />
           </SelectTrigger>
           <SelectContent>
-            {guardianLecturers.map(lec => (
-              <SelectItem key={lec.id} value={lec.id}>
-                {lec.full_name} <span className="text-xs text-gray-500">({lec.role})</span>
-              </SelectItem>
-            ))}
+            {guardianLecturers.length > 0 ? (
+              guardianLecturers.map(lec => (
+                <SelectItem key={lec.id} value={lec.id}>
+                  {lec.full_name} <span className="text-xs text-gray-500">({lec.role})</span>
+                </SelectItem>
+              ))
+            ) : (
+              <div className="text-sm text-gray-500 px-2 py-2">Tidak ada dosen pembimbing/koordinator tersedia.</div>
+            )}
           </SelectContent>
         </Select>
-        {guardianLecturers.length === 0 && (
-          <span className="text-sm text-red-500 block mt-2">Tidak ada dosen pembimbing/koordinator tersedia</span>
-        )}
       </div>
       <div>
         <label className="block font-bold mb-1">Status Pendaftaran</label>
