@@ -8,7 +8,7 @@ export const studentMenuItems = [
     icon: BookOpen,
   },
   {
-    title: "Pendaftaran KP",
+    title: "Formulir Pendaftaran KP",
     url: "/student/kp-registration",
     icon: ClipboardList,
   },
