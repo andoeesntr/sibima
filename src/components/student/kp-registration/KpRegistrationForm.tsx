@@ -30,7 +30,7 @@ export const KpRegistrationForm: React.FC = () => {
       .catch(() => toast.error("Gagal memuat dosen wali"));
   }, []);
 
-  // Filter lecturers: Only show those with "pembimbing" or "koordinator" role
+  // Hanya tampilkan dosen dengan role pembimbing atau koordinator
   const guardianLecturers = lecturers.filter(
     (lec) =>
       lec.role &&
@@ -84,22 +84,21 @@ export const KpRegistrationForm: React.FC = () => {
       </div>
       <div>
         <label className="block font-bold mb-1">Dosen Wali</label>
-        <Select {...register("guardian_lecturer_id")} onValueChange={val => setValue("guardian_lecturer_id", val)}>
+        <Select {...register("guardian_lecturer_id")} onValueChange={val => setValue("guardian_lecturer_id", val)} disabled={guardianLecturers.length === 0}>
           <SelectTrigger>
-            <SelectValue placeholder="Pilih Dosen Wali" />
+            <SelectValue placeholder={guardianLecturers.length === 0 ? "Tidak ada dosen pembimbing/koordinator" : "Pilih Dosen Wali"} />
           </SelectTrigger>
           <SelectContent>
-            {guardianLecturers.length === 0 ? (
-              <SelectItem value="" disabled>Tidak ada dosen pembimbing/koordinator</SelectItem>
-            ) : (
-              guardianLecturers.map(lec => (
-                <SelectItem key={lec.id} value={lec.id}>
-                  {lec.full_name} <span className="text-xs text-gray-500">({lec.role})</span>
-                </SelectItem>
-              ))
-            )}
+            {guardianLecturers.map(lec => (
+              <SelectItem key={lec.id} value={lec.id}>
+                {lec.full_name} <span className="text-xs text-gray-500">({lec.role})</span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        {guardianLecturers.length === 0 && (
+          <span className="text-sm text-red-500 block mt-2">Tidak ada dosen pembimbing/koordinator tersedia</span>
+        )}
       </div>
       <div>
         <label className="block font-bold mb-1">Status Pendaftaran</label>
