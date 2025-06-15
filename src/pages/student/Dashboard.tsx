@@ -62,7 +62,7 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Status KP & Tim KP : satu row, lebar sama dengan timeline */}
+      {/* Status KP & Tim KP */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
         {/* STATUS KP */}
         <div>
@@ -74,7 +74,6 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-8 pt-0 pb-6">
-              {/* Status Card */}
               <StatusCard
                 proposals={latestApprovedProposal ? [latestApprovedProposal] : []}
                 selectedProposal={latestApprovedProposal}
@@ -100,12 +99,39 @@ const Dashboard = () => {
                             setPreviewDocUrl(doc.fileUrl);
                             setPreviewDocName(doc.fileName);
                           }}
+                          aria-label="Preview Dokumen"
                         >
-                          Lihat Dokumen
+                          {/* Icon mata */}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            className="text-green-800"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
+                            <circle cx={12} cy={12} r={3} />
+                          </svg>
                         </Button>
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+              {/* Move Lihat Detail Proposal button below document list */}
+              {latestApprovedProposal && (
+                <div className="flex justify-end mt-6">
+                  <Button
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={() => navigate(`/student/proposal-detail/${latestApprovedProposal.id}`)}
+                  >
+                    {latestApprovedProposal.status === 'rejected'
+                      ? 'Lihat Detail Penolakan'
+                      : 'Lihat Detail Proposal'}
+                  </Button>
                 </div>
               )}
             </CardContent>
