@@ -41,7 +41,7 @@ export default function KpRegistrationCreateDialog({
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
   const [students, setStudents] = useState<{ id: string, full_name: string, nim: string }[]>([]);
   const [form, setForm] = useState<FormState>({
-    student_id: "",
+    student_id: "none",  // set to "none"
     semester: 6,
     registration_status: "baru",
     ipk: 0,
@@ -52,7 +52,7 @@ export default function KpRegistrationCreateDialog({
     total_credits: 0,
     status: "submitted",
     notes: "",
-    guardian_lecturer_id: "",
+    guardian_lecturer_id: "none",  // set to "none"
     last_gpa_file: "",
     last_krs_file: "",
   });
@@ -73,7 +73,7 @@ export default function KpRegistrationCreateDialog({
   useEffect(() => {
     if (!open) {
       setForm({
-        student_id: "",
+        student_id: "none",
         semester: 6,
         registration_status: "baru",
         ipk: 0,
@@ -84,7 +84,7 @@ export default function KpRegistrationCreateDialog({
         total_credits: 0,
         status: "submitted",
         notes: "",
-        guardian_lecturer_id: "",
+        guardian_lecturer_id: "none",
         last_gpa_file: "",
         last_krs_file: "",
       });
@@ -93,6 +93,16 @@ export default function KpRegistrationCreateDialog({
 
   function updateField<K extends keyof FormState>(key: K, value: any) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleSave() {
+    // Convert "none" values back to empty string or null as appropriate
+    const finalForm = {
+      ...form,
+      student_id: form.student_id === "none" ? "" : form.student_id,
+      guardian_lecturer_id: form.guardian_lecturer_id === "none" ? "" : form.guardian_lecturer_id,
+    };
+    onSave(finalForm);
   }
 
   return (
@@ -109,7 +119,7 @@ export default function KpRegistrationCreateDialog({
                 <SelectValue placeholder="Pilih mahasiswa" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">-</SelectItem>
+                <SelectItem value="none">-</SelectItem>
                 {students.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.nim} - {s.full_name}
@@ -133,12 +143,12 @@ export default function KpRegistrationCreateDialog({
           </div>
           <div>
             <label className="block text-sm font-bold mb-1">Dosen Wali</label>
-            <Select value={form.guardian_lecturer_id ?? ""} onValueChange={v => updateField("guardian_lecturer_id", v)}>
+            <Select value={form.guardian_lecturer_id ?? "none"} onValueChange={v => updateField("guardian_lecturer_id", v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Pilih Dosen Wali" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">-</SelectItem>
+                <SelectItem value="none">-</SelectItem>
                 {lecturers.map(lec => (
                   <SelectItem key={lec.id} value={lec.id}>
                     {lec.full_name} <span className="text-xs text-gray-500">({lec.role === "supervisor" ? "Dosen Pembimbing" : "Koordinator"})</span>
@@ -206,9 +216,9 @@ export default function KpRegistrationCreateDialog({
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Batal</Button>
           <Button
-            onClick={() => onSave(form)}
+            onClick={handleSave}
             disabled={
-              isSubmitting || !form.student_id
+              isSubmitting || !form.student_id || form.student_id === "none"
             }
           >
             {isSubmitting ? "Menyimpan..." : "Simpan"}
@@ -218,3 +228,5 @@ export default function KpRegistrationCreateDialog({
     </Dialog>
   );
 }
+
+// ... end of file ...
