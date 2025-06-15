@@ -45,9 +45,10 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-10">
-      {/* Timeline KP - sejajarkan padding dengan section bawah */}
+      {/* Timeline KP - HAPUS padding kiri agar menempel ke sidebar */}
       <section className="w-full">
-        <div className="w-full max-w-7xl mx-auto px-8"> {/* px-8 sesuai section lain */}
+        {/* Ganti px-8 => px-0 */}
+        <div className="w-full max-w-7xl mx-auto px-0">
           <div className="pt-10 pb-14 px-0">
             <KpTimeline readOnly />
           </div>
@@ -211,3 +212,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
