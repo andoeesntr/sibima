@@ -82,7 +82,8 @@ const PendingProposals = () => {
       </CardContent>
       <CardFooter>
         <Button 
-          className="w-full bg-primary hover:bg-primary/90"
+          className="w-full"
+          variant="default"
           onClick={() => navigate('/coordinator/proposal-review')}
         >
           Review Proposal
@@ -93,3 +94,4 @@ const PendingProposals = () => {
 };
 
 export default PendingProposals;
+
