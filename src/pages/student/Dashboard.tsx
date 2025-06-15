@@ -1,4 +1,3 @@
-
 import { StatusCard } from "@/components/student/dashboard/StatusCard";
 import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
@@ -44,37 +43,27 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-10">
-      {/* Timeline KP - HAPUS padding kiri agar menempel ke sidebar */}
+    <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-4">
+      {/* Timeline KP */}
       <section className="w-full">
-        {/* Ganti px-8 => px-0 */}
         <div className="w-full max-w-7xl mx-auto px-0">
-          <div className="pt-10 pb-14 px-0">
+          <div className="pt-10 pb-0 px-0">
             <KpTimeline readOnly />
           </div>
         </div>
       </section>
 
       {/* Status KP + Tim KP */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-8 px-8">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8">
         {/* STATUS KP */}
         <div>
-          <Card className="border rounded-2xl bg-white p-0 shadow-sm">
-            <CardHeader className="p-8 pb-3">
-              <CardTitle className="text-2xl font-bold mb-0">Status KP</CardTitle>
-              <CardDescription className="text-md text-gray-500">
-                Informasi tentang status KP Anda saat ini
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 pt-0 pb-6">
-              <StatusCard
-                proposals={latestApprovedProposal ? [latestApprovedProposal] : []} // hanya show yang approved terbaru
-                selectedProposal={latestApprovedProposal}
-                onSelectProposal={undefined} // tidak ada tab
-                evaluations={evaluations}
-              />
-            </CardContent>
-          </Card>
+          {/* Hapus 1 layer: Card dihapus, StatusCard tampil langsung */}
+          <StatusCard
+            proposals={latestApprovedProposal ? [latestApprovedProposal] : []}
+            selectedProposal={latestApprovedProposal}
+            onSelectProposal={undefined}
+            evaluations={evaluations}
+          />
         </div>
 
         {/* TIM KP */}
@@ -94,12 +83,13 @@ const Dashboard = () => {
       </section>
 
       {/* Nilai KP */}
-      <section className="rounded-2xl border bg-white shadow-sm px-8 py-8 mb-0">
+      <section className="px-8">
+        {/* Hapus card luar, hanya tampil KpEvaluationCard */}
         <KpEvaluationCard evaluations={evaluations} />
       </section>
 
       {/* Riwayat Proposal */}
-      <section className="rounded-2xl border bg-white shadow-sm px-8 py-8 mt-0">
+      <section className="rounded-2xl border bg-white shadow-sm px-8 py-6 mt-0">
         <Card className="border-none shadow-none bg-transparent p-0">
           <CardHeader className="p-0 mb-4">
             <CardTitle className="text-xl mb-1 font-semibold">Riwayat Proposal</CardTitle>
@@ -197,7 +187,8 @@ const Dashboard = () => {
       </section>
 
       {/* ActionCards fitur bawah */}
-      <section className="rounded-2xl border bg-white shadow-sm px-8 py-8 mb-12">
+      <section className="px-8 mb-8">
+        {/* Hapus card luar untuk single layer (hanya tampil ActionCards) */}
         <ActionCards
           hasActiveProposal={hasActiveProposal}
           hasApprovedProposal={hasApprovedProposal}
@@ -212,4 +203,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
