@@ -133,13 +133,13 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
                        style={{
                          transform: 'translate(-50%, -50%)'
                        }}>
-                    {/* Lingkaran putih super tipis, gap <2px */}
+                    {/* Lingkaran putih sengaja hanya 1px lebih besar dari logo */}
                     <div
                       className="flex items-center justify-center rounded-full bg-white"
                       style={{
-                        width: 38,      // hanya +2px dari logo (gap ±1px per sisi)
-                        height: 38,
-                        boxShadow: '0 0 0.5px rgba(0,0,0,0.03)'
+                        width: 37,    // hanya +1px dari logo per sisi (nyaris tidak ada gap putih)
+                        height: 37,
+                        boxShadow: '0 0 0 rgba(0,0,0,0)'
                       }}
                     >
                       {/* Logo SI besar */}
