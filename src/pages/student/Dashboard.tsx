@@ -1,3 +1,4 @@
+
 import { StatusCard } from "@/components/student/dashboard/StatusCard";
 import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
@@ -43,7 +44,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-4">
+    <div className="w-full max-w-7xl mx-auto px-0 py-0">
       {/* Timeline KP */}
       <section className="w-full">
         <div className="w-full max-w-7xl mx-auto px-0">
@@ -53,22 +54,30 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Status KP + Tim KP */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8">
-        {/* STATUS KP */}
+      {/* Status KP & Tim KP */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6 px-8 mt-4">
+        {/* STATUS KP DIBERI LAYER */}
         <div>
-          {/* Hapus 1 layer: Card dihapus, StatusCard tampil langsung */}
-          <StatusCard
-            proposals={latestApprovedProposal ? [latestApprovedProposal] : []}
-            selectedProposal={latestApprovedProposal}
-            onSelectProposal={undefined}
-            evaluations={evaluations}
-          />
+          <Card className="border rounded-2xl bg-white p-0 shadow-sm h-full flex flex-col justify-between">
+            <CardHeader className="p-8 pb-3">
+              <CardTitle className="text-2xl font-bold mb-0">Status KP</CardTitle>
+              <CardDescription className="text-md text-gray-500">
+                Informasi status KP Anda
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 pt-0 pb-6">
+              <StatusCard
+                proposals={latestApprovedProposal ? [latestApprovedProposal] : []}
+                selectedProposal={latestApprovedProposal}
+                onSelectProposal={undefined}
+                evaluations={evaluations}
+              />
+            </CardContent>
+          </Card>
         </div>
-
-        {/* TIM KP */}
+        {/* TIM KP tetap */}
         <div>
-          <Card className="border rounded-2xl bg-white p-0 shadow-sm">
+          <Card className="border rounded-2xl bg-white p-0 shadow-sm h-full flex flex-col justify-between">
             <CardHeader className="p-8 pb-3">
               <CardTitle className="text-2xl font-bold mb-0">Tim KP</CardTitle>
               <CardDescription className="text-md text-gray-500">
@@ -82,124 +91,138 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Nilai KP */}
-      <section className="px-8">
-        {/* Hapus card luar, hanya tampil KpEvaluationCard */}
-        <KpEvaluationCard evaluations={evaluations} />
-      </section>
-
-      {/* Riwayat Proposal */}
-      <section className="rounded-2xl border bg-white shadow-sm px-8 py-6 mt-0">
-        <Card className="border-none shadow-none bg-transparent p-0">
-          <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-xl mb-1 font-semibold">Riwayat Proposal</CardTitle>
-            <CardDescription>
-              Proposal terakhir yang Anda kirimkan
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {latestProposal ? (
-              <div className="border rounded-lg p-5 bg-gray-50 mb-3 flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-base">{latestProposal.title}</h3>
-                  <p className="text-sm text-gray-600">{latestProposal.companyName}</p>
-                </div>
-                <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                  latestProposal.status === 'approved'
-                    ? 'bg-green-100 text-green-800'
-                    : latestProposal.status === 'rejected'
-                    ? 'bg-red-100 text-red-800'
-                    : latestProposal.status === 'revision'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {latestProposal.status === 'approved'
-                    ? 'Disetujui'
-                    : latestProposal.status === 'rejected'
-                    ? 'Ditolak'
-                    : latestProposal.status === 'revision'
-                    ? 'Revisi'
-                    : 'Menunggu'}
-                </span>
-              </div>
-            ) : (
-              <p className="text-center text-gray-500 py-8">
-                Belum ada proposal yang diajukan
-              </p>
-            )}
-            {otherProposals.length > 0 && (
-              <Button
-                variant="secondary"
-                className="w-full mt-2"
-                onClick={() => setProposalModalOpen(true)}
-              >
-                Lihat Proposal Lain
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-        <Dialog open={proposalModalOpen} onOpenChange={setProposalModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Proposal Sebelumnya</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              {otherProposals.map((proposal, idx) => (
-                <div
-                  key={proposal.id || idx}
-                  className="border rounded-lg p-3 hover:bg-gray-50"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold">{proposal.title}</h3>
-                      <p className="text-sm text-gray-600">{proposal.companyName}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      proposal.status === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : proposal.status === 'rejected'
-                        ? 'bg-red-100 text-red-800'
-                        : proposal.status === 'revision'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {proposal.status === 'approved'
-                        ? 'Disetujui'
-                        : proposal.status === 'rejected'
-                        ? 'Ditolak'
-                        : proposal.status === 'revision'
-                        ? 'Revisi'
-                        : 'Menunggu'}
-                    </span>
+      {/* Nilai KP, Riwayat Proposal, Akses Cepat dalam satu row dan sejajar */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 px-8 mt-4">
+        {/* Nilai KP */}
+        <div>
+          <Card className="rounded-2xl bg-white border shadow-sm h-full flex flex-col">
+            <CardHeader className="p-6 pb-3">
+              <CardTitle className="text-xl font-semibold">Nilai KP Anda</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <KpEvaluationCard evaluations={evaluations} noCard />
+            </CardContent>
+          </Card>
+        </div>
+        {/* Riwayat Proposal */}
+        <div>
+          <Card className="rounded-2xl bg-white border shadow-sm h-full flex flex-col">
+            <CardHeader className="p-6 pb-3">
+              <CardTitle className="text-xl font-semibold">Riwayat Proposal</CardTitle>
+              <CardDescription>
+                Proposal terakhir yang Anda kirimkan
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              {latestProposal ? (
+                <div className="border rounded-lg p-5 bg-gray-50 mb-3 flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-base">{latestProposal.title}</h3>
+                    <p className="text-sm text-gray-600">{latestProposal.companyName}</p>
                   </div>
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                    latestProposal.status === 'approved'
+                      ? 'bg-green-100 text-green-800'
+                      : latestProposal.status === 'rejected'
+                      ? 'bg-red-100 text-red-800'
+                      : latestProposal.status === 'revision'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {latestProposal.status === 'approved'
+                      ? 'Disetujui'
+                      : latestProposal.status === 'rejected'
+                      ? 'Ditolak'
+                      : latestProposal.status === 'revision'
+                      ? 'Revisi'
+                      : 'Menunggu'}
+                  </span>
                 </div>
-              ))}
-            </div>
-            <Button
-              className="w-full mt-2"
-              variant="outline"
-              onClick={() => setProposalModalOpen(false)}
-            >
-              Tutup
-            </Button>
-          </DialogContent>
-        </Dialog>
-      </section>
-
-      {/* ActionCards fitur bawah */}
-      <section className="px-8 mb-8">
-        {/* Hapus card luar untuk single layer (hanya tampil ActionCards) */}
-        <ActionCards
-          hasActiveProposal={hasActiveProposal}
-          hasApprovedProposal={hasApprovedProposal}
-          onSubmitProposal={() => {
-            if (!hasApprovedProposal) navigate('/student/proposal-submission');
-          }}
-          selectedProposal={mainProposal}
-        />
+              ) : (
+                <p className="text-center text-gray-500 py-8">
+                  Belum ada proposal yang diajukan
+                </p>
+              )}
+              {otherProposals.length > 0 && (
+                <Button
+                  variant="secondary"
+                  className="w-full mt-2"
+                  onClick={() => setProposalModalOpen(true)}
+                >
+                  Lihat Proposal Lain
+                </Button>
+              )}
+              <Dialog open={proposalModalOpen} onOpenChange={setProposalModalOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Proposal Sebelumnya</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    {otherProposals.map((proposal, idx) => (
+                      <div
+                        key={proposal.id || idx}
+                        className="border rounded-lg p-3 hover:bg-gray-50"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold">{proposal.title}</h3>
+                            <p className="text-sm text-gray-600">{proposal.companyName}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            proposal.status === 'approved'
+                              ? 'bg-green-100 text-green-800'
+                              : proposal.status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : proposal.status === 'revision'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {proposal.status === 'approved'
+                              ? 'Disetujui'
+                              : proposal.status === 'rejected'
+                              ? 'Ditolak'
+                              : proposal.status === 'revision'
+                              ? 'Revisi'
+                              : 'Menunggu'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    className="w-full mt-2"
+                    variant="outline"
+                    onClick={() => setProposalModalOpen(false)}
+                  >
+                    Tutup
+                  </Button>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        </div>
+        {/* ActionCards (Akses Cepat) */}
+        <div>
+          <Card className="rounded-2xl bg-white border shadow-sm h-full flex flex-col">
+            <CardHeader className="p-6 pb-3">
+              <CardTitle className="text-xl font-semibold">Akses Cepat</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <ActionCards
+                hasActiveProposal={hasActiveProposal}
+                hasApprovedProposal={hasApprovedProposal}
+                onSubmitProposal={() => {
+                  if (!hasApprovedProposal) navigate('/student/proposal-submission');
+                }}
+                selectedProposal={mainProposal}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </section>
     </div>
   );
 };
 
 export default Dashboard;
+
