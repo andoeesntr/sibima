@@ -41,9 +41,18 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-2 py-0 space-y-10">
-      {/* Timeline KP */}
-      <section className="rounded-2xl border bg-white shadow-sm px-8 pt-7 pb-10 mb-8">
-        <KpTimeline readOnly />
+      {/* Timeline KP (Bigger and More Prominent) */}
+      <section className="w-full">
+        <div className="mx-auto max-w-5xl">
+          <Card className="rounded-2xl border bg-white shadow-sm px-0 pt-2 pb-0 overflow-visible" style={{ boxShadow: "0px 2px 24px 0px rgba(16,24,40,0.06)" }}>
+            {/* Hapus padding horizontal Card agar timeline lebih lebar */}
+            <CardContent className="p-0">
+              <div className="py-8 px-4 sm:px-8">
+                <KpTimeline readOnly />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       {/* Status KP + Tim KP (two-column grid) */}
@@ -63,7 +72,8 @@ const Dashboard = () => {
                 selectedProposal={mainProposal}
                 onSelectProposal={handleSelectProposal}
                 evaluations={evaluations}
-                layout="clean"
+                // Jangan tampilkan lagi deskripsi "Informasi tentang status KP Anda saat ini" di dalam isi StatusCard
+                hideDescription
               />
             </CardContent>
           </Card>
@@ -79,7 +89,7 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-8 pt-0 pb-6">
-              <TeamCard team={lastTeam} layout="clean" />
+              <TeamCard team={lastTeam} />
             </CardContent>
           </Card>
         </div>
