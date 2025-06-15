@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,11 +35,23 @@ const fetchRegistrations = async (): Promise<RegistrationRow[]> => {
 
   if (error) throw new Error(error.message);
 
-  // data now: { ..., student: { full_name, nim } }
-  return (data || []).map(row => ({
-    ...row,
-    student: row.student || { full_name: "-", nim: "-" }
-  }));
+  // Defensive parsing: if student join failed, fallback to placeholder object
+  return (data || []).map((row: any) => {
+    let student = row.student;
+    if (
+      !student ||
+      typeof student !== "object" ||
+      typeof student.full_name !== "string" ||
+      typeof student.nim !== "string"
+    ) {
+      if (student && student.error === true) {
+        // Optionally debug log the error object
+        console.warn("Supabase join error for student:", student);
+      }
+      student = { full_name: "-", nim: "-" };
+    }
+    return { ...row, student };
+  });
 };
 
 export default function KpRegistrationManagement() {
