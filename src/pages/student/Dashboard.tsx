@@ -40,12 +40,13 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-10">
-      {/* Timeline KP - Lebar Maksimal & Tanpa Judul Duplikat */}
+      {/* Timeline KP - Jadi Besar, Judul hanya 1x */}
       <section className="w-full">
         <div className="w-full max-w-7xl mx-auto">
           <Card className="rounded-2xl border bg-white shadow-lg px-0 pt-0 pb-0 overflow-visible">
             <CardContent className="p-0">
               <div className="py-10 px-2 md:px-10 xl:px-20">
+                {/* HAPUS judul "Timeline Kerja Praktik" di baris ini, JUDUL cukup di dalam card */}
                 <h2 className="text-3xl md:text-4xl font-bold mb-10 text-gray-900 text-center">
                   Timeline Kerja Praktik
                 </h2>
