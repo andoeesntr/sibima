@@ -68,10 +68,10 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Status KP & Tim KP - 60:40 grid */}
+      {/* Status KP & Tim KP - 80:20 grid */}
       <section className="grid grid-cols-1 md:grid-cols-5 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
-        {/* STATUS KP, 60% */}
-        <div className="col-span-1 md:col-span-3">
+        {/* STATUS KP, 80% */}
+        <div className="col-span-1 md:col-span-4">
           <StatusSection
             latestApprovedProposal={latestApprovedProposal}
             evaluations={evaluations}
@@ -79,8 +79,8 @@ const Dashboard = () => {
           />
         </div>
         
-        {/* TIM KP, 40% */}
-        <div className="col-span-1 md:col-span-2">
+        {/* TIM KP, 20% */}
+        <div className="col-span-1 md:col-span-1">
           <TeamSection team={lastTeam} />
         </div>
       </section>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,8 +42,8 @@ export const StatusSection = ({
         
         {/* Dokumen Proposal (jika ada) */}
         {proposalDocs.length > 0 && (
-          <div className="mt-4">
-            <div className="font-medium mb-2">Dokumen Proposal</div>
+          <div className="">
+            <div className="font-medium mb-2 mt-0">Dokumen Proposal</div>
             <div className="space-y-2">
               {proposalDocs.map((doc) => (
                 <div
@@ -59,6 +58,7 @@ export const StatusSection = ({
                     onClick={() => onPreviewDocument(doc.fileUrl, doc.fileName)}
                     aria-label="Preview Dokumen"
                   >
+                    {/* Lucide Eye icon for consistent color */}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="20"
@@ -67,7 +67,7 @@ export const StatusSection = ({
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                       strokeWidth={2}
-                      className="text-green-800"
+                      className="text-yellow-500"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
                       <circle cx={12} cy={12} r={3} />
@@ -83,7 +83,7 @@ export const StatusSection = ({
         {latestApprovedProposal && (
           <div className="flex justify-end mt-4">
             <Button
-              className="bg-primary hover:bg-primary/90"
+              variant="default"
               onClick={() => navigate(`/student/proposal-detail/${latestApprovedProposal.id}`)}
             >
               {latestApprovedProposal.status === 'rejected'
