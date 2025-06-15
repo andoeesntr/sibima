@@ -22,12 +22,21 @@ const fetchRegistrations = async (): Promise<RegistrationRow[]> => {
   const { data, error } = await supabase
     .from("kp_registrations")
     .select(`
-      id, semester, ipk, registration_status, status, total_completed_credits, total_credits, notes,
-      student:student_id (full_name, nim)
+      id,
+      semester,
+      ipk,
+      registration_status,
+      status,
+      total_completed_credits,
+      total_credits,
+      notes,
+      student:profiles!kp_registrations_student_id (full_name, nim)
     `)
     .order("created_at", { ascending: false });
+
   if (error) throw new Error(error.message);
-  // Flatten student prop if missing
+
+  // data now: { ..., student: { full_name, nim } }
   return (data || []).map(row => ({
     ...row,
     student: row.student || { full_name: "-", nim: "-" }
