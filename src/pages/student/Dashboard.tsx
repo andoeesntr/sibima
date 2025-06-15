@@ -21,16 +21,14 @@ const Dashboard = () => {
     handleSelectProposal,
     hasActiveProposal,
     hasApprovedProposal,
-    // isInTeam, // sudah tidak dipakai
     lastTeam,
     evaluations,
   } = useStudentDashboard();
 
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
 
-  // Ambil proposal terbaru saja untuk riwayat & status
+  // Only show the latest proposal in Riwayat Proposal; others available in dialog
   const latestProposal = proposals.length > 0 ? proposals[0] : null;
-  // Proposal lain untuk dialog/riwayat
   const otherProposals = proposals.length > 1 ? proposals.slice(1) : [];
 
   if (loading) {
@@ -42,40 +40,61 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-0 py-0 space-y-8">
-      <h1 className="text-3xl font-bold mt-4 mb-2">Dashboard</h1>
-      
+    <div className="w-full max-w-6xl mx-auto px-2 py-0 space-y-10">
       {/* Timeline KP */}
-      <section className="rounded-lg border bg-white shadow-sm px-8 pt-7 pb-10 mb-8">
+      <section className="rounded-2xl border bg-white shadow-sm px-8 pt-7 pb-10 mb-8">
         <KpTimeline readOnly />
       </section>
-      
-      {/* Status KP, Tim KP, Nilai KP (Single full-width column style) */}
-      <section className="space-y-8">
-        {/* Status KP */}
-        <div className="rounded-lg border bg-white shadow-sm px-8 py-8">
-          <StatusCard
-            proposals={latestProposal ? [latestProposal] : []}
-            selectedProposal={latestProposal}
-            onSelectProposal={handleSelectProposal}
-            evaluations={evaluations}
-          />
+
+      {/* Status KP + Tim KP (two-column grid) */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* STATUS KP */}
+        <div>
+          <Card className="border rounded-2xl bg-white p-0 shadow-sm">
+            <CardHeader className="p-8 pb-3">
+              <CardTitle className="text-2xl font-bold mb-0">Status KP</CardTitle>
+              <CardDescription className="text-md text-gray-500">
+                Informasi tentang status KP Anda saat ini
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 pt-0 pb-6">
+              <StatusCard
+                proposals={proposals}
+                selectedProposal={mainProposal}
+                onSelectProposal={handleSelectProposal}
+                evaluations={evaluations}
+                layout="clean"
+              />
+            </CardContent>
+          </Card>
         </div>
-        {/* Tim KP */}
-        <div className="rounded-lg border bg-white shadow-sm px-8 py-8">
-          <TeamCard team={lastTeam} />
-        </div>
-        {/* Nilai KP */}
-        <div className="rounded-lg border bg-white shadow-sm px-8 py-8">
-          <KpEvaluationCard evaluations={evaluations} />
+
+        {/* TIM KP */}
+        <div>
+          <Card className="border rounded-2xl bg-white p-0 shadow-sm">
+            <CardHeader className="p-8 pb-3">
+              <CardTitle className="text-2xl font-bold mb-0">Tim KP</CardTitle>
+              <CardDescription className="text-md text-gray-500">
+                Informasi tim KP Anda
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 pt-0 pb-6">
+              <TeamCard team={lastTeam} layout="clean" />
+            </CardContent>
+          </Card>
         </div>
       </section>
-      
-      {/* Riwayat Proposal (hanya satu terbaru + tombol lihat lainnya) */}
-      <section className="rounded-lg border bg-white shadow-sm px-8 py-8">
+
+      {/* Nilai KP */}
+      <section className="rounded-2xl border bg-white shadow-sm px-8 py-8 mb-0">
+        <KpEvaluationCard evaluations={evaluations} />
+      </section>
+
+      {/* Riwayat Proposal: hanya satu terbaru */}
+      <section className="rounded-2xl border bg-white shadow-sm px-8 py-8 mt-0">
         <Card className="border-none shadow-none bg-transparent p-0">
           <CardHeader className="p-0 mb-4">
-            <CardTitle className="text-xl mb-1">Riwayat Proposal</CardTitle>
+            <CardTitle className="text-xl mb-1 font-semibold">Riwayat Proposal</CardTitle>
             <CardDescription>
               Proposal terakhir yang Anda kirimkan
             </CardDescription>
@@ -170,7 +189,7 @@ const Dashboard = () => {
       </section>
 
       {/* ActionCards fitur bawah */}
-      <section className="rounded-lg border bg-white shadow-sm px-8 py-8 mb-12">
+      <section className="rounded-2xl border bg-white shadow-sm px-8 py-8 mb-12">
         <ActionCards
           hasActiveProposal={hasActiveProposal}
           hasApprovedProposal={hasApprovedProposal}
@@ -185,3 +204,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
