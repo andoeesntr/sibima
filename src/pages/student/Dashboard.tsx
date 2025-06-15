@@ -1,3 +1,4 @@
+
 import { StatusCard } from "@/components/student/dashboard/StatusCard";
 import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
@@ -30,6 +31,10 @@ const Dashboard = () => {
   const latestProposal = proposals.length > 0 ? proposals[0] : null;
   const otherProposals = proposals.length > 1 ? proposals.slice(1) : [];
 
+  // Find only LATEST approved proposal for Status KP
+  const approvedProposals = proposals.filter((p) => p.status === "approved");
+  const latestApprovedProposal = approvedProposals.length > 0 ? approvedProposals[0] : null;
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[300px]">
@@ -40,18 +45,17 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-10">
-      {/* Timeline KP - REMOVE CARD, only show the timeline directly */}
+      {/* Timeline KP - sejajarkan padding dengan section bawah */}
       <section className="w-full">
-        {/* Card wrapper dihapus di sini */}
-        <div className="w-full max-w-7xl mx-auto">
-          <div className="pt-10 pb-14 px-0 md:px-10 xl:px-28">
+        <div className="w-full max-w-7xl mx-auto px-8"> {/* px-8 sesuai section lain */}
+          <div className="pt-10 pb-14 px-0">
             <KpTimeline readOnly />
           </div>
         </div>
       </section>
 
       {/* Status KP + Tim KP */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-8 px-8">
         {/* STATUS KP */}
         <div>
           <Card className="border rounded-2xl bg-white p-0 shadow-sm">
@@ -63,9 +67,9 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="p-8 pt-0 pb-6">
               <StatusCard
-                proposals={proposals}
-                selectedProposal={mainProposal}
-                onSelectProposal={handleSelectProposal}
+                proposals={latestApprovedProposal ? [latestApprovedProposal] : []} // hanya show yang approved terbaru
+                selectedProposal={latestApprovedProposal}
+                onSelectProposal={undefined} // tidak ada tab
                 evaluations={evaluations}
               />
             </CardContent>
