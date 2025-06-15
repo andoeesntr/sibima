@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -30,6 +29,14 @@ export const KpRegistrationForm: React.FC = () => {
       .then(setLecturers)
       .catch(() => toast.error("Gagal memuat dosen wali"));
   }, []);
+
+  // Filter lecturers: Only show those with "pembimbing" or "koordinator" role
+  const guardianLecturers = lecturers.filter(
+    (lec) =>
+      lec.role &&
+      (lec.role.toLowerCase().includes("pembimbing") ||
+        lec.role.toLowerCase().includes("koordinator"))
+  );
 
   const onSubmit = async (data: any) => {
     try {
@@ -82,11 +89,15 @@ export const KpRegistrationForm: React.FC = () => {
             <SelectValue placeholder="Pilih Dosen Wali" />
           </SelectTrigger>
           <SelectContent>
-            {lecturers.map(lec => (
-              <SelectItem key={lec.id} value={lec.id}>
-                {lec.full_name} {lec.role !== "lecturer" && lec.role !== "dosen" ? <span className="text-xs text-gray-500">({lec.role})</span> : ""}
-              </SelectItem>
-            ))}
+            {guardianLecturers.length === 0 ? (
+              <SelectItem value="" disabled>Tidak ada dosen pembimbing/koordinator</SelectItem>
+            ) : (
+              guardianLecturers.map(lec => (
+                <SelectItem key={lec.id} value={lec.id}>
+                  {lec.full_name} <span className="text-xs text-gray-500">({lec.role})</span>
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
