@@ -51,6 +51,7 @@ import SupervisorTimesheetOverview from "./pages/supervisor/TimesheetOverview";
 import SupervisorStudentProgress from "./pages/supervisor/StudentProgress";
 
 import KpRegistrationManagement from "@/pages/coordinator/KpRegistrationManagement";
+import KpRegistrationAdminPage from "@/pages/coordinator/KpRegistrationAdmin";
 
 const queryClient = new QueryClient();
 
@@ -100,6 +101,7 @@ function App() {
                 <Route path="guidance-management" element={<GuidanceManagement />} />
                 <Route path="timesheet-overview" element={<CoordinatorTimesheetOverview />} />
                 <Route path="kp-registration-management" element={<KpRegistrationManagement />} />
+                <Route path="kp-registration-admin" element={<KpRegistrationAdminPage />} />
               </Route>
 
               {/* Admin routes */}

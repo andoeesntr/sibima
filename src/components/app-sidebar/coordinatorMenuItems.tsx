@@ -1,5 +1,5 @@
 
-import { BookOpen } from "lucide-react";
+import { BookOpen, ClipboardList } from "lucide-react";
 
 export const coordinatorMenuItems = [
   {
@@ -41,5 +41,10 @@ export const coordinatorMenuItems = [
     title: "Manajemen Bimbingan",
     url: "/coordinator/guidance-management",
     icon: BookOpen,
+  },
+  {
+    title: "Kelola Pendaftaran KP",
+    url: "/coordinator/kp-registration-admin",
+    icon: ClipboardList,
   },
 ];
