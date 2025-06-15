@@ -30,12 +30,9 @@ export const KpRegistrationForm: React.FC = () => {
       .catch(() => toast.error("Gagal memuat dosen wali"));
   }, []);
 
-  // Tampilkan hanya dosen dengan role memuat kata "pembimbing" atau "koordinator"
+  // Tampilkan hanya dosen dengan role 'supervisor' atau 'coordinator' (sesuai database)
   const guardianLecturers = lecturers.filter(
-    (lec) =>
-      typeof lec.role === "string" &&
-      (lec.role.toLowerCase().includes("pembimbing") ||
-        lec.role.toLowerCase().includes("koordinator"))
+    (lec) => lec.role === "supervisor" || lec.role === "coordinator"
   );
 
   const onSubmit = async (data: any) => {
@@ -96,7 +93,7 @@ export const KpRegistrationForm: React.FC = () => {
             {guardianLecturers.length > 0 ? (
               guardianLecturers.map(lec => (
                 <SelectItem key={lec.id} value={lec.id}>
-                  {lec.full_name} <span className="text-xs text-gray-500">({lec.role})</span>
+                  {lec.full_name} <span className="text-xs text-gray-500">({lec.role === "supervisor" ? "Dosen Pembimbing" : "Koordinator"})</span>
                 </SelectItem>
               ))
             ) : (
