@@ -1,4 +1,3 @@
-
 import { StatusCard } from "@/components/student/dashboard/StatusCard";
 import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
@@ -41,21 +40,24 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-6xl mx-auto px-2 py-0 space-y-10">
-      {/* Timeline KP (Bigger and More Prominent) */}
+      {/* Timeline KP (Lebih besar, menonjol, dan proporsional sesuai desain referensi) */}
       <section className="w-full">
-        <div className="mx-auto max-w-5xl">
-          <Card className="rounded-2xl border bg-white shadow-sm px-0 pt-2 pb-0 overflow-visible" style={{ boxShadow: "0px 2px 24px 0px rgba(16,24,40,0.06)" }}>
-            {/* Hapus padding horizontal Card agar timeline lebih lebar */}
+        <div className="mx-auto max-w-6xl">
+          <Card className="rounded-2xl border bg-white shadow-sm px-0 pt-0 pb-0 overflow-visible">
             <CardContent className="p-0">
-              <div className="py-8 px-4 sm:px-8">
-                <KpTimeline readOnly />
+              {/* Judul dan Timeline Content */}
+              <div className="py-8 px-4 sm:px-12">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-8 text-gray-800">Timeline Kerja Praktik</h2>
+                <div>
+                  <KpTimeline readOnly />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </section>
 
-      {/* Status KP + Tim KP (two-column grid) */}
+      {/* Status KP + Tim KP */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* STATUS KP */}
         <div>
@@ -67,13 +69,12 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-8 pt-0 pb-6">
+              {/* Hapus deskripsi di dalam StatusCard (hanya dari header saja) */}
               <StatusCard
                 proposals={proposals}
                 selectedProposal={mainProposal}
                 onSelectProposal={handleSelectProposal}
                 evaluations={evaluations}
-                // Jangan tampilkan lagi deskripsi "Informasi tentang status KP Anda saat ini" di dalam isi StatusCard
-                hideDescription
               />
             </CardContent>
           </Card>
@@ -100,7 +101,7 @@ const Dashboard = () => {
         <KpEvaluationCard evaluations={evaluations} />
       </section>
 
-      {/* Riwayat Proposal: hanya satu terbaru */}
+      {/* Riwayat Proposal */}
       <section className="rounded-2xl border bg-white shadow-sm px-8 py-8 mt-0">
         <Card className="border-none shadow-none bg-transparent p-0">
           <CardHeader className="p-0 mb-4">
@@ -214,4 +215,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
