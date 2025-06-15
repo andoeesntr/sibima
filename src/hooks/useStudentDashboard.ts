@@ -22,8 +22,7 @@ export const useStudentDashboard = () => {
     try {
       // Fetch all proposals
       const proposalsList = await fetchStudentProposals(user.id);
-      console.log('Fetched proposals:', proposalsList);
-      
+
       // Add studentId to each proposal for use with the evaluation system
       const proposalsWithStudentId = proposalsList.map(proposal => ({
         ...proposal,
@@ -31,19 +30,23 @@ export const useStudentDashboard = () => {
       }));
       
       setProposals(proposalsWithStudentId);
-      
+
+      // Temukan proposal utama: yang statusnya 'approved', jika tidak ada, ambil proposal tersubmit/revisi terbaru.
+      let mainProposal: ProposalType | null = null;
       if (proposalsWithStudentId.length > 0) {
-        // Use the first proposal as default selection
-        setSelectedProposal(proposalsWithStudentId[0]);
-        
+        mainProposal =
+          proposalsWithStudentId.find(p => p.status === 'approved')
+          || proposalsWithStudentId.find(p => ['submitted', 'revision'].includes(p.status))
+          || proposalsWithStudentId[0];
+
+        setSelectedProposal(mainProposal);
+
         // Fetch team data for the selected proposal
-        const teamData = await fetchTeamData(proposalsWithStudentId[0], profile, user);
-        console.log('Fetched team data:', teamData);
+        const teamData = await fetchTeamData(mainProposal, profile, user);
         setTeam(teamData);
-        
+
         // Fetch evaluations for the student
         const studentEvaluations = await fetchStudentEvaluations(user.id);
-        console.log('Fetched evaluations:', studentEvaluations);
         setEvaluations(studentEvaluations);
       } else {
         setSelectedProposal(null);
@@ -68,6 +71,9 @@ export const useStudentDashboard = () => {
     setTeam(teamData);
   };
 
+  // Proposal utama saja
+  const mainProposal = selectedProposal;
+
   // Compute derived state
   const hasActiveProposal = proposals.some(p => 
     ['submitted', 'revision'].includes(p.status)
@@ -80,7 +86,8 @@ export const useStudentDashboard = () => {
   const lastTeam = team;
 
   return {
-    proposals,
+    proposals, // all proposals, still needed for tab proposal/history
+    mainProposal, // only the main proposal to show in StatusCard
     selectedProposal,
     team,
     loading,

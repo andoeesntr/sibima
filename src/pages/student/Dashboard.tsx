@@ -6,12 +6,14 @@ import { TeamCard } from "@/components/student/dashboard/TeamCard";
 import { ActionCards } from "@/components/student/dashboard/ActionCards";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { useNavigate } from "react-router-dom";
+// Import timeline KP coordinator version
+import KpTimeline from "@/components/coordinator/KpTimeline";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const {
     proposals,
-    selectedProposal,
+    mainProposal,
     team,
     loading,
     handleSelectProposal,
@@ -49,24 +51,31 @@ const Dashboard = () => {
         </TabsList>
         
         <TabsContent value="overview" className="space-y-6">
-          <ActionCards 
-            hasActiveProposal={hasActiveProposal}
-            hasApprovedProposal={hasApprovedProposal}
-            onSubmitProposal={handleSubmitProposal}
-            selectedProposal={selectedProposal}
-          />
-          
+          {/* Pindahkan ActionCards ke bawah */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <StatusCard 
-              proposals={proposals}
-              selectedProposal={selectedProposal}
+              proposals={mainProposal ? [mainProposal] : []}
+              selectedProposal={mainProposal}
               onSelectProposal={handleSelectProposal}
               evaluations={evaluations}
             />
             {lastTeam && <TeamCard team={lastTeam} />}
           </div>
+          {/* Timeline Kerja Praktek */}
+          <div>
+            <KpTimeline />
+          </div>
+          {/* ActionCards di bawah */}
+          <div>
+            <ActionCards 
+              hasActiveProposal={hasActiveProposal}
+              hasApprovedProposal={hasApprovedProposal}
+              onSubmitProposal={handleSubmitProposal}
+              selectedProposal={mainProposal}
+            />
+          </div>
         </TabsContent>
-        
+
         <TabsContent value="proposals">
           <Card>
             <CardHeader>
@@ -123,3 +132,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
