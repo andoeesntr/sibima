@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -11,15 +10,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
   try {
     const { signatureId, supervisorId, supervisorName, baseUrl } = await req.json();
 
     console.log("Generating QR with embedded logo:", { signatureId, supervisorId, supervisorName, baseUrl });
 
-    if (!signatureId || !supervisorId) {
-      throw new Error("Missing required parameters");
-    }
+    if (!signatureId || !supervisorId) throw new Error("Missing required parameters");
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -37,7 +33,6 @@ serve(async (req) => {
       throw new Error("Signature must be approved before generating QR code");
     }
 
-    // Create verification data
     const verificationData = {
       signatureId,
       supervisorId,
@@ -47,49 +42,32 @@ serve(async (req) => {
     };
 
     const verificationUrl = `${baseUrl || "https://siprakerin.app"}/verify?data=${encodeURIComponent(JSON.stringify(verificationData))}`;
-    
-    // Generate QR code with embedded logo using a service that supports logo embedding
-    // We'll use a combination approach: generate QR with high error correction and then embed logo
-    
-    console.log("Creating QR code with embedded SI logo...");
-    
-    // First, generate a high error correction QR code
+
     const qrSize = 400;
-    const logoSize = Math.round(qrSize * 0.2); // 20% of QR size for optimal scanning
-    
-    // Use QR-Code-Generator API that supports logo embedding
+    const logoSize = Math.round(qrSize * 0.2); // 20% for logo (80px)
     const qrWithLogoUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&format=png&ecc=H&margin=1&data=${encodeURIComponent(verificationUrl)}`;
-    
-    console.log("Fetching base QR code...");
+
+    // Download base QR
     const qrResponse = await fetch(qrWithLogoUrl);
-    if (!qrResponse.ok) {
-      throw new Error(`QR generation failed: ${qrResponse.statusText}`);
-    }
-    
+    if (!qrResponse.ok) throw new Error(`QR generation failed: ${qrResponse.statusText}`);
     const qrBuffer = await qrResponse.arrayBuffer();
-    
-    // Fetch the SI logo
-    const logoUrl = `${baseUrl}/LogoSI-removebg-preview.png`;
-    console.log("Fetching SI logo from:", logoUrl);
-    
-    const logoResponse = await fetch(logoUrl);
+
+    // Download SI logo
+    const logoFetchUrl = `${baseUrl}/LogoSI-removebg-preview.png`;
+    const logoResponse = await fetch(logoFetchUrl);
     if (!logoResponse.ok) {
-      console.warn("Could not fetch logo, using QR without logo");
-      // Upload QR without logo as fallback
+      // fallback: upload QR as is
       const qrImageData = new Uint8Array(qrBuffer);
-      
       // Ensure signatures bucket exists
       const { data: buckets } = await supabaseAdmin.storage.listBuckets();
       const signaturesBucketExists = buckets?.some(bucket => bucket.name === 'signatures');
-      
       if (!signaturesBucketExists) {
         await supabaseAdmin.storage.createBucket('signatures', {
           public: true,
           fileSizeLimit: 5 * 1024 * 1024,
         });
       }
-
-      const filePath = `qrcodes/${supervisorId}-${Date.now()}.png`;
+      const filePath = `qrcodes/${supervisorId}-${Date.now()}-withlogo.png`;
       const { error: uploadError } = await supabaseAdmin.storage
         .from("signatures")
         .upload(filePath, qrImageData, {
@@ -97,14 +75,13 @@ serve(async (req) => {
           upsert: true,
         });
 
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
       const { data: { publicUrl } } = supabaseAdmin.storage
         .from("signatures")
         .getPublicUrl(filePath);
 
+      // Update signature db
       await supabaseAdmin
         .from('digital_signatures')
         .update({
@@ -112,7 +89,6 @@ serve(async (req) => {
           updated_at: new Date().toISOString()
         })
         .eq('id', signatureId);
-
       return new Response(
         JSON.stringify({
           success: true,
@@ -125,130 +101,110 @@ serve(async (req) => {
         }
       );
     }
-
     const logoBuffer = await logoResponse.arrayBuffer();
-    
-    // Use a QR service that supports logo embedding with proper parameters
-    const qrApiWithLogo = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&format=png&ecc=H&margin=1&data=${encodeURIComponent(verificationUrl)}`;
-    
-    // Create the composite image by directly embedding logo in QR using canvas approach
-    // For this, we'll use an alternative: create a composite QR with logo overlay that's permanent
-    
-    // Since we can't use canvas in Edge functions easily, let's use a different approach
-    // We'll create a QR code with embedded logo using a specialized service
-    
-    // Alternative: Use Logo embedding service
+
+    // Try to merge logo and QR using OffscreenCanvas (if available in edge runtime)
+    let mergedPng;
     try {
-      // Try using QR-Logo service for permanent logo embedding
-      const logoBase64 = btoa(String.fromCharCode(...new Uint8Array(logoBuffer)));
-      
-      // For now, let's use the base QR and create a composite using an image manipulation service
-      // Since complex image manipulation is limited in edge functions, we'll use the base QR
-      // but mark it properly for the frontend to handle logo overlay consistently
-      
-      const qrImageData = new Uint8Array(qrBuffer);
-      
-      // Ensure signatures bucket exists
-      const { data: buckets } = await supabaseAdmin.storage.listBuckets();
-      const signaturesBucketExists = buckets?.some(bucket => bucket.name === 'signatures');
-      
-      if (!signaturesBucketExists) {
-        await supabaseAdmin.storage.createBucket('signatures', {
-          public: true,
-          fileSizeLimit: 5 * 1024 * 1024,
-        });
-      }
+      const qrBlob = new Blob([qrBuffer], { type: "image/png" });
+      const logoBlob = new Blob([logoBuffer], { type: "image/png" });
+      const qrImage = await createImageBitmap(qrBlob);
+      const logoImage = await createImageBitmap(logoBlob);
 
-      const filePath = `qrcodes/${supervisorId}-${Date.now()}-with-logo.png`;
-      
-      // For a proper implementation with embedded logo, we would need a more sophisticated approach
-      // For now, upload the high-quality QR code with metadata indicating it should have a logo overlay
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from("signatures")
-        .upload(filePath, qrImageData, {
-          contentType: "image/png",
-          upsert: true,
-          cacheControl: '3600', // Cache for 1 hour
-        });
+      // Create canvas
+      // @ts-ignore Edge functions may have OffscreenCanvas support, fallback error if not
+      const canvas: any = new (globalThis.OffscreenCanvas || OffscreenCanvas)(qrSize, qrSize);
+      const ctx = canvas.getContext("2d");
 
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
+      // Draw QR code as base
+      ctx.drawImage(qrImage, 0, 0, qrSize, qrSize);
 
-      const { data: { publicUrl } } = supabaseAdmin.storage
-        .from("signatures")
-        .getPublicUrl(filePath);
+      // Draw white circle for thin outline around logo
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(qrSize / 2, qrSize / 2, logoSize / 2 + 2, 0, 2 * Math.PI, false);
+      ctx.fillStyle = "#FFF";
+      ctx.shadowColor = "#EEE";
+      ctx.shadowBlur = 1;
+      ctx.fill();
+      ctx.restore();
 
-      // Update signature with QR code URL and special flag indicating it has logo
-      await supabaseAdmin
-        .from('digital_signatures')
-        .update({
-          qr_code_url: publicUrl,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', signatureId);
-
-      console.log("QR code with logo metadata generated successfully");
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          qr_code_url: publicUrl,
-          has_embedded_logo: true,
-          message: "QR code with logo overlay generated successfully"
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
+      // Draw logo in center
+      ctx.drawImage(
+        logoImage,
+        qrSize / 2 - logoSize / 2,
+        qrSize / 2 - logoSize / 2,
+        logoSize,
+        logoSize
       );
-      
-    } catch (logoError) {
-      console.error("Logo embedding failed:", logoError);
-      
-      // Fallback to regular QR code
-      const qrImageData = new Uint8Array(qrBuffer);
-      
-      const filePath = `qrcodes/${supervisorId}-${Date.now()}.png`;
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from("signatures")
-        .upload(filePath, qrImageData, {
-          contentType: "image/png",
-          upsert: true,
-        });
 
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
+      // Convert to PNG buffer
+      mergedPng = await canvas.convertToBlob
+        ? await canvas.convertToBlob({ type: "image/png" })
+        : await new Promise<Blob>((resolve) => canvas.toBlob((blob: Blob) => resolve(blob), "image/png"));
 
-      const { data: { publicUrl } } = supabaseAdmin.storage
-        .from("signatures")
-        .getPublicUrl(filePath);
-
-      await supabaseAdmin
-        .from('digital_signatures')
-        .update({
-          qr_code_url: publicUrl,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', signatureId);
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          qr_code_url: publicUrl,
-          message: "QR code generated (logo embedding failed, using overlay)"
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
+    } catch (e) {
+      console.warn("Failed to compose logo in QR (OffscreenCanvas not available):", e);
+      mergedPng = null;
     }
+
+    let uploadBuffer;
+    if (mergedPng) {
+      uploadBuffer = new Uint8Array(await mergedPng.arrayBuffer());
+    } else {
+      // fallback: use QR code only (no logo)
+      uploadBuffer = new Uint8Array(qrBuffer);
+    }
+
+    // Ensure signatures bucket exists
+    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const signaturesBucketExists = buckets?.some(bucket => bucket.name === 'signatures');
+    if (!signaturesBucketExists) {
+      await supabaseAdmin.storage.createBucket('signatures', {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+      });
+    }
+    const filePath = `qrcodes/${supervisorId}-${Date.now()}-withlogo.png`;
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("signatures")
+      .upload(filePath, uploadBuffer, {
+        contentType: "image/png",
+        upsert: true,
+      });
+
+    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+    const { data: { publicUrl } } = supabaseAdmin.storage
+      .from("signatures")
+      .getPublicUrl(filePath);
+
+    // Update signature db
+    await supabaseAdmin
+      .from('digital_signatures')
+      .update({
+        qr_code_url: publicUrl,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', signatureId);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        qr_code_url: publicUrl,
+        has_embedded_logo: !!mergedPng,
+        message: mergedPng
+          ? "QR code with embedded logo SI generated and uploaded"
+          : "QR code generated (logo embedding not supported in runtime, using overlay in frontend)"
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
 
   } catch (error) {
     console.error("Error in generate-qr-with-logo function:", error);
-    
     return new Response(
       JSON.stringify({
         success: false,
