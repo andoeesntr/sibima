@@ -126,14 +126,17 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
                     alt="QR Code" 
                     className="w-40 h-40 object-contain"
                   />
-                  {/* Logo SI overlay, tanpa lingkaran putih besar */}
+                  {/* Overlay: Lingkaran putih kecil di tengah, logo SI di atasnya */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <img 
-                      src="/LogoSI-removebg-preview.png" 
-                      alt="Logo SI" 
-                      className="w-8 h-8 object-contain"
-                      style={{background: 'transparent'}}
-                    />
+                    {/* Lingkaran putih, ukuran sedikit lebih besar dari logo */}
+                    <div className="w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center">
+                      <img 
+                        src="/LogoSI-removebg-preview.png" 
+                        alt="Logo SI" 
+                        className="w-9 h-9 object-contain"
+                        style={{ background: 'transparent' }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
