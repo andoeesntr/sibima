@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +22,27 @@ const AdminDashboard = () => {
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   
+  // Fetch stats and initial activity logs
   useEffect(() => {
     fetchDashboardData();
+    fetchSystemActivityLogs();
+  }, []);
+
+  // Setup realtime subscription for system_activity_logs (for "Aktivitas Terbaru")
+  useEffect(() => {
+    const channel = supabase
+      .channel('system_activity_logs_changes_admin')
+      .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'system_activity_logs' },
+          () => {
+            fetchSystemActivityLogs();
+            fetchChartData();
+          })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
@@ -34,22 +53,19 @@ const AdminDashboard = () => {
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .eq('role', 'student');
-      
       if (studentsError) throw studentsError;
-      
+
       // Fetch supervisors count
       const { count: supervisorsCount, error: supervisorsError } = await supabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .eq('role', 'supervisor');
-      
       if (supervisorsError) throw supervisorsError;
       
       // Fetch proposals count
       const { count: proposalsCount, error: proposalsError } = await supabase
         .from('proposals')
         .select('id', { count: 'exact', head: true });
-      
       if (proposalsError) throw proposalsError;
       
       // Fetch pending proposals count
@@ -57,20 +73,7 @@ const AdminDashboard = () => {
         .from('proposals')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'submitted');
-      
       if (pendingError) throw pendingError;
-
-      // Fetch recent activity logs
-      const { data: logs, error: logsError } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .order('timestamp', { ascending: false })
-        .limit(10);
-      
-      if (logsError) throw logsError;
-
-      // Generate chart data for the past 6 months
-      const chartData = generateChartData();
 
       setStats({
         totalStudents: studentsCount || 0,
@@ -78,24 +81,122 @@ const AdminDashboard = () => {
         totalProposals: proposalsCount || 0,
         pendingProposals: pendingCount || 0,
       });
-      
-      setActivityLogs(logs || []);
-      setChartData(chartData);
+
+      // Tak perlu fetch logs/chartData di sini, mereka di-fetch sendiri
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setIsLoading(false);
     }
   };
-  
-  // Generate fake chart data for now
-  const generateChartData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map((name, index) => ({
-      name,
-      proposals: Math.floor(Math.random() * 10) + 2 + index,
-      users: Math.floor(Math.random() * 15) + 5 + index,
-    }));
+
+  // Fetch recent system activity logs (Aktivitas Terbaru)
+  const fetchSystemActivityLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_activity_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching system activity logs:', error);
+        return;
+      }
+      setActivityLogs(data || []);
+    } catch (error) {
+      console.error('Error fetching system activity logs:', error);
+    }
+  };
+
+  // Generate chart data for system activity per month (6 months)
+  const fetchChartData = async () => {
+    // Ambil data log sistem selama 6 bulan terakhir dan kelompokkan per bulan
+    const now = new Date();
+    const months: { slug: string; year: number; month: number; name: string }[] = [];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        slug: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        name: `${monthNames[d.getMonth()]}`
+      });
+    }
+    try {
+      // Supabase belum punya aggregation by month, workaround: fetch all log last 6m, group client-side
+      const startDate = `${months[0].year}-${String(months[0].month).padStart(2, '0')}-01`;
+      const { data, error } = await supabase
+        .from('system_activity_logs')
+        .select('id, action_type, timestamp')
+        .gte('timestamp', startDate);
+
+      if (error) {
+        console.error('Error fetching logs for chart:', error);
+        setChartData([]);
+        return;
+      }
+
+      // Kelompokkan per-bulan: total aktivitas + breakdown proposal/user/upload
+      const chart: any[] = months.map((m) => ({
+        name: `${m.name} ${m.year}`,
+        total: 0,
+        proposal: 0,
+        user: 0,
+        upload: 0,
+        timesheet: 0,
+        evaluation: 0,
+        download: 0,
+        system: 0,
+      }));
+
+      for (const row of data || []) {
+        const t = new Date(row.timestamp);
+        const mSlug = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`;
+        const mIdx = months.findIndex((m) => m.slug === mSlug);
+        if (mIdx !== -1) {
+          chart[mIdx].total += 1;
+          if (row.action_type === 'proposal_action') chart[mIdx].proposal += 1;
+          if (row.action_type === 'user') chart[mIdx].user += 1;
+          if (row.action_type === 'upload') chart[mIdx].upload += 1;
+          if (row.action_type === 'timesheet') chart[mIdx].timesheet += 1;
+          if (row.action_type === 'evaluation') chart[mIdx].evaluation += 1;
+          if (row.action_type === 'download') chart[mIdx].download += 1;
+          if (row.action_type === 'system') chart[mIdx].system += 1;
+        }
+      }
+      setChartData(chart);
+
+    } catch (error) {
+      console.error('Error preparing chart data:', error);
+    }
+  };
+
+  // Fetch chart data on mount
+  useEffect(() => {
+    fetchChartData();
+  }, []);
+
+  // Icon dan label untuk tipe aktivitas
+  const getActivityIcon = (actionType: string, description: string) => {
+    if (description.includes('Menyetujui') || description.includes('Disetujui')) {
+      return <span title="Approved"><svg className="inline mr-1 h-4 w-4 text-green-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg></span>;
+    } else if (description.includes('Menolak') || description.includes('Ditolak')) {
+      return <span title="Rejected"><svg className="inline mr-1 h-4 w-4 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></span>;
+    } else if (description.toLowerCase().includes('revisi')) {
+      return <span title="Revision"><svg className="inline mr-1 h-4 w-4 text-yellow-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5h2m7 0a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1M9 3h6a2 2 0 0 1 2 2v0H7a2 2 0 0 1 2-2z" /></svg></span>;
+    } else if (actionType === 'user') {
+      return <UserPlus className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />;
+    } else if (actionType === 'upload') {
+      return <FileText className="h-5 w-5 text-purple-500 flex-shrink-0 mt-0.5" />;
+    } else if (actionType === 'download') {
+      return <FileText className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />;
+    } else if (actionType === 'system') {
+      return <FileText className="h-5 w-5 text-gray-500 flex-shrink-0 mt-0.5" />;
+    } else {
+      return <FileText className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />;
+    }
   };
 
   return (
@@ -163,13 +264,16 @@ const AdminDashboard = () => {
 
       {/* Timeline KP Section */}
       <KpTimeline />
-      
+
       {/* Charts and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Grafik tren aktivitas sistem */}
         <Card className="col-span-1 lg:col-span-2">
           <CardHeader>
-            <CardTitle>Aktivitas Sistem</CardTitle>
-            <CardDescription>Trend penggunaan sistem dalam 6 bulan terakhir</CardDescription>
+            <CardTitle>Aktivitas Sistem (6 bulan terakhir)</CardTitle>
+            <CardDescription>
+              Grafik tren jumlah semua aktivitas penting di sistem per bulan (proposal, user, upload, dsb).
+            </CardDescription>
           </CardHeader>
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -181,18 +285,24 @@ const AdminDashboard = () => {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="proposals" stroke="#2C3E50" activeDot={{ r: 8 }} name="Proposal" />
-                <Line type="monotone" dataKey="users" stroke="#27AE60" name="Pengguna" />
+                <Line type="monotone" dataKey="total" stroke="#7D3C98" name="Total Aktivitas" />
+                <Line type="monotone" dataKey="proposal" stroke="#2C3E50" name="Proposal" />
+                <Line type="monotone" dataKey="user" stroke="#138D75" name="User" />
+                <Line type="monotone" dataKey="upload" stroke="#884EA0" name="Upload" />
+                <Line type="monotone" dataKey="timesheet" stroke="#DC7633" name="Timesheet" />
+                <Line type="monotone" dataKey="evaluation" stroke="#17A589" name="Evaluation" />
+                <Line type="monotone" dataKey="download" stroke="#2980B9" name="Download" />
+                <Line type="monotone" dataKey="system" stroke="#616A6B" name="System" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
         
-        {/* Recent Activity */}
+        {/* Recent System Activity */}
         <Card>
           <CardHeader>
             <CardTitle>Aktivitas Terbaru</CardTitle>
-            <CardDescription>Aktivitas terkini pada sistem</CardDescription>
+            <CardDescription>Aktivitas real-time terkini pada sistem</CardDescription>
           </CardHeader>
           <CardContent className="max-h-80 overflow-auto">
             {isLoading ? (
@@ -211,16 +321,25 @@ const AdminDashboard = () => {
               <div className="space-y-4">
                 {activityLogs.map((log) => (
                   <div key={log.id} className="flex gap-3 pb-3 border-b last:border-0 last:pb-0">
-                    {log.target_type === 'user' ? (
-                      <UserPlus className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    ) : (
-                      <FileText className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    )}
-                    
+                    {getActivityIcon(log.action_type, log.action_description)}
                     <div className="space-y-1">
                       <p className="text-sm leading-none">
                         <span className="font-medium">{log.user_name}</span>{' '}
-                        {log.action}
+                        <span className="text-xs text-gray-500 ml-1">
+                          (
+                            {log.user_role === 'admin'
+                              ? 'Admin'
+                              : log.user_role === 'coordinator'
+                                ? 'Koordinator'
+                                : log.user_role === 'supervisor'
+                                  ? 'Dosen'
+                                  : log.user_role === 'student'
+                                    ? 'Mahasiswa'
+                                    : log.user_role}
+                          )
+                        </span>
+                        {' '}
+                        {log.action_description}
                       </p>
                       <p className="text-xs text-gray-500">
                         {formatDate(log.timestamp)}
