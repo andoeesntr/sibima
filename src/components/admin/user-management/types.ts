@@ -7,7 +7,8 @@ export interface UserData {
   email: string;
   role: UserRole;
   nim?: string;
-  nip?: string; // We're keeping this for now as it's used across components but treated as 'nid'
+  nip?: string;
   faculty?: string;
   department?: string;
+  profile_image?: string | null; // tambahkan field gambar profile
 }

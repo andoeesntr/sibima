@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UserRole } from "@/types";
 import { Key, MoreHorizontal, Pencil, Trash, Users } from "lucide-react";
-import { Avatar, AvatarFallback } from "./UserAvatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserData } from "./types";
 
 interface UserTableProps {
@@ -22,7 +22,7 @@ export const UserTable = ({
   roleLabels,
   handleEditUser,
   handleResetPassword,
-  handleDeleteUser
+  handleDeleteUser,
 }: UserTableProps) => {
   return (
     <>
@@ -57,7 +57,17 @@ export const UserTable = ({
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <Avatar>
-                            <AvatarFallback>{user.name ? user.name[0] : 'U'}</AvatarFallback>
+                            {user.profile_image ? (
+                              <AvatarImage
+                                src={user.profile_image}
+                                alt={user.name || 'Profile'}
+                                className="object-cover w-full h-full"
+                              />
+                            ) : (
+                              <AvatarFallback>
+                                {user.name ? user.name[0].toUpperCase() : 'U'}
+                              </AvatarFallback>
+                            )}
                           </Avatar>
                         </div>
                         <div className="ml-4">

@@ -11,6 +11,7 @@ import { AddUserForm } from '@/components/admin/user-management/AddUserForm';
 import { EditUserForm } from '@/components/admin/user-management/EditUserForm';
 import { ResetPasswordDialog } from '@/components/admin/user-management/ResetPasswordDialog';
 import { UserData } from '@/components/admin/user-management/types';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type UserTab = 'all' | 'student' | 'supervisor' | 'admin' | 'coordinator';
 
@@ -34,26 +35,24 @@ const UserManagement = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, role, nim, nid, faculty, department');
+        .select('id, full_name, email, role, nim, nid, faculty, department, profile_image');
       
       if (error) {
         throw error;
       }
 
       if (data) {
-        // Transform data to match our UserData interface
-        // Here we map nid to nip for backward compatibility
         const transformedUsers = data.map(profile => ({
           id: profile.id,
           name: profile.full_name || 'Unnamed User',
           email: profile.email,
           role: profile.role as UserRole,
           nim: profile.nim,
-          nip: profile.nid, // Map nid from database to nip for interface compatibility
+          nip: profile.nid,
           faculty: profile.faculty,
-          department: profile.department
+          department: profile.department,
+          profile_image: profile.profile_image || null, // pastikan ada
         }));
-        
         setUsers(transformedUsers);
       } else {
         setUsers([]);
