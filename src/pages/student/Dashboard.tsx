@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
@@ -68,10 +67,10 @@ const Dashboard = () => {
         </div>
       </section>
 
-      {/* Status KP & Tim KP - 80:20 grid */}
-      <section className="grid grid-cols-1 md:grid-cols-5 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
-        {/* STATUS KP, 80% */}
-        <div className="col-span-1 md:col-span-4">
+      {/* Status KP & Tim KP - 70:30 grid */}
+      <section className="grid grid-cols-1 md:grid-cols-10 gap-6 px-0 mt-4" style={{ maxWidth: "100%" }}>
+        {/* STATUS KP, 70% */}
+        <div className="col-span-1 md:col-span-7">
           <StatusSection
             latestApprovedProposal={latestApprovedProposal}
             evaluations={evaluations}
@@ -79,8 +78,8 @@ const Dashboard = () => {
           />
         </div>
         
-        {/* TIM KP, 20% */}
-        <div className="col-span-1 md:col-span-1">
+        {/* TIM KP, 30% */}
+        <div className="col-span-1 md:col-span-3">
           <TeamSection team={lastTeam} />
         </div>
       </section>
