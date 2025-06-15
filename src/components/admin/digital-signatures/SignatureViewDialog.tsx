@@ -128,18 +128,18 @@ const SignatureViewDialog: React.FC<SignatureViewDialogProps> = ({
                     className="w-40 h-40 object-contain"
                     style={{ display: "block" }}
                   />
-                  {/* Overlay: Lingkaran putih dengan margin sangat tipis untuk logo */}
+                  {/* Overlay: Lingkaran putih super tipis untuk logo */}
                   <div className="absolute left-1/2 top-1/2 pointer-events-none"
                        style={{
                          transform: 'translate(-50%, -50%)'
                        }}>
-                    {/* Lingkaran putih tipis, hanya sedikit lebih besar dari logo */}
+                    {/* Lingkaran putih super tipis, gap <2px */}
                     <div
                       className="flex items-center justify-center rounded-full bg-white"
                       style={{
-                        width: 40,      // hanya +4px dari logo (gap sangat tipis)
-                        height: 40,
-                        boxShadow: '0 0 1px rgba(0,0,0,0.04)'
+                        width: 38,      // hanya +2px dari logo (gap ±1px per sisi)
+                        height: 38,
+                        boxShadow: '0 0 0.5px rgba(0,0,0,0.03)'
                       }}
                     >
                       {/* Logo SI besar */}
