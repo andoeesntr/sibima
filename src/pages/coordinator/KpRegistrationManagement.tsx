@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +64,29 @@ const fetchRegistrations = async (): Promise<RegistrationRow[]> => {
   });
 };
 
+function filterWritableFields(fields: Partial<RegistrationRow>) {
+  // exclude non-table and join fields
+  const {
+    student, // joined
+    id, // taken separately
+    ...rest
+  } = fields;
+  // Only allowed table fields
+  const allowed = [
+    "student_id", "semester", "guardian_lecturer_id", "registration_status", "ipk", "total_completed_credits",
+    "total_d_e_credits", "d_e_courses", "total_current_credits", "total_credits",
+    "last_gpa_file", "last_krs_file", "status", "notes"
+  ];
+  // Remove any keys not in allowed, and ensure ipk and other NOT NULLs are always sent for update/insert
+  let result: any = {};
+  for (const k of allowed) {
+    if (fields[k as keyof typeof fields] !== undefined) {
+      result[k] = fields[k as keyof typeof fields];
+    }
+  }
+  return result;
+}
+
 export default function KpRegistrationManagement() {
   const [selected, setSelected] = React.useState<RegistrationRow | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -77,21 +101,34 @@ export default function KpRegistrationManagement() {
 
   const mutation = useMutation({
     mutationFn: async ({ id, ...fields }: { id?: string } & Partial<RegistrationRow>) => {
+      const sanitized = filterWritableFields(fields as Partial<RegistrationRow>);
+      // Make sure required fields are set
+      if (
+        sanitized.ipk === undefined ||
+        sanitized.semester === undefined ||
+        sanitized.registration_status === undefined ||
+        sanitized.total_completed_credits === undefined ||
+        sanitized.total_d_e_credits === undefined ||
+        sanitized.total_current_credits === undefined ||
+        sanitized.total_credits === undefined ||
+        sanitized.status === undefined
+      ) {
+        throw new Error("Semua field wajib diisi!");
+      }
       if (id) {
         const { error } = await supabase
           .from("kp_registrations")
           .update({
-            ...fields,
+            ...sanitized,
             updated_at: new Date().toISOString(),
           })
           .eq("id", id);
         if (error) throw new Error(error.message);
       } else {
-        // create
         const { error } = await supabase
           .from("kp_registrations")
           .insert({
-            ...fields,
+            ...sanitized,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
@@ -119,7 +156,6 @@ export default function KpRegistrationManagement() {
     onError: (e: any) => toast.error(e.message || "Gagal hapus data"),
   });
 
-  // Handler
   function openEdit(reg: RegistrationRow) {
     setSelected(reg);
     setEditOpen(true);
@@ -167,6 +203,7 @@ export default function KpRegistrationManagement() {
         onClose={() => { setEditOpen(false); setIsCreating(false); }}
         initialData={selected}
         onSave={fields => {
+          // fields does not contain id for create, but selected?.id for update
           mutation.mutate({ ...fields, id: selected?.id });
         }}
         isSubmitting={mutation.isPending}

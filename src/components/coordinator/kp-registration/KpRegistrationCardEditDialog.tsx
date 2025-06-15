@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -82,30 +81,27 @@ export default function KpRegistrationCardEditDialog({
           <div>
             <label className="block text-sm font-bold mb-1">NIM</label>
             <Input
-              value={form.nim || initialData?.student.nim || ""}
-              onChange={e => updateField("nim", e.target.value)}
-              placeholder="NIM Mahasiswa"
+              value={initialData?.student.nim || ""}
               disabled
             />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1">Nama</label>
-            <Input value={form.full_name || initialData?.student.full_name || ""} disabled />
+            <Input value={initialData?.student.full_name || ""} disabled />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1">Semester</label>
             <Input
               type="number"
               value={form.semester ?? ""}
-              onChange={e => updateField("semester", Number(e.target.value) || 0)}
+              onChange={e => setForm(f => ({ ...f, semester: Number(e.target.value) || 0 }))}
             />
           </div>
-          {/* ... build more fields similarly ... */}
           <div>
             <label className="block text-sm font-bold mb-1">Status</label>
             <Select
               value={form.status ?? "submitted"}
-              onValueChange={v => updateField("status", v)}
+              onValueChange={v => setForm(f => ({ ...f, status: v }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Status proses" />
@@ -119,7 +115,7 @@ export default function KpRegistrationCardEditDialog({
           </div>
           <div>
             <label className="block text-sm font-bold mb-1">Catatan Koordinator</label>
-            <Textarea value={form.notes ?? ""} onChange={e => updateField("notes", e.target.value)} />
+            <Textarea value={form.notes ?? ""} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
           </div>
           <div className="flex gap-2 items-center">
             <label className="block text-sm font-bold mb-1">KRS:</label>
@@ -148,7 +144,7 @@ export default function KpRegistrationCardEditDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Batal</Button>
-          <Button onClick={handleSave} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button>
+          <Button onClick={() => onSave(form)} disabled={isSubmitting}>{isSubmitting ? "Menyimpan..." : "Simpan"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
