@@ -40,20 +40,13 @@ const Dashboard = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-10">
-      {/* Timeline KP - Jangan ada judul di atas, card lebih besar */}
+      {/* Timeline KP - REMOVE CARD, only show the timeline directly */}
       <section className="w-full">
+        {/* Card wrapper dihapus di sini */}
         <div className="w-full max-w-7xl mx-auto">
-          <Card className="rounded-3xl border bg-white shadow-lg px-0 pt-0 pb-0 overflow-visible" style={{ maxWidth: '100%' }}>
-            <CardContent className="p-0">
-              <div className="pt-10 pb-14 px-0 md:px-10 xl:px-28">
-                {/* JUDUL HANYA DI DALAM CARD, HAPUS JUDUL DI LUARNYA */}
-                {/* <h2 className="text-3xl md:text-4xl font-bold mb-10 text-gray-900 text-center">
-                  Timeline Kerja Praktik
-                </h2> */}
-                <KpTimeline readOnly />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="pt-10 pb-14 px-0 md:px-10 xl:px-28">
+            <KpTimeline readOnly />
+          </div>
         </div>
       </section>
 
