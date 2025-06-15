@@ -107,17 +107,8 @@ export const StatusCard = ({
           </Button>
         </div>
       )}
-      
-      {currentProposal && (
-        <div className="flex justify-end mt-6">
-          <Button 
-            className="bg-primary hover:bg-primary/90" 
-            onClick={() => navigate(`/student/proposal-detail/${currentProposal.id}`)}
-          >
-            {currentProposal.status === 'rejected' ? 'Lihat Detail Penolakan' : 'Lihat Detail Proposal'}
-          </Button>
-        </div>
-      )}
+      {/* The detail button is now ONLY managed in Dashboard.tsx below documents, not here */}
     </div>
   );
 };
+
