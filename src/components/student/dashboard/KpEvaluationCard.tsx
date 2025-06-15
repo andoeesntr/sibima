@@ -11,9 +11,7 @@ export const KpEvaluationCard = ({ evaluations }: KpEvaluationCardProps) => {
   // Hanya tampilkan jika ada data nilai
   if (!evaluations || evaluations.length === 0) return null;
 
-  // Misal, tampilkan satu saja (atau rata rata, dsb. - bisa disesuaikan)
-  // Kita asumsikan skor ada di field evaluations[i].score
-  // Kalau ada lebih dari satu penilaian, bisa di-list atau ditampilkan satu
+  // Tampilkan nilai paling atas (yang terbaru)
   const mainEval = evaluations[0];
 
   return (
@@ -24,11 +22,11 @@ export const KpEvaluationCard = ({ evaluations }: KpEvaluationCardProps) => {
       <CardContent>
         <div className="flex flex-col gap-1">
           <span className="text-3xl font-bold text-primary">{mainEval?.score ?? "-"} </span>
-          <span className="text-gray-600 text-sm">Penilai: {mainEval?.evaluator_name ?? "Koordinator"}</span>
+          <span className="text-gray-600 text-sm">Penilai: {mainEval?.evaluator_type ?? "Koordinator"}</span>
           {/* Jika ada komentar */}
-          {mainEval?.comment && (
+          {mainEval?.comments && (
             <span className="text-muted-foreground text-xs mt-2 italic">
-              Catatan: {mainEval.comment}
+              Catatan: {mainEval.comments}
             </span>
           )}
         </div>
