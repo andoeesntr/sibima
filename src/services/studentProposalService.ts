@@ -40,7 +40,8 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
       let supervisorData = null;
       let teamData = null;
       let supervisors = [];
-      
+      let documents = [];
+
       // Fetch team data if exists
       if (proposal.team_id) {
         const { data: team, error: teamError } = await supabase
@@ -92,6 +93,22 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
           });
         }
       }
+
+      // Fetch proposal documents (latest first)
+      const { data: docs, error: docsError } = await supabase
+        .from('proposal_documents')
+        .select('id, file_name, file_url, file_type')
+        .eq('proposal_id', proposal.id)
+        .order('uploaded_at', { ascending: false });
+
+      if (!docsError && docs && docs.length > 0) {
+        documents = docs.map((doc: any) => ({
+          id: doc.id,
+          fileName: doc.file_name,
+          fileUrl: doc.file_url,
+          fileType: doc.file_type,
+        }));
+      }
       
       console.log("Final supervisors for proposal:", proposal.id, supervisors);
       
@@ -108,7 +125,8 @@ export const fetchStudentProposals = async (userId: string): Promise<ProposalTyp
         team: teamData,
         team_id: proposal.team_id,
         rejectionReason: proposal.rejection_reason,
-        studentId: userId
+        studentId: userId,
+        documents, // <---- assign here!
       });
     }
     

@@ -29,8 +29,14 @@ export type ProposalType = {
     full_name: string;
     profile_image?: string;
   }[];
-}
-
+  // Add this section for documents (optional field)
+  documents?: {
+    id: string;
+    fileName: string;
+    fileUrl: string;
+    fileType?: string;
+  }[];
+};
 export type TeamMember = {
   id: string;
   full_name: string;
