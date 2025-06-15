@@ -1,6 +1,6 @@
 
 import React from "react";
-import { RegistrationRow } from "@/pages/coordinator/KpRegistrationManagement";
+import { RegistrationRow } from "./kpRegistrationUtils";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
 

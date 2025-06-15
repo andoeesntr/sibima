@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { RegistrationRow } from "@/pages/coordinator/KpRegistrationManagement";
+import { RegistrationRow } from "./kpRegistrationUtils";
 
 type FormState = Omit<RegistrationRow, "student" | "id"> & { id?: string };
 
