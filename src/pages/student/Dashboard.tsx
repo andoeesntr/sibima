@@ -39,18 +39,17 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-2 py-0 space-y-10">
-      {/* Timeline KP (Lebih besar, menonjol, dan proporsional sesuai desain referensi) */}
+    <div className="w-full max-w-7xl mx-auto px-0 py-0 space-y-10">
+      {/* Timeline KP - Lebar Maksimal & Tanpa Judul Duplikat */}
       <section className="w-full">
-        <div className="mx-auto max-w-6xl">
-          <Card className="rounded-2xl border bg-white shadow-sm px-0 pt-0 pb-0 overflow-visible">
+        <div className="w-full max-w-7xl mx-auto">
+          <Card className="rounded-2xl border bg-white shadow-lg px-0 pt-0 pb-0 overflow-visible">
             <CardContent className="p-0">
-              {/* Judul dan Timeline Content */}
-              <div className="py-8 px-4 sm:px-12">
-                <h2 className="text-2xl sm:text-3xl font-bold mb-8 text-gray-800">Timeline Kerja Praktik</h2>
-                <div>
-                  <KpTimeline readOnly />
-                </div>
+              <div className="py-10 px-2 md:px-10 xl:px-20">
+                <h2 className="text-3xl md:text-4xl font-bold mb-10 text-gray-900 text-center">
+                  Timeline Kerja Praktik
+                </h2>
+                <KpTimeline readOnly />
               </div>
             </CardContent>
           </Card>
@@ -69,7 +68,6 @@ const Dashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-8 pt-0 pb-6">
-              {/* Hapus deskripsi di dalam StatusCard (hanya dari header saja) */}
               <StatusCard
                 proposals={proposals}
                 selectedProposal={mainProposal}
