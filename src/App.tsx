@@ -20,7 +20,6 @@ import DigitalSignature from "./pages/student/DigitalSignature";
 import Guide from "./pages/student/Guide";
 import KpProgress from "./pages/student/KpProgress";
 import StudentTimesheet from "./pages/student/Timesheet";
-import KpRegistrationPage from "@/pages/student/KpRegistration";
 
 // Coordinator pages
 import CoordinatorDashboard from "./pages/coordinator/Dashboard";
@@ -49,9 +48,6 @@ import Feedback from "./pages/supervisor/Feedback";
 import KpProgressSupervision from "./pages/supervisor/KpProgressSupervision";
 import SupervisorTimesheetOverview from "./pages/supervisor/TimesheetOverview";
 import SupervisorStudentProgress from "./pages/supervisor/StudentProgress";
-
-import KpRegistrationManagement from "@/pages/coordinator/KpRegistrationManagement";
-import KpRegistrationAdminPage from "@/pages/coordinator/KpRegistrationAdmin";
 
 const queryClient = new QueryClient();
 
@@ -82,7 +78,6 @@ function App() {
                 <Route path="guide" element={<Guide />} />
                 <Route path="kp-progress" element={<KpProgress />} />
                 <Route path="timesheet" element={<StudentTimesheet />} />
-                <Route path="kp-registration" element={<KpRegistrationPage />} />
               </Route>
 
               {/* Coordinator routes */}
@@ -100,8 +95,6 @@ function App() {
                 <Route path="student-evaluation" element={<StudentEvaluation />} />
                 <Route path="guidance-management" element={<GuidanceManagement />} />
                 <Route path="timesheet-overview" element={<CoordinatorTimesheetOverview />} />
-                <Route path="kp-registration-management" element={<KpRegistrationManagement />} />
-                <Route path="kp-registration-admin" element={<KpRegistrationAdminPage />} />
               </Route>
 
               {/* Admin routes */}

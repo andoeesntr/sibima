@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { 
@@ -20,7 +19,6 @@ type NavItem = {
 const roleNavItems: Record<string, NavItem[]> = {
   student: [
     { title: 'Dashboard', href: '/student', icon: <Home size={18} className="text-yellow-500" /> },
-    { title: 'Pendaftaran KP', href: '/student/kp-registration', icon: <ClipboardList size={18} className="text-yellow-500" /> },
     { title: 'Pengajuan Proposal', href: '/student/proposal-submission', icon: <FileText size={18} className="text-yellow-500" /> },
     { title: 'Progress KP', href: '/student/kp-progress', icon: <TrendingUp size={18} className="text-yellow-500" /> },
     { title: 'Timesheet KP', href: '/student/timesheet', icon: <Clock size={18} className="text-yellow-500" /> },
@@ -34,7 +32,6 @@ const roleNavItems: Record<string, NavItem[]> = {
     { title: 'Progress Mahasiswa', href: '/coordinator/student-progress', icon: <BarChart3 size={18} className="text-yellow-500" /> },
     { title: 'Penilaian', href: '/coordinator/student-evaluation', icon: <GraduationCap size={18} className="text-yellow-500" /> },
     { title: 'Rekap Timesheet', href: '/coordinator/timesheet-overview', icon: <Clock size={18} className="text-yellow-500" /> },
-    { title: 'Manajemen Pendaftaran KP', href: '/coordinator/kp-registration-management', icon: <ClipboardList size={18} className="text-yellow-500" /> },
     { title: 'Manajemen Bimbingan', href: '/coordinator/guidance-management', icon: <TrendingUp size={18} className="text-yellow-500" /> },
   ],
   admin: [
@@ -194,4 +191,3 @@ const DashboardLayout = ({ role }: DashboardLayoutProps) => {
 };
 
 export default DashboardLayout;
-
