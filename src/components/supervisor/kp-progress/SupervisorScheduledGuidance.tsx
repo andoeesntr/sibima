@@ -72,7 +72,11 @@ const SupervisorScheduledGuidance = () => {
         .eq('supervisor_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching guidance requests:', error);
+        toast.error('Gagal memuat permintaan bimbingan terjadwal');
+        return;
+      }
 
       console.log('Fetched scheduled guidance requests for supervisor:', data);
       
@@ -152,7 +156,11 @@ const SupervisorScheduledGuidance = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'dd MMMM yyyy HH:mm', { locale: id });
+    try {
+      return format(new Date(dateString), 'dd MMMM yyyy HH:mm', { locale: id });
+    } catch (error) {
+      return dateString;
+    }
   };
 
   const uniqueStudents: UniqueStudent[] = guidanceRequests.reduce((acc: UniqueStudent[], request) => {
