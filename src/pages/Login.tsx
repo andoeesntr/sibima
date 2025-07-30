@@ -48,13 +48,16 @@ const Login = () => {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center bg-gray-50 p-4" 
+      className="min-h-screen flex items-center justify-center p-4" 
       style={{
-        backgroundImage: "linear-gradient(135deg, rgba(44, 62, 80, 0.1) 0%, rgba(39, 174, 96, 0.1) 100%)",
-        backgroundSize: "cover"
+        backgroundImage: "url('/lovable-uploads/9eb3e62e-fe00-4095-98e9-9bc47cee94aa.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat"
       }}
     >
-      <Card className="w-full max-w-md shadow-lg">
+      <div className="absolute inset-0 bg-black/40"></div>
+      <Card className="w-full max-w-md shadow-lg relative z-10">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold tracking-tight">SIBIMA - SI</CardTitle>
           <div className="flex justify-center my-4">
