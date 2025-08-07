@@ -77,7 +77,7 @@ const KpProgress = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Progress value={progressData?.overall_progress || 0} className="h-2 [&>div]:!bg-gray-400" />
+              <Progress value={progressData?.overall_progress || 0} className="h-2" variant="gray" />
               <p className="text-sm text-gray-600">{progressData?.overall_progress || 0}% selesai</p>
             </div>
           </CardContent>
