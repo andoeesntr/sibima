@@ -50,7 +50,6 @@ const KpProgress = () => {
   if (progressLoading || dashboardLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold">Progress KP</h1>
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
         </div>
@@ -60,8 +59,7 @@ const KpProgress = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Progress KP</h1>
+      <div className="flex justify-end items-center">
         {progressData && (
           <Badge className={getStatusColor(progressData.current_stage)}>
             {getStageLabel(progressData.current_stage)}
