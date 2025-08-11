@@ -95,10 +95,6 @@ const KpProgressTracker = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold">Pelacakan Progress KP</h2>
-        <p className="text-gray-600">Pantau kemajuan Kerja Praktik Anda</p>
-      </div>
 
       {/* Overall Progress */}
       <Card>
