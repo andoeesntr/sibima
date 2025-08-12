@@ -41,33 +41,33 @@ const DetailSection = ({
   console.log("Supervisors in DetailSection:", supervisors);
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h3 className="font-medium mb-2">Deskripsi</h3>
-        <p className="text-gray-600">{description || 'Tidak ada deskripsi'}</p>
+        <h3 className="font-medium mb-1">Deskripsi</h3>
+        <p className="text-gray-600 text-sm line-clamp-3">{description || 'Tidak ada deskripsi'}</p>
       </div>
       
       {rejectionReason && status === 'rejected' && (
-        <div className="bg-red-50 border border-red-100 rounded-md p-4">
-          <h3 className="font-medium text-red-800 mb-1">Alasan Penolakan</h3>
-          <p className="text-red-700">{rejectionReason}</p>
+        <div className="bg-red-50 border border-red-100 rounded-md p-3">
+          <h3 className="font-medium text-red-800 mb-1 text-sm">Alasan Penolakan</h3>
+          <p className="text-red-700 text-sm">{rejectionReason}</p>
         </div>
       )}
       
       {teamId && (
         <div>
-          <h3 className="font-medium mb-2">Tim KP</h3>
-          <p className="text-gray-600">{teamName || 'Tim KP'}</p>
+          <h3 className="font-medium mb-1 text-sm">Tim KP</h3>
+          <p className="text-gray-600 text-sm">{teamName || 'Tim KP'}</p>
         </div>
       )}
       
       <div>
-        <h3 className="font-medium mb-2">Pembimbing</h3>
+        <h3 className="font-medium mb-1 text-sm">Pembimbing</h3>
         <SupervisorList supervisors={supervisors} />
       </div>
       
       <div>
-        <h3 className="font-medium mb-2">Dokumen</h3>
+        <h3 className="font-medium mb-1 text-sm">Dokumen</h3>
         <DocumentList 
           documents={displayDocuments} 
           handlePreviewFile={handlePreviewFile}
