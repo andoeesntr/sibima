@@ -42,10 +42,12 @@ const DetailSection = ({
   
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="font-medium mb-1">Deskripsi</h3>
-        <p className="text-gray-600 text-sm line-clamp-3">{description || 'Tidak ada deskripsi'}</p>
-      </div>
+      {description && (
+        <div>
+          <h3 className="font-medium mb-1 text-sm">Deskripsi Proposal</h3>
+          <p className="text-gray-600 text-sm line-clamp-3">{description}</p>
+        </div>
+      )}
       
       {rejectionReason && status === 'rejected' && (
         <div className="bg-red-50 border border-red-100 rounded-md p-3">
@@ -56,24 +58,34 @@ const DetailSection = ({
       
       {teamId && (
         <div>
-          <h3 className="font-medium mb-1 text-sm">Tim KP</h3>
+          <h3 className="font-medium mb-1 text-sm">Informasi Tim</h3>
           <p className="text-gray-600 text-sm">{teamName || 'Tim KP'}</p>
         </div>
       )}
       
-      <div>
-        <h3 className="font-medium mb-1 text-sm">Pembimbing</h3>
-        <SupervisorList supervisors={supervisors} />
-      </div>
+      {supervisors && supervisors.length > 0 && (
+        <div>
+          <h3 className="font-medium mb-1 text-sm">Dosen Pembimbing</h3>
+          <SupervisorList supervisors={supervisors} />
+        </div>
+      )}
       
-      <div>
-        <h3 className="font-medium mb-1 text-sm">Dokumen</h3>
-        <DocumentList 
-          documents={displayDocuments} 
-          handlePreviewFile={handlePreviewFile}
-          handleDownloadFile={handleDownloadFile}
-        />
-      </div>
+      {documents && documents.length > 0 && (
+        <div>
+          <h3 className="font-medium mb-1 text-sm">Dokumen Terbaru</h3>
+          <DocumentList 
+            documents={displayDocuments} 
+            handlePreviewFile={handlePreviewFile}
+            handleDownloadFile={handleDownloadFile}
+          />
+        </div>
+      )}
+      
+      {(!description && !teamId && (!supervisors || supervisors.length === 0) && (!documents || documents.length === 0)) && (
+        <div className="text-center py-6">
+          <p className="text-gray-500 text-sm">Informasi detail akan ditampilkan di sini</p>
+        </div>
+      )}
     </div>
   );
 };
