@@ -81,9 +81,6 @@ const ProposalSubmission = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">
-        {isEditMode ? 'Revisi Proposal KP' : 'Pengajuan Proposal KP'}
-      </h1>
       
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="grid w-full grid-cols-3">
